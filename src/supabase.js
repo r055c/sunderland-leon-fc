@@ -3,7 +3,7 @@
 // Project Settings → API → Project URL and anon/public key
 
 export const SUPABASE_URL = "https://uofgnoroeghyojddjqhu.supabase.co/rest/v1/";
-export const SUPABASE_ANON_KEY = "sb_publishable_QXB6WVq3ZEA8p9oqMA9rAw__AokKXqI";
+export const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVvZmdub3JvZWdoeW9qZGRqcWh1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NzEyNDEsImV4cCI6MjA5NzQ0NzI0MX0.66a4jgjWYHWAuj_667SP1mSXNHXepNaCY4MfO61-MmY";
 
 const headers = {
   "Content-Type": "application/json",
