@@ -877,4 +877,69 @@ export default function App() {
 
                 <div style={{ marginBottom: 16 }}>
                   <label style={labelStyle}>Date Played</label>
-                  <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.targ
+                  <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} style={{ ...inputStyle, colorScheme: "light" }} />
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <label style={labelStyle}>Opposition</label>
+                  <TeamPicker teams={teams} value={form.opposition} onChange={v => setForm(f => ({ ...f, opposition: v }))} onAddNew={name => { handleAddTeam(name); setForm(f => ({ ...f, opposition: name })); }} />
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+                  <div>
+                    <label style={labelStyle}>Leon Score</label>
+                    <input type="number" placeholder="0" value={form.homeScore} onChange={e => setForm(f => ({ ...f, homeScore: e.target.value }))} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Opp Score</label>
+                    <input type="number" placeholder="0" value={form.awayScore} onChange={e => setForm(f => ({ ...f, awayScore: e.target.value }))} style={inputStyle} />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <label style={labelStyle}>Goal Scorers (comma separated)</label>
+                  <input type="text" placeholder="e.g. Grayson, Kayson ×2, Reggie" value={form.scorers} onChange={e => setForm(f => ({ ...f, scorers: e.target.value }))} style={inputStyle} />
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+                  <div>
+                    <label style={labelStyle}>⭐ Man of Match</label>
+                    <input type="text" placeholder="e.g. Grayson" value={form.motm} onChange={e => setForm(f => ({ ...f, motm: e.target.value }))} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={{ ...labelStyle, color: "#aaa" }}>🏅 Opp MOTM</label>
+                    <input type="text" placeholder="e.g. Smith" value={form.oppMotm} onChange={e => setForm(f => ({ ...f, oppMotm: e.target.value }))} style={inputStyle} />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <label style={labelStyle}>Opposition Logo (optional)</label>
+                  <input ref={fileRef} type="file" accept="image/*" onChange={e => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = ev => setOppLogo(ev.target.result); reader.readAsDataURL(file); }} style={{ display: "none" }} />
+                  <button onClick={() => fileRef.current.click()}
+                    style={{ border: "2px dashed #87ceeb", borderRadius: 10, background: oppLogo ? "#e8f4ff" : "#f8faff", padding: "14px 20px", width: "100%", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 700, color: "#1a1a2e", display: "flex", alignItems: "center", gap: 10, justifyContent: "center", boxSizing: "border-box" }}>
+                    {oppLogo ? <img src={oppLogo} style={{ width: 36, height: 36, objectFit: "contain" }} alt="" /> : "📁"}
+                    {oppLogo ? "Logo uploaded ✓" : "Upload opposition logo"}
+                  </button>
+                </div>
+
+                <button onClick={handleCreate} disabled={!form.date || !form.opposition || form.homeScore === "" || form.awayScore === ""}
+                  style={{ width: "100%", padding: "16px", background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 12, fontSize: 17, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", opacity: (!form.date || !form.opposition || form.homeScore === "" || form.awayScore === "") ? 0.5 : 1 }}>
+                  Generate Result Card
+                </button>
+              </div>
+            ) : (
+              <div>
+                <ResultCard match={newResult} teamName={teamName} compColor={getCompColor(competitions, newResult.competition)} />
+                <button onClick={() => { setNewResult(null); setOppLogo(null); setForm({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: form.competition, motm: "", oppMotm: "" }); }}
+                  style={{ marginTop: 16, width: "100%", padding: "14px", background: "#fff", color: "#1a1a2e", border: "2px solid #e8e8e8", borderRadius: 12, fontSize: 15, fontWeight: 800, letterSpacing: 2, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
+                  ← Add Another Result
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
