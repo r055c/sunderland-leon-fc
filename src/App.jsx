@@ -253,6 +253,7 @@ export default function App() {
   const [scorersTab, setScorersTab] = useState("goals");
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState(false);
+  const [dbErrorMsg, setDbErrorMsg] = useState("");
 
   const [teamName, setTeamName] = useState("Under 9 Blue");
   const [editingTeamName, setEditingTeamName] = useState(false);
@@ -296,7 +297,7 @@ export default function App() {
         setTeams(t);
         setFixtures(f);
         if (s) { setTeamName(s.team_name || "Under 9 Blue"); setCompetitions(s.competitions || DEFAULT_COMPETITIONS); }
-      } catch(e) { setDbError(true); }
+      } catch(e) { setDbError(true); setDbErrorMsg(e?.message || String(e)); }
       setLoading(false);
     }
     load();
@@ -414,6 +415,7 @@ export default function App() {
       <LeonLogo size={80} />
       <div style={{ color: "#d50000", fontSize: 22, fontWeight: 800, letterSpacing: 2 }}>⚠️ CONNECTION ERROR</div>
       <div style={{ color: "#aaa", fontSize: 15, maxWidth: 320, lineHeight: 1.5 }}>Could not connect to the database. Check your Supabase URL and API key in <code style={{ color: "#87ceeb" }}>src/supabase.js</code></div>
+      {dbErrorMsg && <div style={{ color: "#ff7eb3", fontSize: 12, maxWidth: 320, marginTop: 8, wordBreak: "break-all", background: "rgba(255,255,255,0.05)", padding: "8px 12px", borderRadius: 8 }}>{dbErrorMsg}</div>}
       <button onClick={() => window.location.reload()} style={{ background: "#87ceeb", color: "#1a1a2e", border: "none", borderRadius: 10, padding: "12px 24px", fontWeight: 800, fontSize: 15, cursor: "pointer", fontFamily: "inherit" }}>Try Again</button>
     </div>
   );
