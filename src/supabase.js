@@ -2,9 +2,8 @@
 // Replace these two values with your own from https://supabase.com
 // Project Settings → API → Project URL and anon/public key
 
-export const SUPABASE_URL = "https://uofgnoroeghyojddjqhu.supabase.co";
-export const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVvZmdub3JvZWdoeW9qZGRqcWh1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NzEyNDEsImV4cCI6MjA5NzQ0NzI0MX0.66a4jgjWYHWAuj_667SP1mSXNHXepNaCY4MfO61-MmY";
-
+export const SUPABASE_URL = "YOUR_SUPABASE_URL";
+export const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
 
 const headers = {
   "Content-Type": "application/json",
@@ -132,4 +131,43 @@ export async function upsertSettings(data) {
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error("Failed to save settings");
+}
+
+// ── Seasons ───────────────────────────────────────────────
+export async function fetchSeasons() {
+  const res = await fetch(`${base()}/seasons?order=id.desc`, { headers });
+  if (!res.ok) throw new Error("Failed to fetch seasons");
+  return res.json();
+}
+
+export async function insertSeason(season) {
+  const { id, ...data } = season;
+  const res = await fetch(`${base()}/seasons`, {
+    method: "POST", headers, body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to insert season");
+  const rows = await res.json();
+  return rows[0];
+}
+
+export async function updateSeason(season) {
+  const { id, ...data } = season;
+  const res = await fetch(`${base()}/seasons?id=eq.${id}`, {
+    method: "PATCH", headers, body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to update season");
+  const rows = await res.json();
+  return rows[0];
+}
+
+export async function setActiveSeason(id) {
+  // First deactivate all
+  await fetch(`${base()}/seasons`, {
+    method: "PATCH", headers, body: JSON.stringify({ is_active: false }),
+  });
+  // Then activate the chosen one
+  const res = await fetch(`${base()}/seasons?id=eq.${id}`, {
+    method: "PATCH", headers, body: JSON.stringify({ is_active: true }),
+  });
+  if (!res.ok) throw new Error("Failed to set active season");
 }
