@@ -423,6 +423,21 @@ export default function App() {
     setEditingComp(null);
   };
 
+  const handleStartNewSeason = async () => {
+    if (!newSeasonForm.name || !newSeasonForm.age_group) return;
+    try {
+      await setActiveSeason(0);
+      const created = await insertSeason({ name: newSeasonForm.name, age_group: newSeasonForm.age_group, is_active: true, competitions: DEFAULT_COMPETITIONS });
+      setSeasons(prev => [created, ...prev.map(s => ({ ...s, is_active: false }))]);
+      setActiveSeasonState(created);
+      setViewingSeason(created);
+      setCompetitions(DEFAULT_COMPETITIONS);
+      setForm(f => ({ ...f, competition: DEFAULT_COMPETITIONS[0] }));
+    } catch(e) { alert("Failed to create season — " + e.message); }
+    setShowSeasonModal(false);
+    setNewSeasonForm({ name: "", age_group: "" });
+  };
+
   // ── Styles ─────────────────────────────────────────────
   const inputStyle = { width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: "#1a1a2e", outline: "none", boxSizing: "border-box" };
   const labelStyle = { display: "block", fontSize: 11, fontWeight: 700, color: "#87ceeb", letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" };
@@ -465,9 +480,25 @@ export default function App() {
             </div>
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
-              <div style={{ color: "#87ceeb", fontWeight: 700, fontSize: 13, letterSpacing: 3, textTransform: "uppercase" }}>{teamName}</div>
+              <div style={{ color: "#87ceeb", fontWeight: 700, fontSize: 13, letterSpacing: 3, textTransform: "uppercase" }}>{viewingSeason?.age_group || teamName}</div>
               <button onClick={() => { setTempTeamName(teamName); setEditingTeamName(true); }} style={{ background: "rgba(135,206,235,0.2)", border: "1px solid rgba(135,206,235,0.4)", borderRadius: 5, padding: "2px 8px", cursor: "pointer", color: "#87ceeb", fontSize: 10, fontWeight: 700, fontFamily: "inherit" }}>✏️ EDIT</button>
             </div>
+          )}
+        </div>
+        {/* Season selector */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+          {seasons.length > 0 && (
+            <select value={viewingSeason?.id || ""} onChange={e => {
+              const s = seasons.find(x => x.id === parseInt(e.target.value));
+              if (s) { setViewingSeason(s); setFilterComp("All"); setSelectedMatch(null); }
+            }} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(135,206,235,0.4)", borderRadius: 8, color: "#87ceeb", fontSize: 11, fontWeight: 700, padding: "4px 8px", fontFamily: "inherit", cursor: "pointer", outline: "none" }}>
+              {seasons.map(s => <option key={s.id} value={s.id} style={{ background: "#1a1a2e" }}>{s.name} {s.is_active ? "✓" : ""}</option>)}
+            </select>
+          )}
+          {isViewingActive && (
+            <button onClick={() => setShowSeasonModal(true)} style={{ background: "rgba(135,206,235,0.15)", border: "1px solid rgba(135,206,235,0.3)", borderRadius: 6, color: "#87ceeb", fontSize: 9, fontWeight: 700, padding: "2px 8px", cursor: "pointer", fontFamily: "inherit", letterSpacing: 1 }}>
+              + NEW SEASON
+            </button>
           )}
         </div>
       </div>
@@ -479,7 +510,8 @@ export default function App() {
           { key: "history", label: "📋 Results" },
           { key: "scorers", label: "⭐ Awards" },
           { key: "teams", label: "👥 Teams" },
-          { key: "new", label: "➕ New" },
+          { key: "seasons", label: "🗓 History" },
+          ...(isViewingActive ? [{ key: "new", label: "➕ New" }] : []),
         ].map(tab => (
           <button key={tab.key} onClick={() => { setMode(tab.key); setNewResult(null); setOppLogo(null); setH2hTeam(null); }}
             style={{ flex: "0 0 auto", padding: "14px 16px", border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 12, letterSpacing: 1, textTransform: "uppercase", color: mode === tab.key ? "#1a1a2e" : "#999", borderBottom: mode === tab.key ? "3px solid #87ceeb" : "3px solid transparent", whiteSpace: "nowrap" }}>
@@ -487,6 +519,14 @@ export default function App() {
           </button>
         ))}
       </div>
+
+      {/* Past season banner */}
+      {!isViewingActive && (
+        <div style={{ background: "#ffab00", padding: "8px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: 12, fontWeight: 800, color: "#1a1a2e", letterSpacing: 1 }}>📅 VIEWING: {viewingSeason?.name} — {viewingSeason?.age_group}</span>
+          <button onClick={() => { setViewingSeason(activeSeason); setFilterComp("All"); }} style={{ background: "#1a1a2e", color: "#ffab00", border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>Back to Current</button>
+        </div>
+      )}
 
       {/* Competition filter — shown on Results and Awards tabs */}
       {(mode === "history" || mode === "scorers") && (
@@ -967,7 +1007,75 @@ export default function App() {
           </div>
         )}
 
+        {/* ── SEASON HISTORY TAB ── */}
+        {mode === "seasons" && (
+          <div style={{ maxWidth: 520, margin: "0 auto" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#888", letterSpacing: 2, textTransform: "uppercase", marginBottom: 16, textAlign: "center" }}>Season History</div>
+            {seasons.map(s => {
+              const sResults = results.filter(r => r.season_id === s.id);
+              const wins = sResults.filter(r => r.result === "W").length;
+              const drawn = sResults.filter(r => r.result === "D").length;
+              const lost = sResults.filter(r => r.result === "L").length;
+              const goals = sResults.reduce((a, r) => a + (r.homeScore || 0), 0);
+              const comps = [...new Set(sResults.map(r => r.competition))].filter(Boolean);
+              return (
+                <div key={s.id} style={{ background: "#fff", borderRadius: 16, padding: 20, marginBottom: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.08)", borderLeft: `4px solid ${s.is_active ? "#87ceeb" : "#e0e0e0"}` }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 18, fontWeight: 900, color: "#1a1a2e" }}>{s.name}</div>
+                      <div style={{ fontSize: 12, color: "#87ceeb", fontWeight: 700, letterSpacing: 1 }}>{s.age_group}</div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      {s.is_active && <span style={{ background: "#87ceeb", color: "#1a1a2e", fontSize: 9, fontWeight: 800, padding: "3px 8px", borderRadius: 10, letterSpacing: 1 }}>CURRENT</span>}
+                      <button onClick={() => { setViewingSeason(s); setMode("history"); setFilterComp("All"); }} style={{ background: "#f0f4ff", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: "#1a1a2e" }}>View →</button>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+                    {[{ l: "P", v: sResults.length, c: "#1a1a2e" }, { l: "W", v: wins, c: "#00c853" }, { l: "D", v: drawn, c: "#ffab00" }, { l: "L", v: lost, c: "#d50000" }, { l: "GF", v: goals, c: "#87ceeb" }].map(x => (
+                      <div key={x.l} style={{ background: "#f7f8fa", borderRadius: 8, padding: "6px 10px", textAlign: "center", borderBottom: `2px solid ${x.c}` }}>
+                        <div style={{ fontSize: 16, fontWeight: 900, color: x.c }}>{x.v}</div>
+                        <div style={{ fontSize: 9, color: "#aaa", fontWeight: 700 }}>{x.l}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {comps.length > 0 && (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {comps.map(c => <span key={c} style={{ background: "#f0f4ff", color: "#87ceeb", fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 8 }}>{c}</span>)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
       </div>
+
+      {/* ── NEW SEASON MODAL ── */}
+      {showSeasonModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 400 }}>
+            <div style={{ fontSize: 18, fontWeight: 900, color: "#1a1a2e", marginBottom: 6, letterSpacing: 1 }}>🗓 START NEW SEASON</div>
+            <p style={{ fontSize: 13, color: "#888", marginBottom: 20, lineHeight: 1.5 }}>This creates a new season with fresh results and fixtures. All previous data is preserved in Season History.</p>
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#87ceeb", letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>Season Name</label>
+              <input type="text" placeholder="e.g. 2026/27" value={newSeasonForm.name} onChange={e => setNewSeasonForm(f => ({ ...f, name: e.target.value }))} style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: "#1a1a2e", outline: "none", boxSizing: "border-box" }} />
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#87ceeb", letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>Age Group</label>
+              <input type="text" placeholder="e.g. Under 10 Blue" value={newSeasonForm.age_group} onChange={e => setNewSeasonForm(f => ({ ...f, age_group: e.target.value }))} style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: "#1a1a2e", outline: "none", boxSizing: "border-box" }} />
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => { setShowSeasonModal(false); setNewSeasonForm({ name: "", age_group: "" }); }} style={{ flex: 1, padding: "14px", background: "#f0f0f0", color: "#888", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+              <button onClick={handleStartNewSeason} disabled={!newSeasonForm.name || !newSeasonForm.age_group}
+                style={{ flex: 2, padding: "14px", background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 900, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", opacity: !newSeasonForm.name || !newSeasonForm.age_group ? 0.5 : 1 }}>
+                Start New Season
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
