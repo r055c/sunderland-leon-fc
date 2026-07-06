@@ -129,7 +129,10 @@ function ResultCard({ match, teamName = "Under 9 Blue", compColor = "#87ceeb" })
     <div>
       <div ref={cardRef} style={{ background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.10)", width: "100%", maxWidth: 520, margin: "0 auto", fontFamily: "'Barlow Condensed','Arial Narrow',Arial,sans-serif", border: "1px solid #e8e8e8" }}>
         <div style={{ background: "#1a1a2e", padding: "10px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ color: compColor, fontSize: 13, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase" }}>{match.competition}</span>
+          <div>
+            <span style={{ color: compColor, fontSize: 13, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase" }}>{match.competition}</span>
+            {match.round && <span style={{ color: "#aaa", fontSize: 11, marginLeft: 8, fontWeight: 600 }}>· {match.round}</span>}
+          </div>
           <span style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>{match.date}</span>
           <span style={{ background: resultColor, color: "#fff", fontWeight: 800, fontSize: 12, letterSpacing: 2, padding: "3px 10px", borderRadius: 20 }}>{resultLabel}</span>
         </div>
@@ -272,6 +275,7 @@ export default function App() {
   const [editingComp, setEditingComp] = useState(null);
   const [tempCompName, setTempCompName] = useState("");
   const [filterComp, setFilterComp] = useState("All");
+  const [filterRound, setFilterRound] = useState("All");
   const [sortOrder, setSortOrder] = useState("desc");
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [editingResult, setEditingResult] = useState(null);
@@ -284,13 +288,15 @@ export default function App() {
   // Team search / h2h
   const [teamSearch, setTeamSearch] = useState("");
   const [h2hTeam, setH2hTeam] = useState(null);
+  const [editingTeam, setEditingTeam] = useState(null); // { id, name }
+  const [editingTeamNameVal, setEditingTeamNameVal] = useState("");
 
   // Fixture form
   const [showFixtureForm, setShowFixtureForm] = useState(false);
   const [editingFixture, setEditingFixture] = useState(null);
   const [fixtureForm, setFixtureForm] = useState({ date: "", opposition: "", competition: DEFAULT_COMPETITIONS[0], venue: "", notes: "" });
 
-  const [form, setForm] = useState({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: DEFAULT_COMPETITIONS[0], motm: "", oppMotm: "" });
+  const [form, setForm] = useState({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: DEFAULT_COMPETITIONS[0], motm: "", oppMotm: "", round: "", season_id: null });
   const fileRef = useRef();
   const editFileRef = useRef();
 
@@ -326,15 +332,16 @@ export default function App() {
   }, []);
 
   // ── Derived ────────────────────────────────────────────
-  const filteredResults = (filterComp === "All" ? results : results.filter(r => r.competition === filterComp))
+  const seasonResults = viewingSeason ? results.filter(r => r.season_id === viewingSeason.id) : results;
+  const competitionsInUse = [...new Set([...competitions, ...results.map(r => r.competition).filter(Boolean)])];
+  const roundsInUse = filterComp === "All" ? [] : [...new Set(seasonResults.filter(r => r.competition === filterComp).map(r => r.round).filter(Boolean))];
+
+  const filteredResults = (filterComp === "All" ? seasonResults : seasonResults.filter(r => r.competition === filterComp))
+    .filter(r => filterRound === "All" || !r.round || r.round === filterRound)
     .slice().sort((a, b) => {
       const da = new Date(a.date), db = new Date(b.date);
       return sortOrder === "desc" ? db - da : da - db;
     });
-
-  const isViewingActive = !viewingSeason || !activeSeason || viewingSeason?.id === activeSeason?.id;
-  const seasonResults = viewingSeason ? results.filter(r => r.season_id === viewingSeason.id) : results;
-  const competitionsInUse = [...new Set([...competitions, ...results.map(r => r.competition).filter(Boolean)])];
 
   const upcomingFixtures = fixtures
     .filter(f => new Date(f.date) >= new Date(new Date().toDateString()))
@@ -353,7 +360,7 @@ export default function App() {
     const scorerList = form.scorers ? form.scorers.split(",").map(s => s.trim()).filter(Boolean) : [];
     let displayDate = form.date;
     try { displayDate = new Date(form.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); } catch(e) {}
-    const newMatch = { date: displayDate, opposition: form.opposition, homeScore: hs, awayScore: as_, scorers: scorerList, result, competition: form.competition, motm: form.motm.trim(), oppMotm: form.oppMotm.trim(), oppLogo: oppLogo || null };
+    const newMatch = { date: displayDate, opposition: form.opposition, homeScore: hs, awayScore: as_, scorers: scorerList, result, competition: form.competition, motm: form.motm.trim(), oppMotm: form.oppMotm.trim(), oppLogo: oppLogo || null, round: (form.round || "").trim(), season_id: form.season_id || activeSeason?.id };
     try { const saved = await insertResult(newMatch); setResults(prev => [...prev, saved || { ...newMatch, id: Date.now() }]); setNewResult(saved || { ...newMatch, id: Date.now() }); }
     catch(e) { const m = { ...newMatch, id: Date.now() }; setResults(prev => [...prev, m]); setNewResult(m); }
   };
@@ -363,7 +370,7 @@ export default function App() {
     const hs = parseInt(editingResult.homeScore), as_ = parseInt(editingResult.awayScore);
     const result = hs > as_ ? "W" : hs < as_ ? "L" : "D";
     const scorerList = typeof editingResult.scorers === "string" ? editingResult.scorers.split(",").map(s => s.trim()).filter(Boolean) : editingResult.scorers;
-    const updated = { ...editingResult, homeScore: hs, awayScore: as_, result, scorers: scorerList, oppLogo: editOppLogo === "remove" ? null : editOppLogo !== null ? editOppLogo : editingResult.oppLogo };
+    const updated = { ...editingResult, homeScore: hs, awayScore: as_, result, scorers: scorerList, oppLogo: editOppLogo === "remove" ? null : editOppLogo !== null ? editOppLogo : editingResult.oppLogo, round: (editingResult.round || "").trim() };
     try { await updateResult(updated); } catch(e) {}
     setResults(prev => prev.map(r => r.id === updated.id ? updated : r));
     setEditingResult(null); setEditOppLogo(null);
@@ -385,6 +392,18 @@ export default function App() {
   const handleDeleteTeam = async (id) => {
     try { await deleteTeam(id); } catch(e) {}
     setTeams(prev => prev.filter(t => t.id !== id));
+  };
+
+  const handleRenameTeam = async (id, newName) => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    const team = teams.find(t => t.id === id);
+    if (!team) return;
+    const updated = { ...team, name: trimmed };
+    try { await updateTeam(updated); } catch(e) {}
+    setTeams(prev => prev.map(t => t.id === id ? updated : t));
+    // Also update any results that reference the old name
+    setResults(prev => prev.map(r => r.opposition === team.name ? { ...r, opposition: trimmed } : r));
   };
 
   const handleSaveFixture = async () => {
@@ -423,7 +442,7 @@ export default function App() {
     setEditingComp(null);
   };
 
-  const handleStartNewSeason = async () => {
+  const isViewingActive = !viewingSeason || !activeSeason || viewingSeason?.id === activeSeason?.id;
     if (!newSeasonForm.name || !newSeasonForm.age_group) return;
     try {
       await setActiveSeason(0);
@@ -549,7 +568,7 @@ export default function App() {
                   </div>
                 ) : (
                   <>
-                    <button onClick={() => { setFilterComp(comp); setSelectedMatch(null); }}
+                    <button onClick={() => { setFilterComp(comp); setSelectedMatch(null); setFilterRound("All"); }}
                       style={{ padding: "6px 12px", borderRadius: 20, border: active ? "none" : "1.5px solid #e0e0e0", background: active ? color : "#fff", color: active ? (isAll ? "#87ceeb" : "#1a1a2e") : "#888", fontWeight: 800, fontSize: 12, letterSpacing: 1, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit", textTransform: "uppercase" }}>
                       {comp}
                     </button>
@@ -562,9 +581,23 @@ export default function App() {
         </div>
       )}
 
-      <div style={{ padding: "20px 16px" }}>
+      {/* Round filter — only shown when a specific competition is selected and has rounds */}
+      {(mode === "history") && filterComp !== "All" && roundsInUse.length > 0 && (
+        <div style={{ background: "#f7f8fa", borderBottom: "1px solid #f0f0f0", padding: "8px 16px", display: "flex", gap: 8, overflowX: "auto", alignItems: "center" }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#aaa", letterSpacing: 2, whiteSpace: "nowrap", textTransform: "uppercase" }}>Round:</span>
+          {["All", ...roundsInUse].map(round => {
+            const active = filterRound === round;
+            return (
+              <button key={round} onClick={() => setFilterRound(round)}
+                style={{ padding: "5px 12px", borderRadius: 20, border: active ? "none" : "1.5px solid #e0e0e0", background: active ? "#1a1a2e" : "#fff", color: active ? "#87ceeb" : "#888", fontWeight: 800, fontSize: 11, letterSpacing: 1, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit", textTransform: "uppercase" }}>
+                {round}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-        {/* ── FIXTURES TAB ── */}
+      <div style={{ padding: "20px 16px" }}>
         {mode === "fixtures" && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -715,6 +748,7 @@ export default function App() {
                       <span style={{ background: m.result === "W" ? "#00c853" : m.result === "L" ? "#d50000" : "#ffab00", color: "#fff", fontWeight: 800, fontSize: 13, borderRadius: 8, padding: "3px 8px", minWidth: 34 }}>{m.result}</span>
                       <span style={{ flex: 1, textAlign: "left", fontSize: 15, fontWeight: 700, color: "#1a1a2e" }}>vs {m.opposition}</span>
                       {m.motm && <span style={{ fontSize: 12, color: "#888" }}>⭐ {m.motm}</span>}
+                      {m.round && <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", background: "#1a1a2e", borderRadius: 8, padding: "2px 7px", letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" }}>{m.round}</span>}
                       <span style={{ fontSize: 9, fontWeight: 700, color: cc, background: "#f5f5f5", borderRadius: 10, padding: "2px 8px", letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" }}>{m.competition}</span>
                       <span style={{ fontSize: 20, fontWeight: 900, color: "#1a1a2e" }}>{m.homeScore}–{m.awayScore}</span>
                       <span style={{ fontSize: 12, color: "#aaa", minWidth: 72, textAlign: "right" }}>{m.date}</span>
@@ -781,6 +815,17 @@ export default function App() {
                   <div style={{ marginBottom: 14 }}>
                     <label style={labelStyle}>Goal Scorers (comma separated)</label>
                     <input type="text" value={typeof editingResult.scorers === "string" ? editingResult.scorers : (editingResult.scorers || []).join(", ")} onChange={e => setEditingResult(r => ({ ...r, scorers: e.target.value }))} style={inputStyle} />
+                  </div>
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={labelStyle}>Round (optional)</label>
+                    <input type="text" placeholder="e.g. Group Stage, Semi Final, Final" value={editingResult.round || ""} onChange={e => setEditingResult(r => ({ ...r, round: e.target.value }))} style={inputStyle} />
+                  </div>
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={labelStyle}>Season</label>
+                    <select value={editingResult.season_id || ""} onChange={e => setEditingResult(r => ({ ...r, season_id: parseInt(e.target.value) }))}
+                      style={{ ...inputStyle, colorScheme: "light" }}>
+                      {seasons.map(s => <option key={s.id} value={s.id}>{s.name} — {s.age_group}{s.is_active ? " (Current)" : ""}</option>)}
+                    </select>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
                     <div>
@@ -891,15 +936,29 @@ export default function App() {
               <>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
                   {teams.filter(t => t.name.toLowerCase().includes(teamSearch.toLowerCase())).map(t => (
-                    <div key={t.id} style={{ background: "#fff", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-                      {t.logo ? <img src={t.logo} style={{ width: 40, height: 40, objectFit: "contain" }} alt="" /> : <span style={{ fontSize: 28 }}>⚽</span>}
-                      <span style={{ flex: 1, fontSize: 16, fontWeight: 800, color: "#1a1a2e" }}>{t.name}</span>
-                      <button onClick={() => { setH2hTeam(t.name); setTeamSearch(t.name); }}
-                        style={{ background: "#f0f4ff", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: "#87ceeb" }}>
-                        H2H
-                      </button>
-                      <button onClick={() => { if (window.confirm(`Remove ${t.name}?`)) handleDeleteTeam(t.id); }}
-                        style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#ddd" }}>🗑️</button>
+                    <div key={t.id} style={{ background: "#fff", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                      {t.logo ? <img src={t.logo} style={{ width: 40, height: 40, objectFit: "contain", flexShrink: 0 }} alt="" /> : <span style={{ fontSize: 28, flexShrink: 0 }}>⚽</span>}
+                      {editingTeam?.id === t.id ? (
+                        <div style={{ display: "flex", gap: 6, flex: 1, alignItems: "center" }}>
+                          <input autoFocus value={editingTeamNameVal} onChange={e => setEditingTeamNameVal(e.target.value)}
+                            onKeyDown={e => { if (e.key === "Enter") { handleRenameTeam(t.id, editingTeamNameVal); setEditingTeam(null); } if (e.key === "Escape") setEditingTeam(null); }}
+                            style={{ flex: 1, border: "2px solid #87ceeb", borderRadius: 8, padding: "7px 10px", fontSize: 15, fontFamily: "inherit", fontWeight: 700, color: "#1a1a2e", outline: "none" }} />
+                          <button onClick={() => { handleRenameTeam(t.id, editingTeamNameVal); setEditingTeam(null); }}
+                            style={{ background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 8, padding: "7px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 13 }}>✓</button>
+                          <button onClick={() => setEditingTeam(null)}
+                            style={{ background: "#f0f0f0", color: "#888", border: "none", borderRadius: 8, padding: "7px 10px", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}>✕</button>
+                        </div>
+                      ) : (
+                        <>
+                          <span style={{ flex: 1, fontSize: 16, fontWeight: 800, color: "#1a1a2e" }}>{t.name}</span>
+                          <button onClick={() => { setH2hTeam(t.name); setTeamSearch(t.name); }}
+                            style={{ background: "#f0f4ff", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: "#87ceeb" }}>H2H</button>
+                          <button onClick={() => { setEditingTeam(t); setEditingTeamNameVal(t.name); }}
+                            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#aaa" }}>✏️</button>
+                          <button onClick={() => { if (window.confirm(`Remove ${t.name}?`)) handleDeleteTeam(t.id); }}
+                            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#ddd" }}>🗑️</button>
+                        </>
+                      )}
                     </div>
                   ))}
                   {teams.length === 0 && <p style={{ textAlign: "center", color: "#bbb", fontSize: 14 }}>No teams added yet. Teams are added automatically when you enter results.</p>}
@@ -969,6 +1028,24 @@ export default function App() {
                   <input type="text" placeholder="e.g. Grayson, Kayson ×2, Reggie" value={form.scorers} onChange={e => setForm(f => ({ ...f, scorers: e.target.value }))} style={inputStyle} />
                 </div>
 
+                <div style={{ marginBottom: 16 }}>
+                  <label style={labelStyle}>Round (optional)</label>
+                  <input type="text" placeholder="e.g. Group Stage, Semi Final, Final" value={form.round} onChange={e => setForm(f => ({ ...f, round: e.target.value }))} style={inputStyle} />
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <label style={labelStyle}>Round (optional)</label>
+                  <input type="text" placeholder="e.g. Group Stage, Semi Final, Final" value={form.round} onChange={e => setForm(f => ({ ...f, round: e.target.value }))} style={inputStyle} />
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <label style={labelStyle}>Season</label>
+                  <select value={form.season_id || activeSeason?.id || ""} onChange={e => setForm(f => ({ ...f, season_id: parseInt(e.target.value) }))}
+                    style={{ ...inputStyle, colorScheme: "light" }}>
+                    {seasons.map(s => <option key={s.id} value={s.id}>{s.name} — {s.age_group}{s.is_active ? " (Current)" : ""}</option>)}
+                  </select>
+                </div>
+
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
                   <div>
                     <label style={labelStyle}>⭐ Man of Match</label>
@@ -998,7 +1075,7 @@ export default function App() {
             ) : (
               <div>
                 <ResultCard match={newResult} teamName={teamName} compColor={getCompColor(competitions, newResult.competition)} />
-                <button onClick={() => { setNewResult(null); setOppLogo(null); setForm({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: form.competition, motm: "", oppMotm: "" }); }}
+                <button onClick={() => { setNewResult(null); setOppLogo(null); setForm({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: form.competition, motm: "", oppMotm: "", round: "", season_id: activeSeason?.id || null }); }}
                   style={{ marginTop: 16, width: "100%", padding: "14px", background: "#fff", color: "#1a1a2e", border: "2px solid #e8e8e8", borderRadius: 12, fontSize: 15, fontWeight: 800, letterSpacing: 2, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                   ← Add Another Result
                 </button>
