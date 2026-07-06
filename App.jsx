@@ -1,3 +1,4 @@
+// Sunderland Leon FC — v2.1
 import { useState, useRef, useEffect } from "react";
 import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, deleteTeam, fetchFixtures, insertFixture, updateFixture, deleteFixture, fetchSeasons, insertSeason, updateSeason, setActiveSeason } from "./supabase.js";
 
