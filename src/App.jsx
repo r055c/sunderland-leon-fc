@@ -293,10 +293,26 @@ export default function App() {
     async function load() {
       try {
         const [r, t, f, s] = await Promise.all([fetchResults(), fetchTeams(), fetchFixtures(), fetchSeasons()]);
-        setResults(r.length ? r : INITIAL_RESULTS);
+        setResults(r);
         setTeams(t);
-        setFixtures(f);
-        if (s) { setTeamName(s.team_name || "Under 9 Blue"); setCompetitions(s.competitions || DEFAULT_COMPETITIONS); }
+        setAllFixtures(f);
+        if (s && s.length > 0) {
+          setSeasons(s);
+          const active = s.find(x => x.is_active) || s[0];
+          setActiveSeasonState(active);
+          setViewingSeason(active);
+          const comps = active.competitions || DEFAULT_COMPETITIONS;
+          setCompetitions(comps);
+          setForm(f => ({ ...f, competition: comps[0] || "" }));
+          setFixtureForm(f => ({ ...f, competition: comps[0] || "" }));
+        } else {
+          // No seasons yet — create the first one
+          const created = await insertSeason({ name: "2025/26", age_group: "Under 9 Blue", is_active: true, competitions: DEFAULT_COMPETITIONS });
+          setSeasons([created]);
+          setActiveSeasonState(created);
+          setViewingSeason(created);
+          setCompetitions(DEFAULT_COMPETITIONS);
+        }
       } catch(e) { setDbError(true); setDbErrorMsg(e?.message || String(e)); }
       setLoading(false);
     }
