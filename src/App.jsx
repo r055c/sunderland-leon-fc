@@ -443,6 +443,8 @@ export default function App() {
   };
 
   const isViewingActive = !viewingSeason || !activeSeason || viewingSeason?.id === activeSeason?.id;
+
+  const handleStartNewSeason = async () => {
     if (!newSeasonForm.name || !newSeasonForm.age_group) return;
     try {
       await setActiveSeason(0);
