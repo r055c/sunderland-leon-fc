@@ -292,7 +292,7 @@ export default function App() {
   useEffect(() => {
     async function load() {
       try {
-        const [r, t, f, s] = await Promise.all([fetchResults(), fetchTeams(), fetchFixtures(), fetchSettings()]);
+        const [r, t, f, s] = await Promise.all([fetchResults(), fetchTeams(), fetchFixtures(), fetchSeasons()]);
         setResults(r.length ? r : INITIAL_RESULTS);
         setTeams(t);
         setFixtures(f);
