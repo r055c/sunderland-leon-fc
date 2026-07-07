@@ -1192,7 +1192,6 @@ export default function App() {
                           );
                         })}
                       </div>
-                      <input type="text" placeholder="Or type opposition player name..." value={form.oppMotm} onChange={e => { setForm(f => ({ ...f, oppMotm: e.target.value })); setOppMotmPlayerId(null); }} style={{ ...inputStyle, fontSize: 14 }} />
                     </div>
                   </>
                 ) : (
