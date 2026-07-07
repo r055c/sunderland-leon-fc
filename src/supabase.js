@@ -171,3 +171,42 @@ export async function setActiveSeason(id) {
   });
   if (!res.ok) throw new Error("Failed to set active season");
 }
+
+// ── Players ───────────────────────────────────────────────
+export async function fetchPlayers() {
+  const res = await fetch(`${base()}/players?order=squad_number.asc`, { headers });
+  if (!res.ok) throw new Error("Failed to fetch players");
+  return res.json();
+}
+export async function insertPlayer(player) {
+  const { id, ...data } = player;
+  const res = await fetch(`${base()}/players`, { method: "POST", headers, body: JSON.stringify(data) });
+  if (!res.ok) throw new Error("Failed to insert player");
+  return (await res.json())[0];
+}
+export async function updatePlayer(player) {
+  const { id, ...data } = player;
+  const res = await fetch(`${base()}/players?id=eq.${id}`, { method: "PATCH", headers, body: JSON.stringify(data) });
+  if (!res.ok) throw new Error("Failed to update player");
+  return (await res.json())[0];
+}
+export async function deletePlayer(id) {
+  const res = await fetch(`${base()}/players?id=eq.${id}`, { method: "DELETE", headers });
+  if (!res.ok) throw new Error("Failed to delete player");
+}
+
+// ── Appearances ───────────────────────────────────────────
+export async function fetchAppearances() {
+  const res = await fetch(`${base()}/appearances?order=id.desc`, { headers });
+  if (!res.ok) throw new Error("Failed to fetch appearances");
+  return res.json();
+}
+export async function insertAppearances(records) {
+  const res = await fetch(`${base()}/appearances`, { method: "POST", headers, body: JSON.stringify(records) });
+  if (!res.ok) throw new Error("Failed to insert appearances");
+  return res.json();
+}
+export async function deleteAppearancesByResult(resultId) {
+  const res = await fetch(`${base()}/appearances?result_id=eq.${resultId}`, { method: "DELETE", headers });
+  if (!res.ok) throw new Error("Failed to delete appearances");
+}
