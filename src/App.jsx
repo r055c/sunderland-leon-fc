@@ -1212,22 +1212,8 @@ export default function App() {
                         <input type="text" placeholder="e.g. Smith" value={form.oppMotm} onChange={e => setForm(f => ({ ...f, oppMotm: e.target.value }))} style={inputStyle} />
                       </div>
                     </div>
-                    <div style={{ background: "#fff9e6", border: "1.5px solid #ffd700", borderRadius: 10, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#888" }}>
-                      💡 Add players in the 🏃 Squad tab to enable tap-to-select for scorers and MOTM
-                    </div>
                   </>
                 )}
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-                  <div>
-                    <label style={labelStyle}>⭐ Man of Match</label>
-                    <input type="text" placeholder="e.g. Grayson" value={form.motm} onChange={e => setForm(f => ({ ...f, motm: e.target.value }))} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={{ ...labelStyle, color: "#aaa" }}>🏅 Opp MOTM</label>
-                    <input type="text" placeholder="e.g. Smith" value={form.oppMotm} onChange={e => setForm(f => ({ ...f, oppMotm: e.target.value }))} style={inputStyle} />
-                  </div>
-                </div>
 
                 <div style={{ marginBottom: 20 }}>
                   <label style={labelStyle}>Opposition Logo (optional)</label>
