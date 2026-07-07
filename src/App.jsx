@@ -1,6 +1,6 @@
-// Sunderland Leon FC — v2.1
+// Sunderland Leon FC — v2.2
 import { useState, useRef, useEffect } from "react";
-import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, deleteTeam, fetchFixtures, insertFixture, updateFixture, deleteFixture, fetchSeasons, insertSeason, updateSeason, setActiveSeason } from "./supabase.js";
+import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, deleteTeam, fetchFixtures, insertFixture, updateFixture, deleteFixture, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult } from "./supabase.js";
 
 // ── Logo ─────────────────────────────────────────────────
 const LEON_LOGO = "data:image/png;base64,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";
@@ -12,7 +12,7 @@ function LeonLogo({ size = 68 }) {
 }
 
 // ── Constants ─────────────────────────────────────────────
-const DEFAULT_COMPETITIONS = ["Spring Cup"];
+const DEFAULT_COMPETITIONS = [];
 const INITIAL_RESULTS = [
   { id: 1, date: "11 Apr 2026", opposition: "Hebburn Town Gold Madrid", homeScore: 3, awayScore: 0, scorers: ["Grayson ×2", "Clayton"], result: "W", competition: "Spring Cup", motm: "Grayson", oppMotm: "", oppLogo: null },
   { id: 2, date: "18 Apr 2026", opposition: "Hetton Juniors Sampdoria", homeScore: 2, awayScore: 0, scorers: ["Clayton ×2"], result: "W", competition: "Spring Cup", motm: "Clayton", oppMotm: "", oppLogo: null },
@@ -266,6 +266,8 @@ export default function App() {
   const [competitions, setCompetitions] = useState(DEFAULT_COMPETITIONS);
   const [teams, setTeams] = useState([]);
   const [fixtures, setFixtures] = useState([]);
+  const [players, setPlayers] = useState([]);
+  const [appearances, setAppearances] = useState([]);
   const [seasons, setSeasons] = useState([]);
   const [activeSeason, setActiveSeasonState] = useState(null);
   const [viewingSeason, setViewingSeason] = useState(null);
@@ -291,12 +293,21 @@ export default function App() {
   const [editingTeam, setEditingTeam] = useState(null); // { id, name }
   const [editingTeamNameVal, setEditingTeamNameVal] = useState("");
 
+  // Player / squad state
+  const [showPlayerModal, setShowPlayerModal] = useState(false);
+  const [editingPlayer, setEditingPlayer] = useState(null);
+  const [playerForm, setPlayerForm] = useState({ name: "", squad_number: "", photo: null });
+  const [selectedSquad, setSelectedSquad] = useState([]);
+  const [goalCounts, setGoalCounts] = useState({});
+  const [motmPlayerId, setMotmPlayerId] = useState(null);
+  const playerPhotoRef = useRef();
+
   // Fixture form
   const [showFixtureForm, setShowFixtureForm] = useState(false);
   const [editingFixture, setEditingFixture] = useState(null);
-  const [fixtureForm, setFixtureForm] = useState({ date: "", opposition: "", competition: DEFAULT_COMPETITIONS[0], venue: "", notes: "" });
+  const [fixtureForm, setFixtureForm] = useState({ date: "", opposition: "", competition: "", venue: "", notes: "" });
 
-  const [form, setForm] = useState({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: DEFAULT_COMPETITIONS[0], motm: "", oppMotm: "", round: "", season_id: null });
+  const [form, setForm] = useState({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: "", motm: "", oppMotm: "", round: "", season_id: null });
   const fileRef = useRef();
   const editFileRef = useRef();
 
@@ -304,10 +315,12 @@ export default function App() {
   useEffect(() => {
     async function load() {
       try {
-        const [r, t, f, s] = await Promise.all([fetchResults(), fetchTeams(), fetchFixtures(), fetchSeasons()]);
+        const [r, t, f, s, pl, ap] = await Promise.all([fetchResults(), fetchTeams(), fetchFixtures(), fetchSeasons(), fetchPlayers(), fetchAppearances()]);
         setResults(r);
         setTeams(t);
         setFixtures(f);
+        setPlayers(pl);
+        setAppearances(ap);
         if (s && s.length > 0) {
           setSeasons(s);
           const active = s.find(x => x.is_active) || s[0];
@@ -357,12 +370,36 @@ export default function App() {
   const handleCreate = async () => {
     const hs = parseInt(form.homeScore), as_ = parseInt(form.awayScore);
     const result = hs > as_ ? "W" : hs < as_ ? "L" : "D";
-    const scorerList = form.scorers ? form.scorers.split(",").map(s => s.trim()).filter(Boolean) : [];
+    // Build scorers list from goalCounts
+    const scorerList = Object.entries(goalCounts)
+      .filter(([, count]) => count > 0)
+      .map(([pid, count]) => {
+        const p = players.find(pl => pl.id === parseInt(pid));
+        return p ? (count > 1 ? `${p.name} ×${count}` : p.name) : null;
+      }).filter(Boolean);
+    // MOTM from player selection or manual
+    const motmName = motmPlayerId ? (players.find(p => p.id === motmPlayerId)?.name || "") : form.motm.trim();
     let displayDate = form.date;
     try { displayDate = new Date(form.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); } catch(e) {}
-    const newMatch = { date: displayDate, opposition: form.opposition, homeScore: hs, awayScore: as_, scorers: scorerList, result, competition: form.competition, motm: form.motm.trim(), oppMotm: form.oppMotm.trim(), oppLogo: oppLogo || null, round: (form.round || "").trim(), season_id: form.season_id || activeSeason?.id };
-    try { const saved = await insertResult(newMatch); setResults(prev => [...prev, saved || { ...newMatch, id: Date.now() }]); setNewResult(saved || { ...newMatch, id: Date.now() }); }
-    catch(e) { const m = { ...newMatch, id: Date.now() }; setResults(prev => [...prev, m]); setNewResult(m); }
+    const newMatch = { date: displayDate, opposition: form.opposition, homeScore: hs, awayScore: as_, scorers: scorerList, result, competition: form.competition, motm: motmName, oppMotm: form.oppMotm.trim(), oppLogo: oppLogo || null, round: (form.round || "").trim(), season_id: form.season_id || activeSeason?.id };
+    try {
+      const saved = await insertResult(newMatch);
+      const match = saved || { ...newMatch, id: Date.now() };
+      setResults(prev => [...prev, match]);
+      setNewResult(match);
+      // Save appearances
+      if (selectedSquad.length > 0 && match.id) {
+        const appRecords = selectedSquad.map(pid => ({ player_id: pid, result_id: match.id, season_id: match.season_id }));
+        try { const saved = await insertAppearances(appRecords); setAppearances(prev => [...prev, ...saved]); } catch(e) {}
+      }
+    } catch(e) {
+      const match = { ...newMatch, id: Date.now() };
+      setResults(prev => [...prev, match]);
+      setNewResult(match);
+    }
+    setSelectedSquad([]);
+    setGoalCounts({});
+    setMotmPlayerId(null);
   };
 
   const handleSaveEdit = async () => {
@@ -380,6 +417,36 @@ export default function App() {
     try { await deleteResult(id); } catch(e) {}
     setResults(prev => prev.filter(r => r.id !== id));
     setSelectedMatch(null);
+  };
+
+  const handleSavePlayer = async () => {
+    const data = { name: playerForm.name.trim(), squad_number: parseInt(playerForm.squad_number) || null, photo: playerForm.photo || null, is_active: true };
+    if (!data.name) return;
+    if (editingPlayer) {
+      const updated = { ...editingPlayer, ...data };
+      try { await updatePlayer(updated); } catch(e) {}
+      setPlayers(prev => prev.map(p => p.id === updated.id ? updated : p));
+    } else {
+      try { const saved = await insertPlayer(data); setPlayers(prev => [...prev, saved || { ...data, id: Date.now() }].sort((a,b) => (a.squad_number||99)-(b.squad_number||99))); }
+      catch(e) { setPlayers(prev => [...prev, { ...data, id: Date.now() }]); }
+    }
+    setShowPlayerModal(false);
+    setEditingPlayer(null);
+    setPlayerForm({ name: "", squad_number: "", photo: null });
+  };
+
+  const handleDeletePlayer = async (id) => {
+    try { await deletePlayer(id); } catch(e) {}
+    setPlayers(prev => prev.filter(p => p.id !== id));
+  };
+
+  // Derived appearance counts
+  const appearanceCountBySeason = (seasonId) => {
+    const counts = {};
+    appearances.filter(a => a.season_id === seasonId).forEach(a => {
+      counts[a.player_id] = (counts[a.player_id] || 0) + 1;
+    });
+    return counts;
   };
 
   const handleAddTeam = async (name) => {
@@ -453,7 +520,7 @@ export default function App() {
       setActiveSeasonState(created);
       setViewingSeason(created);
       setCompetitions(DEFAULT_COMPETITIONS);
-      setForm(f => ({ ...f, competition: DEFAULT_COMPETITIONS[0] }));
+      setForm(f => ({ ...f, competition: "" }));
     } catch(e) { alert("Failed to create season — " + e.message); }
     setShowSeasonModal(false);
     setNewSeasonForm({ name: "", age_group: "" });
@@ -531,6 +598,7 @@ export default function App() {
           { key: "history", label: "📋 Results" },
           { key: "scorers", label: "⭐ Awards" },
           { key: "teams", label: "👥 Teams" },
+          { key: "squad", label: "🏃 Squad" },
           { key: "seasons", label: "🗓 History" },
           ...(isViewingActive ? [{ key: "new", label: "➕ New" }] : []),
         ].map(tab => (
@@ -1081,6 +1149,95 @@ export default function App() {
                   style={{ marginTop: 16, width: "100%", padding: "14px", background: "#fff", color: "#1a1a2e", border: "2px solid #e8e8e8", borderRadius: 12, fontSize: 15, fontWeight: 800, letterSpacing: 2, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                   ← Add Another Result
                 </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── SQUAD TAB ── */}
+        {mode === "squad" && (
+          <div style={{ maxWidth: 520, margin: "0 auto" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#888", letterSpacing: 2, textTransform: "uppercase" }}>Squad</span>
+              <button onClick={() => { setShowPlayerModal(true); setEditingPlayer(null); setPlayerForm({ name: "", squad_number: "", photo: null }); }}
+                style={{ background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 10, padding: "8px 16px", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                + Add Player
+              </button>
+            </div>
+
+            {players.length === 0 && <p style={{ textAlign: "center", color: "#bbb", fontSize: 14, marginTop: 40 }}>No players added yet. Tap + Add Player to get started.</p>}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {players.map(p => (
+                <div key={p.id} style={{ background: "#fff", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                  {/* Photo or initials */}
+                  <div style={{ width: 44, height: 44, borderRadius: "50%", background: p.photo ? "transparent" : "#1a1a2e", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                    {p.photo
+                      ? <img src={p.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={p.name} />
+                      : <span style={{ color: "#87ceeb", fontSize: 14, fontWeight: 900 }}>{p.name.slice(0,2).toUpperCase()}</span>
+                    }
+                  </div>
+                  {/* Squad number */}
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: "#f0f4ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <span style={{ fontSize: 14, fontWeight: 900, color: "#1a1a2e" }}>{p.squad_number || "—"}</span>
+                  </div>
+                  <span style={{ flex: 1, fontSize: 16, fontWeight: 800, color: "#1a1a2e" }}>{p.name}</span>
+                  <button onClick={() => { setEditingPlayer(p); setPlayerForm({ name: p.name, squad_number: p.squad_number || "", photo: p.photo || null }); setShowPlayerModal(true); }}
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#aaa" }}>✏️</button>
+                  <button onClick={() => { if (window.confirm(`Remove ${p.name} from squad?`)) handleDeletePlayer(p.id); }}
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#ddd" }}>🗑️</button>
+                </div>
+              ))}
+            </div>
+
+            {/* Player modal */}
+            {showPlayerModal && (
+              <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+                <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 400 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                    <span style={{ fontSize: 18, fontWeight: 900, color: "#1a1a2e" }}>{editingPlayer ? "✏️ EDIT PLAYER" : "➕ ADD PLAYER"}</span>
+                    <button onClick={() => { setShowPlayerModal(false); setEditingPlayer(null); }} style={{ background: "#f0f0f0", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
+                  </div>
+
+                  {/* Photo */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
+                    <div style={{ width: 64, height: 64, borderRadius: "50%", background: playerForm.photo ? "transparent" : "#f0f4ff", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, border: "2px dashed #87ceeb" }}>
+                      {playerForm.photo
+                        ? <img src={playerForm.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" />
+                        : <span style={{ fontSize: 24 }}>📷</span>
+                      }
+                    </div>
+                    <div>
+                      <input ref={playerPhotoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => {
+                        const file = e.target.files[0]; if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = ev => setPlayerForm(f => ({ ...f, photo: ev.target.result }));
+                        reader.readAsDataURL(file);
+                      }} />
+                      <button onClick={() => playerPhotoRef.current.click()} style={{ background: "#f0f4ff", border: "1.5px solid #87ceeb", borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: "#87ceeb", display: "block", marginBottom: 6 }}>
+                        {playerForm.photo ? "Change photo" : "Add photo (optional)"}
+                      </button>
+                      {playerForm.photo && <button onClick={() => setPlayerForm(f => ({ ...f, photo: null }))} style={{ background: "none", border: "none", color: "#d50000", fontSize: 11, cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>✕ Remove</button>}
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#87ceeb", letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>Player Name</label>
+                    <input type="text" placeholder="e.g. Grayson" value={playerForm.name} onChange={e => setPlayerForm(f => ({ ...f, name: e.target.value }))}
+                      style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: "#1a1a2e", outline: "none", boxSizing: "border-box" }} />
+                  </div>
+
+                  <div style={{ marginBottom: 20 }}>
+                    <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#87ceeb", letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>Squad Number</label>
+                    <input type="number" placeholder="e.g. 7" value={playerForm.squad_number} onChange={e => setPlayerForm(f => ({ ...f, squad_number: e.target.value }))}
+                      style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: "#1a1a2e", outline: "none", boxSizing: "border-box" }} />
+                  </div>
+
+                  <button onClick={handleSavePlayer} disabled={!playerForm.name.trim()}
+                    style={{ width: "100%", padding: "15px", background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 12, fontSize: 16, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", opacity: !playerForm.name.trim() ? 0.5 : 1 }}>
+                    {editingPlayer ? "Save Changes" : "Add to Squad"}
+                  </button>
+                </div>
               </div>
             )}
           </div>
