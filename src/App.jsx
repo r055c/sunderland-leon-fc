@@ -13,15 +13,7 @@ function LeonLogo({ size = 68 }) {
 
 // ── Constants ─────────────────────────────────────────────
 const DEFAULT_COMPETITIONS = [];
-const INITIAL_RESULTS = [
-  { id: 1, date: "11 Apr 2026", opposition: "Hebburn Town Gold Madrid", homeScore: 3, awayScore: 0, scorers: ["Grayson ×2", "Clayton"], result: "W", competition: "Spring Cup", motm: "Grayson", oppMotm: "", oppLogo: null },
-  { id: 2, date: "18 Apr 2026", opposition: "Hetton Juniors Sampdoria", homeScore: 2, awayScore: 0, scorers: ["Clayton ×2"], result: "W", competition: "Spring Cup", motm: "Clayton", oppMotm: "", oppLogo: null },
-  { id: 3, date: "2 May 2026", opposition: "Sunderland Girls", homeScore: 0, awayScore: 3, scorers: [], result: "L", competition: "Spring Cup", motm: "", oppMotm: "", oppLogo: null },
-  { id: 4, date: "9 May 2026", opposition: "Whitburn & Cleadon Madrid", homeScore: 2, awayScore: 0, scorers: ["Grayson", "Reggie"], result: "W", competition: "Spring Cup", motm: "Reggie", oppMotm: "", oppLogo: null },
-  { id: 5, date: "30 May 2026", opposition: "Chester Le Street Waldridge", homeScore: 6, awayScore: 2, scorers: ["Lewiee", "Reggie", "Grayson", "Kayson ×3"], result: "W", competition: "Spring Cup", motm: "Kayson", oppMotm: "", oppLogo: null },
-  { id: 6, date: "4 Jun 2026", opposition: "Washington Tigons", homeScore: 3, awayScore: 2, scorers: ["Grayson ×2", "Kayson"], result: "W", competition: "Spring Cup", motm: "Grayson", oppMotm: "", oppLogo: null },
-  { id: 7, date: "6 Jun 2026", opposition: "Deerness Valley", homeScore: 9, awayScore: 3, scorers: ["Henry", "Reggie ×2", "Grayson ×5", "Archie"], result: "W", competition: "Spring Cup", motm: "Grayson", oppMotm: "", oppLogo: null },
-];
+const INITIAL_RESULTS = [];
 const MEDAL = ["🥇", "🥈", "🥉"];
 const COMP_COLORS = ["#87ceeb","#ffd700","#ff7eb3","#90ee90","#ffb347","#dda0dd","#87cefa"];
 function getCompColor(comps, comp) { const i = comps.indexOf(comp); return COMP_COLORS[i % COMP_COLORS.length] || "#87ceeb"; }
