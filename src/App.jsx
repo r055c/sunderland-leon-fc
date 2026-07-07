@@ -346,7 +346,7 @@ export default function App() {
 
   // ── Derived ────────────────────────────────────────────
   const seasonResults = viewingSeason ? results.filter(r => r.season_id === viewingSeason.id) : results;
-  const competitionsInUse = [...new Set([...competitions, ...results.map(r => r.competition).filter(Boolean)])];
+  const competitionsInUse = [...new Set([...competitions, ...seasonResults.map(r => r.competition).filter(Boolean)])];
   const roundsInUse = filterComp === "All" ? [] : [...new Set(seasonResults.filter(r => r.competition === filterComp).map(r => r.round).filter(Boolean))];
 
   const filteredResults = (filterComp === "All" ? seasonResults : seasonResults.filter(r => r.competition === filterComp))
@@ -1094,16 +1094,6 @@ export default function App() {
                 </div>
 
                 <div style={{ marginBottom: 16 }}>
-                  <label style={labelStyle}>Goal Scorers (comma separated)</label>
-                  <input type="text" placeholder="e.g. Grayson, Kayson ×2, Reggie" value={form.scorers} onChange={e => setForm(f => ({ ...f, scorers: e.target.value }))} style={inputStyle} />
-                </div>
-
-                <div style={{ marginBottom: 16 }}>
-                  <label style={labelStyle}>Round (optional)</label>
-                  <input type="text" placeholder="e.g. Group Stage, Semi Final, Final" value={form.round} onChange={e => setForm(f => ({ ...f, round: e.target.value }))} style={inputStyle} />
-                </div>
-
-                <div style={{ marginBottom: 16 }}>
                   <label style={labelStyle}>Round (optional)</label>
                   <input type="text" placeholder="e.g. Group Stage, Semi Final, Final" value={form.round} onChange={e => setForm(f => ({ ...f, round: e.target.value }))} style={inputStyle} />
                 </div>
@@ -1115,6 +1105,109 @@ export default function App() {
                     {seasons.map(s => <option key={s.id} value={s.id}>{s.name} — {s.age_group}{s.is_active ? " (Current)" : ""}</option>)}
                   </select>
                 </div>
+
+                {players.length > 0 ? (
+                  <>
+                    {/* Who played */}
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={labelStyle}>Who Played Today?</label>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        {players.map(p => {
+                          const selected = selectedSquad.includes(p.id);
+                          return (
+                            <button key={p.id} onClick={() => {
+                              setSelectedSquad(prev => selected ? prev.filter(id => id !== p.id) : [...prev, p.id]);
+                              if (!selected === false) {
+                                setGoalCounts(prev => { const n = { ...prev }; delete n[p.id]; return n; });
+                                if (motmPlayerId === p.id) setMotmPlayerId(null);
+                              }
+                            }}
+                              style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 20, border: selected ? "none" : "1.5px solid #e0e0e0", background: selected ? "#1a1a2e" : "#fff", color: selected ? "#87ceeb" : "#888", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                              <span style={{ fontWeight: 900, fontSize: 11, color: selected ? "#87ceeb" : "#aaa" }}>#{p.squad_number || "?"}</span>
+                              {p.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Goal counters */}
+                    {selectedSquad.length > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <label style={labelStyle}>Goal Scorers</label>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {selectedSquad.map(pid => {
+                            const p = players.find(pl => pl.id === pid);
+                            if (!p) return null;
+                            const count = goalCounts[pid] || 0;
+                            return (
+                              <div key={pid} style={{ display: "flex", alignItems: "center", gap: 12, background: count > 0 ? "#f0f4ff" : "#f7f8fa", borderRadius: 10, padding: "10px 14px", border: count > 0 ? "1.5px solid #87ceeb" : "1.5px solid #e8e8e8" }}>
+                                <div style={{ width: 32, height: 32, borderRadius: "50%", background: p.photo ? "transparent" : "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                                  {p.photo ? <img src={p.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: "#87ceeb", fontSize: 10, fontWeight: 900 }}>{p.name.slice(0,2).toUpperCase()}</span>}
+                                </div>
+                                <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: "#1a1a2e" }}>{p.name}</span>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                  <button onClick={() => setGoalCounts(prev => ({ ...prev, [pid]: Math.max(0, (prev[pid] || 0) - 1) }))}
+                                    style={{ width: 32, height: 32, borderRadius: "50%", border: "1.5px solid #e0e0e0", background: "#fff", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#888", fontFamily: "inherit" }}>−</button>
+                                  <span style={{ fontSize: 20, fontWeight: 900, color: "#1a1a2e", minWidth: 20, textAlign: "center" }}>{count}</span>
+                                  <button onClick={() => setGoalCounts(prev => ({ ...prev, [pid]: (prev[pid] || 0) + 1 }))}
+                                    style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "#1a1a2e", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#87ceeb", fontFamily: "inherit" }}>+</button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* MOTM picker */}
+                    {selectedSquad.length > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <label style={labelStyle}>⭐ Man of the Match</label>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          {selectedSquad.map(pid => {
+                            const p = players.find(pl => pl.id === pid);
+                            if (!p) return null;
+                            const selected = motmPlayerId === pid;
+                            return (
+                              <button key={pid} onClick={() => setMotmPlayerId(selected ? null : pid)}
+                                style={{ padding: "6px 14px", borderRadius: 20, border: selected ? "none" : "1.5px solid #e0e0e0", background: selected ? "#ffd700" : "#fff", color: selected ? "#1a1a2e" : "#888", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                                {selected ? "⭐ " : ""}{p.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Opp MOTM — still manual */}
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ ...labelStyle, color: "#aaa" }}>🏅 Opp. Man of Match</label>
+                      <input type="text" placeholder="e.g. Smith" value={form.oppMotm} onChange={e => setForm(f => ({ ...f, oppMotm: e.target.value }))} style={inputStyle} />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Fallback text fields if no squad set up yet */}
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={labelStyle}>Goal Scorers (comma separated)</label>
+                      <input type="text" placeholder="e.g. Grayson, Kayson ×2, Reggie" value={form.scorers} onChange={e => setForm(f => ({ ...f, scorers: e.target.value }))} style={inputStyle} />
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+                      <div>
+                        <label style={labelStyle}>⭐ Man of Match</label>
+                        <input type="text" placeholder="e.g. Grayson" value={form.motm} onChange={e => setForm(f => ({ ...f, motm: e.target.value }))} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={{ ...labelStyle, color: "#aaa" }}>🏅 Opp MOTM</label>
+                        <input type="text" placeholder="e.g. Smith" value={form.oppMotm} onChange={e => setForm(f => ({ ...f, oppMotm: e.target.value }))} style={inputStyle} />
+                      </div>
+                    </div>
+                    <div style={{ background: "#fff9e6", border: "1.5px solid #ffd700", borderRadius: 10, padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#888" }}>
+                      💡 Add players in the 🏃 Squad tab to enable tap-to-select for scorers and MOTM
+                    </div>
+                  </>
+                )}
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
                   <div>
@@ -1145,7 +1238,7 @@ export default function App() {
             ) : (
               <div>
                 <ResultCard match={newResult} teamName={teamName} compColor={getCompColor(competitions, newResult.competition)} />
-                <button onClick={() => { setNewResult(null); setOppLogo(null); setForm({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: form.competition, motm: "", oppMotm: "", round: "", season_id: activeSeason?.id || null }); }}
+                <button onClick={() => { setNewResult(null); setOppLogo(null); setSelectedSquad([]); setGoalCounts({}); setMotmPlayerId(null); setForm({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: form.competition, motm: "", oppMotm: "", round: "", season_id: activeSeason?.id || null }); }}
                   style={{ marginTop: 16, width: "100%", padding: "14px", background: "#fff", color: "#1a1a2e", border: "2px solid #e8e8e8", borderRadius: 12, fontSize: 15, fontWeight: 800, letterSpacing: 2, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                   ← Add Another Result
                 </button>
