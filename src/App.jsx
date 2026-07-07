@@ -292,6 +292,7 @@ export default function App() {
   const [selectedSquad, setSelectedSquad] = useState([]);
   const [goalCounts, setGoalCounts] = useState({});
   const [motmPlayerId, setMotmPlayerId] = useState(null);
+  const [oppMotmPlayerId, setOppMotmPlayerId] = useState(null);
   const playerPhotoRef = useRef();
 
   // Fixture form
@@ -302,6 +303,7 @@ export default function App() {
   const [form, setForm] = useState({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: "", motm: "", oppMotm: "", round: "", season_id: null });
   const fileRef = useRef();
   const editFileRef = useRef();
+  const reportRef = useRef();
 
   // ── Load data ──────────────────────────────────────────
   useEffect(() => {
@@ -371,9 +373,10 @@ export default function App() {
       }).filter(Boolean);
     // MOTM from player selection or manual
     const motmName = motmPlayerId ? (players.find(p => p.id === motmPlayerId)?.name || "") : form.motm.trim();
+    const oppMotmName = oppMotmPlayerId ? (players.find(p => p.id === oppMotmPlayerId)?.name || "") : form.oppMotm.trim();
     let displayDate = form.date;
     try { displayDate = new Date(form.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); } catch(e) {}
-    const newMatch = { date: displayDate, opposition: form.opposition, homeScore: hs, awayScore: as_, scorers: scorerList, result, competition: form.competition, motm: motmName, oppMotm: form.oppMotm.trim(), oppLogo: oppLogo || null, round: (form.round || "").trim(), season_id: form.season_id || activeSeason?.id };
+    const newMatch = { date: displayDate, opposition: form.opposition, homeScore: hs, awayScore: as_, scorers: scorerList, result, competition: form.competition, motm: motmName, oppMotm: oppMotmName, oppLogo: oppLogo || null, round: (form.round || "").trim(), season_id: form.season_id || activeSeason?.id };
     try {
       const saved = await insertResult(newMatch);
       const match = saved || { ...newMatch, id: Date.now() };
@@ -591,6 +594,7 @@ export default function App() {
           { key: "scorers", label: "⭐ Awards" },
           { key: "teams", label: "👥 Teams" },
           { key: "squad", label: "🏃 Squad" },
+          { key: "report", label: "📊 Report" },
           { key: "seasons", label: "🗓 History" },
           ...(isViewingActive ? [{ key: "new", label: "➕ New" }] : []),
         ].map(tab => (
@@ -1172,10 +1176,23 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* Opp MOTM — still manual */}
+                    {/* Opp MOTM — pick from squad or type manually */}
                     <div style={{ marginBottom: 16 }}>
                       <label style={{ ...labelStyle, color: "#aaa" }}>🏅 Opp. Man of Match</label>
-                      <input type="text" placeholder="e.g. Smith" value={form.oppMotm} onChange={e => setForm(f => ({ ...f, oppMotm: e.target.value }))} style={inputStyle} />
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 6 }}>
+                        {selectedSquad.map(pid => {
+                          const p = players.find(pl => pl.id === pid);
+                          if (!p) return null;
+                          const selected = oppMotmPlayerId === pid;
+                          return (
+                            <button key={pid} onClick={() => setOppMotmPlayerId(selected ? null : pid)}
+                              style={{ padding: "6px 14px", borderRadius: 20, border: selected ? "none" : "1.5px solid #e0e0e0", background: selected ? "#ff7eb3" : "#fff", color: selected ? "#fff" : "#888", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                              {selected ? "🏅 " : ""}{p.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <input type="text" placeholder="Or type opposition player name..." value={form.oppMotm} onChange={e => { setForm(f => ({ ...f, oppMotm: e.target.value })); setOppMotmPlayerId(null); }} style={{ ...inputStyle, fontSize: 14 }} />
                     </div>
                   </>
                 ) : (
@@ -1230,7 +1247,7 @@ export default function App() {
             ) : (
               <div>
                 <ResultCard match={newResult} teamName={teamName} compColor={getCompColor(competitions, newResult.competition)} />
-                <button onClick={() => { setNewResult(null); setOppLogo(null); setSelectedSquad([]); setGoalCounts({}); setMotmPlayerId(null); setForm({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: form.competition, motm: "", oppMotm: "", round: "", season_id: activeSeason?.id || null }); }}
+                <button onClick={() => { setNewResult(null); setOppLogo(null); setSelectedSquad([]); setGoalCounts({}); setMotmPlayerId(null); setOppMotmPlayerId(null); setForm({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: form.competition, motm: "", oppMotm: "", round: "", season_id: activeSeason?.id || null }); }}
                   style={{ marginTop: 16, width: "100%", padding: "14px", background: "#fff", color: "#1a1a2e", border: "2px solid #e8e8e8", borderRadius: 12, fontSize: 15, fontWeight: 800, letterSpacing: 2, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                   ← Add Another Result
                 </button>
@@ -1243,7 +1260,9 @@ export default function App() {
         {mode === "squad" && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#888", letterSpacing: 2, textTransform: "uppercase" }}>Squad</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#888", letterSpacing: 2, textTransform: "uppercase" }}>
+                Squad — {viewingSeason?.age_group}
+              </span>
               <button onClick={() => { setShowPlayerModal(true); setEditingPlayer(null); setPlayerForm({ name: "", squad_number: "", photo: null }); }}
                 style={{ background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 10, padding: "8px 16px", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                 + Add Player
@@ -1252,28 +1271,48 @@ export default function App() {
 
             {players.length === 0 && <p style={{ textAlign: "center", color: "#bbb", fontSize: 14, marginTop: 40 }}>No players added yet. Tap + Add Player to get started.</p>}
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {players.map(p => (
-                <div key={p.id} style={{ background: "#fff", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-                  {/* Photo or initials */}
-                  <div style={{ width: 44, height: 44, borderRadius: "50%", background: p.photo ? "transparent" : "#1a1a2e", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                    {p.photo
-                      ? <img src={p.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={p.name} />
-                      : <span style={{ color: "#87ceeb", fontSize: 14, fontWeight: 900 }}>{p.name.slice(0,2).toUpperCase()}</span>
-                    }
-                  </div>
-                  {/* Squad number */}
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: "#f0f4ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <span style={{ fontSize: 14, fontWeight: 900, color: "#1a1a2e" }}>{p.squad_number || "—"}</span>
-                  </div>
-                  <span style={{ flex: 1, fontSize: 16, fontWeight: 800, color: "#1a1a2e" }}>{p.name}</span>
-                  <button onClick={() => { setEditingPlayer(p); setPlayerForm({ name: p.name, squad_number: p.squad_number || "", photo: p.photo || null }); setShowPlayerModal(true); }}
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#aaa" }}>✏️</button>
-                  <button onClick={() => { if (window.confirm(`Remove ${p.name} from squad?`)) handleDeletePlayer(p.id); }}
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#ddd" }}>🗑️</button>
+            {(() => {
+              const appCounts = appearanceCountBySeason(viewingSeason?.id);
+              const goalBoard = buildGoalBoard(seasonResults);
+              const motmBoard = buildAwardBoard(seasonResults, "motm");
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {players.map(p => {
+                    const apps = appCounts[p.id] || 0;
+                    const goals = goalBoard.find(g => g.name === p.name)?.count || 0;
+                    const motms = motmBoard.find(m => m.name === p.name)?.count || 0;
+                    return (
+                      <div key={p.id} style={{ background: "#fff", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                        {/* Photo or initials */}
+                        <div style={{ width: 44, height: 44, borderRadius: "50%", background: p.photo ? "transparent" : "#1a1a2e", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                          {p.photo
+                            ? <img src={p.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={p.name} />
+                            : <span style={{ color: "#87ceeb", fontSize: 14, fontWeight: 900 }}>{p.name.slice(0,2).toUpperCase()}</span>
+                          }
+                        </div>
+                        {/* Squad number */}
+                        <div style={{ width: 28, height: 28, borderRadius: 6, background: "#f0f4ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <span style={{ fontSize: 12, fontWeight: 900, color: "#1a1a2e" }}>{p.squad_number || "—"}</span>
+                        </div>
+                        {/* Name */}
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: "#1a1a2e" }}>{p.name}</div>
+                          <div style={{ display: "flex", gap: 10, marginTop: 3 }}>
+                            <span style={{ fontSize: 11, color: "#888" }}>📅 {apps} apps</span>
+                            {goals > 0 && <span style={{ fontSize: 11, color: "#87ceeb" }}>⚽ {goals} goals</span>}
+                            {motms > 0 && <span style={{ fontSize: 11, color: "#ffd700" }}>⭐ {motms} MOTM</span>}
+                          </div>
+                        </div>
+                        <button onClick={() => { setEditingPlayer(p); setPlayerForm({ name: p.name, squad_number: p.squad_number || "", photo: p.photo || null }); setShowPlayerModal(true); }}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#aaa" }}>✏️</button>
+                        <button onClick={() => { if (window.confirm(`Remove ${p.name} from squad?`)) handleDeletePlayer(p.id); }}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#ddd" }}>🗑️</button>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
+              );
+            })()}
 
             {/* Player modal */}
             {showPlayerModal && (
@@ -1327,6 +1366,159 @@ export default function App() {
             )}
           </div>
         )}
+
+        {/* ── SEASON REPORT TAB ── */}
+        {mode === "report" && (() => {
+          const sResults = seasonResults;
+          const wins = sResults.filter(r => r.result === "W").length;
+          const draws = sResults.filter(r => r.result === "D").length;
+          const losses = sResults.filter(r => r.result === "L").length;
+          const totalGoals = sResults.reduce((a, r) => a + (r.homeScore || 0), 0);
+          const goalBoard = buildGoalBoard(sResults).slice(0, 5);
+          const motmBoard = buildAwardBoard(sResults, "motm");
+          const playerOfSeason = motmBoard[0];
+          const biggestWin = sResults.filter(r => r.result === "W").sort((a, b) => (b.homeScore - b.awayScore) - (a.homeScore - a.awayScore))[0];
+          const compBreakdown = [...new Set(sResults.map(r => r.competition).filter(Boolean))].map(comp => {
+            const cr = sResults.filter(r => r.competition === comp);
+            return { comp, p: cr.length, w: cr.filter(r => r.result === "W").length, d: cr.filter(r => r.result === "D").length, l: cr.filter(r => r.result === "L").length, gf: cr.reduce((a, r) => a + (r.homeScore || 0), 0) };
+          });
+          const appCounts = appearanceCountBySeason(viewingSeason?.id);
+
+          return (
+            <div style={{ maxWidth: 520, margin: "0 auto" }}>
+              <div ref={reportRef} style={{ background: "#1a1a2e", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.15)" }}>
+
+                {/* Header */}
+                <div style={{ background: "#1a1a2e", padding: "20px", textAlign: "center", borderBottom: "1px solid rgba(135,206,235,0.2)" }}>
+                  <div style={{ color: "#87ceeb", fontSize: 10, fontWeight: 700, letterSpacing: 3, marginBottom: 4 }}>SUNDERLAND LEON FC</div>
+                  <div style={{ color: "#fff", fontSize: 22, fontWeight: 900, letterSpacing: 2 }}>{viewingSeason?.name} SEASON</div>
+                  <div style={{ color: "#87ceeb", fontSize: 11, letterSpacing: 2, marginTop: 2 }}>{viewingSeason?.age_group?.toUpperCase()} · END OF SEASON REPORT</div>
+                </div>
+
+                <div style={{ background: "#f0f2f5", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+
+                  {/* Overall record */}
+                  <div style={{ background: "#1a1a2e", borderRadius: 14, padding: 16 }}>
+                    <div style={{ color: "#87ceeb", fontSize: 10, fontWeight: 700, letterSpacing: 2, marginBottom: 12, textAlign: "center" }}>SEASON RECORD</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6, textAlign: "center" }}>
+                      {[{ l: "PLAYED", v: sResults.length, c: "#fff" }, { l: "WON", v: wins, c: "#00c853" }, { l: "DRAWN", v: draws, c: "#ffab00" }, { l: "LOST", v: losses, c: "#d50000" }, { l: "GOALS", v: totalGoals, c: "#87ceeb" }].map(s => (
+                        <div key={s.l}>
+                          <div style={{ color: s.c, fontSize: 24, fontWeight: 900, lineHeight: 1 }}>{s.v}</div>
+                          <div style={{ color: "#aaa", fontSize: 8, fontWeight: 700, letterSpacing: 1, marginTop: 3 }}>{s.l}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Competition breakdown */}
+                  {compBreakdown.length > 0 && (
+                    <div style={{ display: "grid", gridTemplateColumns: compBreakdown.length > 1 ? "1fr 1fr" : "1fr", gap: 8 }}>
+                      {compBreakdown.map((c, i) => (
+                        <div key={c.comp} style={{ background: "#fff", borderRadius: 12, padding: 12, borderLeft: `4px solid ${COMP_COLORS[i % COMP_COLORS.length]}` }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, color: COMP_COLORS[i % COMP_COLORS.length], letterSpacing: 1, marginBottom: 6, textTransform: "uppercase" }}>{c.comp}</div>
+                          <div style={{ display: "flex", justifyContent: "space-between", textAlign: "center" }}>
+                            {[{ l: "P", v: c.p }, { l: "W", v: c.w, col: "#00c853" }, { l: "D", v: c.d, col: "#ffab00" }, { l: "L", v: c.l, col: "#d50000" }, { l: "GF", v: c.gf, col: "#87ceeb" }].map(x => (
+                              <div key={x.l}>
+                                <div style={{ fontSize: 16, fontWeight: 900, color: x.col || "#1a1a2e" }}>{x.v}</div>
+                                <div style={{ fontSize: 8, color: "#aaa", fontWeight: 700 }}>{x.l}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Top scorers */}
+                  {goalBoard.length > 0 && (
+                    <div style={{ background: "#fff", borderRadius: 12, padding: 14 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#87ceeb", letterSpacing: 2, marginBottom: 10 }}>TOP GOAL SCORERS</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {goalBoard.map((g, i) => {
+                          const player = players.find(p => p.name === g.name);
+                          return (
+                            <div key={g.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <span style={{ fontSize: i === 0 ? 20 : 16 }}>{["🥇","🥈","🥉","4️⃣","5️⃣"][i]}</span>
+                              <div style={{ width: 32, height: 32, borderRadius: "50%", background: player?.photo ? "transparent" : "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                                {player?.photo ? <img src={player.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: "#87ceeb", fontSize: 10, fontWeight: 900 }}>{g.name.slice(0,2).toUpperCase()}</span>}
+                              </div>
+                              <span style={{ flex: 1, fontSize: 15, fontWeight: 800, color: "#1a1a2e" }}>{g.name}</span>
+                              <div style={{ textAlign: "right" }}>
+                                <div style={{ fontSize: 20, fontWeight: 900, color: "#1a1a2e" }}>{g.count}</div>
+                                <div style={{ fontSize: 8, color: "#aaa", fontWeight: 700 }}>GOALS</div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Player of the season */}
+                  {playerOfSeason && (
+                    <div style={{ background: "#fff", borderRadius: 12, padding: 14 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#87ceeb", letterSpacing: 2, marginBottom: 10 }}>SEASON AWARD</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, background: "#fffbea", borderRadius: 10, border: "1.5px solid #ffd700" }}>
+                        <span style={{ fontSize: 28 }}>⭐</span>
+                        {(() => {
+                          const player = players.find(p => p.name === playerOfSeason.name);
+                          return (
+                            <div style={{ width: 44, height: 44, borderRadius: "50%", background: player?.photo ? "transparent" : "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                              {player?.photo ? <img src={player.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: "#87ceeb", fontSize: 13, fontWeight: 900 }}>{playerOfSeason.name.slice(0,2).toUpperCase()}</span>}
+                            </div>
+                          );
+                        })()}
+                        <div>
+                          <div style={{ fontSize: 9, fontWeight: 700, color: "#b8960a", letterSpacing: 1 }}>PLAYER OF THE SEASON</div>
+                          <div style={{ fontSize: 18, fontWeight: 900, color: "#1a1a2e" }}>{playerOfSeason.name}</div>
+                          <div style={{ fontSize: 11, color: "#888" }}>Man of the Match · {playerOfSeason.count} times</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Biggest win */}
+                  {biggestWin && (
+                    <div style={{ background: "#1a1a2e", borderRadius: 12, padding: 14 }}>
+                      <div style={{ color: "#87ceeb", fontSize: 10, fontWeight: 700, letterSpacing: 2, marginBottom: 10, textAlign: "center" }}>BIGGEST WIN OF THE SEASON</div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div style={{ textAlign: "center", flex: 1 }}>
+                          <div style={{ color: "#fff", fontSize: 11, fontWeight: 700 }}>SUNDERLAND LEON</div>
+                          <div style={{ color: "#87ceeb", fontSize: 9 }}>{viewingSeason?.age_group?.toUpperCase()}</div>
+                        </div>
+                        <div style={{ textAlign: "center", flex: 1 }}>
+                          <div style={{ color: "#fff", fontSize: 36, fontWeight: 900, lineHeight: 1 }}>{biggestWin.homeScore}–{biggestWin.awayScore}</div>
+                          <div style={{ color: "#aaa", fontSize: 9, letterSpacing: 1 }}>FULL TIME</div>
+                        </div>
+                        <div style={{ textAlign: "center", flex: 1 }}>
+                          <div style={{ color: "#fff", fontSize: 11, fontWeight: 700 }}>{biggestWin.opposition?.toUpperCase()}</div>
+                          <div style={{ color: "#aaa", fontSize: 9 }}>{biggestWin.date}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {sResults.length === 0 && (
+                    <div style={{ textAlign: "center", padding: 40, color: "#888", fontSize: 14 }}>No results yet for this season.</div>
+                  )}
+
+                </div>
+
+                {/* Footer */}
+                <div style={{ background: "#1a1a2e", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ color: "#87ceeb", fontSize: 10, fontWeight: 700, letterSpacing: 2 }}>LEON FC</span>
+                  <span style={{ color: "#555", fontSize: 10, letterSpacing: 1 }}>ALWAYS KEEP ME FLYING HIGH</span>
+                  <LeonLogo size={20} />
+                </div>
+              </div>
+
+              {/* Save button */}
+              <div style={{ marginTop: 12 }}>
+                <SaveCardButton cardRef={reportRef} filename={`leon-${viewingSeason?.name?.replace("/","")}-season-report.png`} />
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ── SEASON HISTORY TAB ── */}
         {mode === "seasons" && (
