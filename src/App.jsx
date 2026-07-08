@@ -304,6 +304,8 @@ export default function App() {
   const fileRef = useRef();
   const editFileRef = useRef();
   const reportRef = useRef();
+  const teamLogoRef = useRef();
+  const [uploadingLogoForTeam, setUploadingLogoForTeam] = useState(null);
 
   // ── Load data ──────────────────────────────────────────
   useEffect(() => {
@@ -1000,10 +1002,34 @@ export default function App() {
             {/* Teams list */}
             {!h2hTeam && (
               <>
+                {/* Hidden file input for team logo upload */}
+                <input ref={teamLogoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => {
+                  const file = e.target.files[0];
+                  if (!file || !uploadingLogoForTeam) return;
+                  const reader = new FileReader();
+                  reader.onload = async ev => {
+                    const logo = ev.target.result;
+                    const team = teams.find(t => t.id === uploadingLogoForTeam);
+                    if (!team) return;
+                    const updated = { ...team, logo };
+                    try { await updateTeam(updated); } catch(e) {}
+                    setTeams(prev => prev.map(t => t.id === updated.id ? updated : t));
+                    setUploadingLogoForTeam(null);
+                  };
+                  reader.readAsDataURL(file);
+                }} />
+
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
                   {teams.filter(t => t.name.toLowerCase().includes(teamSearch.toLowerCase())).map(t => (
                     <div key={t.id} style={{ background: "#fff", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-                      {t.logo ? <img src={t.logo} style={{ width: 40, height: 40, objectFit: "contain", flexShrink: 0 }} alt="" /> : <span style={{ fontSize: 28, flexShrink: 0 }}>⚽</span>}
+                      {/* Logo — tap to upload */}
+                      <button onClick={() => { setUploadingLogoForTeam(t.id); teamLogoRef.current.click(); }}
+                        title="Upload logo"
+                        style={{ width: 44, height: 44, borderRadius: 10, background: "#f0f4ff", border: "1.5px dashed #87ceeb", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", overflow: "hidden", padding: 0 }}>
+                        {t.logo
+                          ? <img src={t.logo} style={{ width: "100%", height: "100%", objectFit: "contain" }} alt={t.name} />
+                          : <span style={{ fontSize: 20 }}>⚽</span>}
+                      </button>
                       {editingTeam?.id === t.id ? (
                         <div style={{ display: "flex", gap: 6, flex: 1, alignItems: "center" }}>
                           <input autoFocus value={editingTeamNameVal} onChange={e => setEditingTeamNameVal(e.target.value)}
@@ -1029,7 +1055,7 @@ export default function App() {
                   ))}
                   {teams.length === 0 && <p style={{ textAlign: "center", color: "#bbb", fontSize: 14 }}>No teams added yet. Teams are added automatically when you enter results.</p>}
                 </div>
-
+                <p style={{ textAlign: "center", color: "#bbb", fontSize: 12, marginBottom: 12 }}>Tap the badge icon on any team to upload their logo</p>
                 <button onClick={() => handleAddTeam(teamSearch || "New Team")}
                   style={{ width: "100%", padding: "13px", background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                   + Add Team Manually
