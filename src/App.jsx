@@ -73,10 +73,6 @@ function buildAwardBoard(results, field) {
   results.forEach(r => { const name = (r[field] || "").trim(); if (name) t[name] = (t[name] || 0) + 1; });
   return Object.entries(t).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
 }
-function formatDate(isoDate) {
-  try { return new Date(isoDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); }
-  catch(e) { return isoDate; }
-}
 
 // ── Save card as image ────────────────────────────────────
 function loadHtml2Canvas() {
