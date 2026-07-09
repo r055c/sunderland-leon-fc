@@ -342,7 +342,9 @@ export default function App() {
 
   // ── Derived ────────────────────────────────────────────
   const seasonResults = viewingSeason ? results.filter(r => r.season_id === viewingSeason.id) : results;
-  const competitionsInUse = [...new Set([...competitions, ...seasonResults.map(r => r.competition).filter(Boolean)])];
+  // Build competitions from stored list + any competitions already used in results for this season
+  const resultComps = seasonResults.map(r => r.competition).filter(Boolean);
+  const competitionsInUse = [...new Set([...competitions, ...resultComps])];
   const roundsInUse = filterComp === "All" ? [] : [...new Set(seasonResults.filter(r => r.competition === filterComp).map(r => r.round).filter(Boolean))];
 
   const filteredResults = (filterComp === "All" ? seasonResults : seasonResults.filter(r => r.competition === filterComp))
@@ -411,8 +413,10 @@ export default function App() {
   };
 
   const handleDeleteResult = async (id) => {
+    try { await deleteAppearancesByResult(id); } catch(e) {}
     try { await deleteResult(id); } catch(e) {}
     setResults(prev => prev.filter(r => r.id !== id));
+    setAppearances(prev => prev.filter(a => a.result_id !== id));
     setSelectedMatch(null);
   };
 
@@ -595,7 +599,7 @@ export default function App() {
           {seasons.length > 0 && (
             <select value={viewingSeason?.id || ""} onChange={e => {
               const s = seasons.find(x => x.id === parseInt(e.target.value));
-              if (s) { setViewingSeason(s); setFilterComp("All"); setSelectedMatch(null); }
+              if (s) { setViewingSeason(s); setFilterComp("All"); setSelectedMatch(null); setCompetitions(s.competitions || []); }
             }} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(135,206,235,0.4)", borderRadius: 8, color: "#87ceeb", fontSize: 11, fontWeight: 700, padding: "4px 8px", fontFamily: "inherit", cursor: "pointer", outline: "none" }}>
               {seasons.map(s => <option key={s.id} value={s.id} style={{ background: "#1a1a2e" }}>{s.name} {s.is_active ? "✓" : ""}</option>)}
             </select>
@@ -1571,7 +1575,7 @@ export default function App() {
                     </div>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                       {s.is_active && <span style={{ background: "#87ceeb", color: "#1a1a2e", fontSize: 9, fontWeight: 800, padding: "3px 8px", borderRadius: 10, letterSpacing: 1 }}>CURRENT</span>}
-                      <button onClick={() => { setViewingSeason(s); setMode("history"); setFilterComp("All"); }} style={{ background: "#f0f4ff", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: "#1a1a2e" }}>View →</button>
+                      <button onClick={() => { setViewingSeason(s); setMode("history"); setFilterComp("All"); setCompetitions(s.competitions || []); }} style={{ background: "#f0f4ff", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: "#1a1a2e" }}>View →</button>
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
