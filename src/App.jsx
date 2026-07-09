@@ -1,5 +1,5 @@
-// Sunderland Leon FC — v2.2
-import { useState, useRef, useEffect } from "react";
+// Sunderland Leon FC — v2.3
+import { useState, useRef, useEffect, useCallback } from "react";
 import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchFixtures, insertFixture, updateFixture, deleteFixture, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage } from "./supabase.js";
 
 // ── Logo ─────────────────────────────────────────────────
@@ -12,8 +12,47 @@ function LeonLogo({ size = 68 }) {
 }
 
 // ── Constants ─────────────────────────────────────────────
+// ── Toast ─────────────────────────────────────────────────
+function Toast({ message, onDone }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 2500);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "#1a1a2e", color: "#87ceeb", padding: "12px 24px", borderRadius: 30, fontWeight: 800, fontSize: 14, letterSpacing: 1, zIndex: 999, boxShadow: "0 4px 20px rgba(0,0,0,0.3)", whiteSpace: "nowrap", animation: "fadein 0.2s ease" }}>
+      {message}
+    </div>
+  );
+}
+
+// ── Share helper ──────────────────────────────────────────
+async function shareImage(canvas, filename) {
+  canvas.toBlob(async (blob) => {
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], filename, { type: "image/png" })] })) {
+      try {
+        await navigator.share({ files: [new File([blob], filename, { type: "image/png" })], title: "Sunderland Leon FC" });
+        return;
+      } catch(e) {}
+    }
+    // Fallback to download
+    const link = document.createElement("a");
+    link.download = filename;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+  }, "image/png");
+}
+
 const DEFAULT_COMPETITIONS = [];
 const INITIAL_RESULTS = [];
+
+function formatDate(str) {
+  if (!str) return "";
+  try {
+    const d = new Date(str);
+    if (isNaN(d)) return str; // already formatted e.g. "11 Apr 2026"
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  } catch(e) { return str; }
+}
 const MEDAL = ["🥇", "🥈", "🥉"];
 const COMP_COLORS = ["#87ceeb","#ffd700","#ff7eb3","#90ee90","#ffb347","#dda0dd","#87cefa"];
 function getCompColor(comps, comp) { const i = comps.indexOf(comp); return COMP_COLORS[i % COMP_COLORS.length] || "#87ceeb"; }
@@ -50,7 +89,7 @@ function loadHtml2Canvas() {
     document.head.appendChild(script);
   });
 }
-function SaveCardButton({ cardRef, filename = "leon-result.png" }) {
+function SaveCardButton({ cardRef, filename = "leon-result.png", onSaved }) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(false);
   const handleSave = async () => {
@@ -59,20 +98,19 @@ function SaveCardButton({ cardRef, filename = "leon-result.png" }) {
     try {
       const h2c = await loadHtml2Canvas();
       const canvas = await h2c(cardRef.current, { backgroundColor: "#ffffff", scale: 3, useCORS: true, logging: false, allowTaint: true });
-      const link = document.createElement("a");
-      link.download = filename;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
+      await shareImage(canvas, filename);
+      if (onSaved) onSaved();
     } catch(e) { setErr(true); }
     setSaving(false);
   };
+  const canShare = typeof navigator !== "undefined" && !!navigator.share;
   return (
     <div style={{ marginTop: 12 }}>
       <button onClick={handleSave} disabled={saving}
         style={{ width: "100%", padding: "14px", background: "#1877f2", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, letterSpacing: 1, cursor: saving ? "wait" : "pointer", fontFamily: "inherit", textTransform: "uppercase", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: saving ? 0.7 : 1 }}>
-        {saving ? "⏳ Saving..." : "📸 Save as Image for Facebook"}
+        {saving ? "⏳ Saving..." : canShare ? "📤 Share Result Card" : "📸 Save as Image"}
       </button>
-      {err && <p style={{ textAlign: "center", color: "#d50000", fontSize: 12, marginTop: 6 }}>Couldn't save — try a screenshot instead.</p>}
+      {err && <p style={{ textAlign: "center", color: "#d50000", fontSize: 12, marginTop: 6 }}>Couldn't share — try a screenshot instead.</p>}
     </div>
   );
 }
@@ -164,13 +202,13 @@ function ResultCard({ match, teamName = "Under 9 Blue", compColor = "#87ceeb", p
                   return (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       {player?.photo ? (
-                        <div style={{ width: 36, height: 36, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid #87ceeb" }}>
+                        <div style={{ width: 44, height: 44, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid #87ceeb" }}>
                           <img src={player.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={name} />
                         </div>
                       ) : (
-                        <span style={{ fontSize: 14 }}>⚽</span>
+                        <span style={{ fontSize: 16 }}>⚽</span>
                       )}
-                      <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1a2e" }}>{scorer}</span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1a2e" }}>{player?.squad_number ? `#${player.squad_number} ` : ""}{scorer}</span>
                     </div>
                   );
                 })}
@@ -181,15 +219,18 @@ function ResultCard({ match, teamName = "Under 9 Blue", compColor = "#87ceeb", p
         {(match.motm || match.oppMotm) && (
           <>
             <div style={{ height: 1, background: "#eee", margin: "0 20px" }} />
-            <div style={{ padding: "12px 20px 14px", display: "flex", gap: 24, flexWrap: "wrap" }}>
+            <div style={{ padding: "12px 20px 14px", display: "flex", gap: 20, flexWrap: "wrap" }}>
               {match.motm && (() => {
                 const player = players.find(p => p.name === match.motm);
                 return (
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 18 }}>⭐</span>
-                    {player?.photo && (
-                      <div style={{ width: 36, height: 36, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid #ffd700" }}>
+                    {player?.photo ? (
+                      <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid #ffd700" }}>
                         <img src={player.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={match.motm} />
+                      </div>
+                    ) : (
+                      <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: "2px solid #ffd700" }}>
+                        <span style={{ color: "#ffd700", fontSize: 13, fontWeight: 900 }}>{match.motm.slice(0,2).toUpperCase()}</span>
                       </div>
                     )}
                     <div>
@@ -203,10 +244,13 @@ function ResultCard({ match, teamName = "Under 9 Blue", compColor = "#87ceeb", p
                 const player = players.find(p => p.name === match.oppMotm);
                 return (
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 18 }}>🏅</span>
-                    {player?.photo && (
-                      <div style={{ width: 36, height: 36, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid #ff7eb3" }}>
+                    {player?.photo ? (
+                      <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid #ff7eb3" }}>
                         <img src={player.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={match.oppMotm} />
+                      </div>
+                    ) : (
+                      <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#f5f5f5", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: "2px solid #ff7eb3" }}>
+                        <span style={{ color: "#ff7eb3", fontSize: 13, fontWeight: 900 }}>{match.oppMotm.slice(0,2).toUpperCase()}</span>
                       </div>
                     )}
                     <div>
@@ -276,6 +320,8 @@ function TeamPicker({ teams, value, onChange, onAddNew }) {
 // ── Main App ──────────────────────────────────────────────
 export default function App() {
   const [mode, setMode] = useState("history");
+  const [toast, setToast] = useState(null);
+  const showToast = (msg) => setToast(msg);
   const [scorersTab, setScorersTab] = useState("goals");
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState(false);
@@ -417,6 +463,7 @@ export default function App() {
       const match = saved || { ...newMatch, id: Date.now() };
       setResults(prev => [...prev, match]);
       setNewResult(match);
+      showToast("✅ Result saved!");
       // Save appearances
       if (selectedSquad.length > 0 && match.id) {
         const appRecords = selectedSquad.map(pid => ({ player_id: pid, result_id: match.id, season_id: match.season_id }));
@@ -426,6 +473,7 @@ export default function App() {
       const match = { ...newMatch, id: Date.now() };
       setResults(prev => [...prev, match]);
       setNewResult(match);
+      showToast("✅ Result saved!");
     }
     setSelectedSquad([]);
     setGoalCounts({});
@@ -454,6 +502,7 @@ export default function App() {
     try { await updateResult(updated); } catch(e) {}
     setResults(prev => prev.map(r => r.id === updated.id ? updated : r));
     setEditingResult(null); setEditOppLogo(null); setEditGoalCounts({});
+    showToast("✅ Changes saved!");
   };
 
   const handleDeleteResult = async (id) => {
@@ -478,6 +527,7 @@ export default function App() {
     setShowPlayerModal(false);
     setEditingPlayer(null);
     setPlayerForm({ name: "", squad_number: "", photo: null });
+    showToast("✅ Player saved!");
   };
 
   const handleDeletePlayer = async (id) => {
@@ -532,6 +582,7 @@ export default function App() {
     }
     setShowFixtureForm(false); setEditingFixture(null);
     setFixtureForm({ date: "", opposition: "", competition: competitions[0], venue: "", notes: "" });
+    showToast("✅ Fixture saved!");
   };
 
   const handleDeleteFixture = async (id) => {
@@ -540,7 +591,7 @@ export default function App() {
   };
 
   const handleAddComp = async () => {
-    const name = newCompName.trim();
+    const name = newCompName.trim().replace(/\b\w/g, c => c.toUpperCase()); // title case
     if (!name || competitions.includes(name)) { setNewCompName(""); setAddingComp(false); return; }
     const updated = [...competitions, name];
     setCompetitions(updated);
@@ -744,7 +795,7 @@ export default function App() {
               </button>
             </div>
 
-            {upcomingFixtures.length === 0 && <p style={{ textAlign: "center", color: "#bbb", fontSize: 15, marginTop: 20 }}>No upcoming fixtures.</p>}
+            {upcomingFixtures.length === 0 && <div style={{ textAlign: "center", padding: "30px 20px", color: "#bbb" }}><div style={{ fontSize: 36, marginBottom: 8 }}>📅</div><div style={{ fontSize: 15, fontWeight: 700, color: "#aaa" }}>No upcoming fixtures</div><div style={{ fontSize: 12, marginTop: 4 }}>Tap + Add to schedule a game</div></div>}
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
               {upcomingFixtures.map(f => {
                 const cc = getCompColor(competitions, f.competition);
@@ -780,13 +831,23 @@ export default function App() {
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#888", letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>Past Fixtures</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {pastFixtures.map(f => (
-                    <div key={f.id} style={{ background: "#fff", borderRadius: 12, padding: "12px 18px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", opacity: 0.7, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div>
+                    <div key={f.id} style={{ background: "#fff", borderRadius: 12, padding: "12px 18px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                      <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a2e" }}>vs {f.opposition}</div>
-                        <div style={{ fontSize: 12, color: "#aaa" }}>{f.date} {f.venue ? `· ${f.venue}` : ""}</div>
+                        <div style={{ fontSize: 12, color: "#aaa" }}>{f.date}{f.venue ? ` · ${f.venue}` : ""}</div>
                       </div>
-                      <button onClick={() => { if (window.confirm("Delete this fixture?")) handleDeleteFixture(f.id); }}
-                        style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#ddd" }}>🗑️</button>
+                      {isViewingActive && (
+                        <button onClick={() => {
+                          setMode("new");
+                          setForm(fm => ({ ...fm, opposition: f.opposition, competition: f.competition || fm.competition, date: f.rawDate || "", round: f.notes || "" }));
+                          showToast("📋 Fixture loaded — add the score!");
+                        }}
+                          style={{ background: "#f0f4ff", border: "none", borderRadius: 8, padding: "5px 10px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 11, color: "#87ceeb", whiteSpace: "nowrap" }}>
+                          + Result
+                        </button>
+                      )}
+                      {isViewingActive && <button onClick={() => { if (window.confirm("Delete this fixture?")) handleDeleteFixture(f.id); }}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#ddd" }}>🗑️</button>}
                     </div>
                   ))}
                 </div>
@@ -871,7 +932,7 @@ export default function App() {
               </div>
             </div>
 
-            {filteredResults.length === 0 && <p style={{ textAlign: "center", color: "#bbb", fontSize: 15, marginTop: 40 }}>No results yet.</p>}
+            {filteredResults.length === 0 && <div style={{ textAlign: "center", padding: "40px 20px", color: "#bbb" }}><div style={{ fontSize: 40, marginBottom: 12 }}>🏆</div><div style={{ fontSize: 16, fontWeight: 700, color: "#aaa", marginBottom: 6 }}>No results yet</div><div style={{ fontSize: 13 }}>Tap ➕ New to add your first result</div></div>}
 
             <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 520, margin: "0 auto" }}>
               {filteredResults.map((m) => {
@@ -1702,6 +1763,8 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {toast && <Toast message={toast} onDone={() => setToast(null)} />}
 
     </div>
   );
