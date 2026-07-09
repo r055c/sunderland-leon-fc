@@ -157,18 +157,20 @@ function ResultCard({ match, teamName = "Under 9 Blue", compColor = "#87ceeb", p
             <div style={{ height: 1, background: "#eee", margin: "0 20px" }} />
             <div style={{ padding: "12px 20px 14px" }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: compColor, letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 8 }}>Goal Scorers</span>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                 {match.scorers.map((scorer, i) => {
                   const name = scorer.replace(/\s*[×x]\d+$/, "").trim();
                   const player = players.find(p => p.name === name);
                   return (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      {player?.photo && (
-                        <div style={{ width: 24, height: 24, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}>
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {player?.photo ? (
+                        <div style={{ width: 36, height: 36, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid #87ceeb" }}>
                           <img src={player.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={name} />
                         </div>
+                      ) : (
+                        <span style={{ fontSize: 14 }}>⚽</span>
                       )}
-                      <span style={{ fontSize: 14, fontWeight: 600, color: "#1a1a2e" }}>⚽ {scorer}</span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1a2e" }}>{scorer}</span>
                     </div>
                   );
                 })}
@@ -180,24 +182,40 @@ function ResultCard({ match, teamName = "Under 9 Blue", compColor = "#87ceeb", p
           <>
             <div style={{ height: 1, background: "#eee", margin: "0 20px" }} />
             <div style={{ padding: "12px 20px 14px", display: "flex", gap: 24, flexWrap: "wrap" }}>
-              {match.motm && (
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                  <span style={{ fontSize: 18 }}>⭐</span>
-                  <div>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: compColor, letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 2 }}>Man of the Match</span>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: "#1a1a2e" }}>{match.motm}</span>
+              {match.motm && (() => {
+                const player = players.find(p => p.name === match.motm);
+                return (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 18 }}>⭐</span>
+                    {player?.photo && (
+                      <div style={{ width: 36, height: 36, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid #ffd700" }}>
+                        <img src={player.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={match.motm} />
+                      </div>
+                    )}
+                    <div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: compColor, letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 2 }}>Man of the Match</span>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: "#1a1a2e" }}>{match.motm}</span>
+                    </div>
                   </div>
-                </div>
-              )}
-              {match.oppMotm && (
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                  <span style={{ fontSize: 18 }}>🏅</span>
-                  <div>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "#aaa", letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 2 }}>Opp. Man of Match</span>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: "#555" }}>{match.oppMotm}</span>
+                );
+              })()}
+              {match.oppMotm && (() => {
+                const player = players.find(p => p.name === match.oppMotm);
+                return (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 18 }}>🏅</span>
+                    {player?.photo && (
+                      <div style={{ width: 36, height: 36, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid #ff7eb3" }}>
+                        <img src={player.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={match.oppMotm} />
+                      </div>
+                    )}
+                    <div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#aaa", letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 2 }}>Opp. Man of Match</span>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: "#555" }}>{match.oppMotm}</span>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </>
         )}
@@ -286,6 +304,7 @@ export default function App() {
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [editingResult, setEditingResult] = useState(null);
   const [editOppLogo, setEditOppLogo] = useState(null);
+  const [editGoalCounts, setEditGoalCounts] = useState({});
   const [oppLogo, setOppLogo] = useState(null);
   const [newResult, setNewResult] = useState(null);
   const [addingComp, setAddingComp] = useState(false);
@@ -417,11 +436,24 @@ export default function App() {
     if (!editingResult) return;
     const hs = parseInt(editingResult.homeScore), as_ = parseInt(editingResult.awayScore);
     const result = hs > as_ ? "W" : hs < as_ ? "L" : "D";
-    const scorerList = typeof editingResult.scorers === "string" ? editingResult.scorers.split(",").map(s => s.trim()).filter(Boolean) : editingResult.scorers;
-    const updated = { ...editingResult, homeScore: hs, awayScore: as_, result, scorers: scorerList, oppLogo: editOppLogo === "remove" ? null : editOppLogo !== null ? editOppLogo : editingResult.oppLogo, round: (editingResult.round || "").trim() };
+    // If we have editGoalCounts use those, otherwise fall back to text field
+    let scorerList;
+    if (players.length > 0 && Object.keys(editGoalCounts).length > 0) {
+      scorerList = Object.entries(editGoalCounts)
+        .filter(([, count]) => count > 0)
+        .map(([pid, count]) => {
+          const p = players.find(pl => pl.id === parseInt(pid));
+          return p ? (count > 1 ? `${p.name} ×${count}` : p.name) : null;
+        }).filter(Boolean);
+    } else {
+      scorerList = typeof editingResult.scorers === "string"
+        ? editingResult.scorers.split(",").map(s => s.trim()).filter(Boolean)
+        : editingResult.scorers;
+    }
+    const updated = { ...editingResult, homeScore: hs, awayScore: as_, result, scorers: scorerList, oppLogo: editOppLogo === "remove" ? null : editOppLogo !== null ? editOppLogo : editingResult.oppLogo };
     try { await updateResult(updated); } catch(e) {}
     setResults(prev => prev.map(r => r.id === updated.id ? updated : r));
-    setEditingResult(null); setEditOppLogo(null);
+    setEditingResult(null); setEditOppLogo(null); setEditGoalCounts({});
   };
 
   const handleDeleteResult = async (id) => {
@@ -861,7 +893,18 @@ export default function App() {
                     {isSelected && (
                       <div style={{ background: "#f8faff", borderRadius: "0 0 12px 12px", boxShadow: "0 4px 8px rgba(0,0,0,0.06)", overflow: "hidden" }}>
                         <div style={{ display: "flex", borderTop: "1px solid #e8eeff" }}>
-                          <button onClick={() => setEditingResult({ ...m, scorers: (m.scorers || []).join(", ") })}
+                          <button onClick={() => {
+                              const initialGoalCounts = {};
+                              (m.scorers || []).forEach(s => {
+                                const match = s.trim().match(/^(.+?)\s*[×x](\d+)$/);
+                                const name = match ? match[1].trim() : s.trim();
+                                const count = match ? parseInt(match[2]) : 1;
+                                const player = players.find(p => p.name === name);
+                                if (player) initialGoalCounts[player.id] = count;
+                              });
+                              setEditGoalCounts(initialGoalCounts);
+                              setEditingResult({ ...m, scorers: (m.scorers || []).join(", ") });
+                            }}
                             style={{ flex: 1, padding: "12px", background: "none", border: "none", borderRight: "1px solid #e8eeff", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 13, color: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                             ✏️ Edit
                           </button>
@@ -917,8 +960,31 @@ export default function App() {
                     </div>
                   ))}
                   <div style={{ marginBottom: 14 }}>
-                    <label style={labelStyle}>Goal Scorers (comma separated)</label>
-                    <input type="text" value={typeof editingResult.scorers === "string" ? editingResult.scorers : (editingResult.scorers || []).join(", ")} onChange={e => setEditingResult(r => ({ ...r, scorers: e.target.value }))} style={inputStyle} />
+                    <label style={labelStyle}>Goal Scorers</label>
+                    {players.length > 0 ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {players.map(p => {
+                          const count = editGoalCounts[p.id] || 0;
+                          return (
+                            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, background: count > 0 ? "#f0f4ff" : "#f7f8fa", borderRadius: 10, padding: "8px 12px", border: count > 0 ? "1.5px solid #87ceeb" : "1.5px solid #e8e8e8" }}>
+                              <div style={{ width: 28, height: 28, borderRadius: "50%", background: p.photo ? "transparent" : "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                                {p.photo ? <img src={p.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: "#87ceeb", fontSize: 9, fontWeight: 900 }}>{p.name.slice(0,2).toUpperCase()}</span>}
+                              </div>
+                              <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: "#1a1a2e" }}>{p.name}</span>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <button onClick={() => setEditGoalCounts(prev => ({ ...prev, [p.id]: Math.max(0, (prev[p.id] || 0) - 1) }))}
+                                  style={{ width: 28, height: 28, borderRadius: "50%", border: "1.5px solid #e0e0e0", background: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#888", fontFamily: "inherit" }}>−</button>
+                                <span style={{ fontSize: 18, fontWeight: 900, color: "#1a1a2e", minWidth: 18, textAlign: "center" }}>{count}</span>
+                                <button onClick={() => setEditGoalCounts(prev => ({ ...prev, [p.id]: (prev[p.id] || 0) + 1 }))}
+                                  style={{ width: 28, height: 28, borderRadius: "50%", border: "none", background: "#1a1a2e", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#87ceeb", fontFamily: "inherit" }}>+</button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <input type="text" value={typeof editingResult.scorers === "string" ? editingResult.scorers : (editingResult.scorers || []).join(", ")} onChange={e => setEditingResult(r => ({ ...r, scorers: e.target.value }))} style={inputStyle} />
+                    )}
                   </div>
                   <div style={{ marginBottom: 14 }}>
                     <label style={labelStyle}>Round (optional)</label>
@@ -948,6 +1014,16 @@ export default function App() {
                   <div style={{ marginBottom: 20 }}>
                     <label style={{ ...labelStyle, color: "#aaa" }}>🏅 Opp MOTM</label>
                     <input type="text" value={editingResult.oppMotm || ""} onChange={e => setEditingResult(r => ({ ...r, oppMotm: e.target.value }))} style={inputStyle} placeholder="Opposition player name" />
+                    {players.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                        {players.map(p => (
+                          <button key={p.id} onClick={() => setEditingResult(r => ({ ...r, oppMotm: r.oppMotm === p.name ? "" : p.name }))}
+                            style={{ padding: "4px 10px", borderRadius: 16, border: editingResult.oppMotm === p.name ? "none" : "1.5px solid #e0e0e0", background: editingResult.oppMotm === p.name ? "#ff7eb3" : "#fff", color: editingResult.oppMotm === p.name ? "#fff" : "#888", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                            {p.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <button onClick={handleSaveEdit} style={{ width: "100%", padding: "15px", background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 12, fontSize: 16, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit" }}>Save Changes</button>
                 </div>
