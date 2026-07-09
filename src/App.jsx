@@ -427,13 +427,22 @@ export default function App() {
       return sortOrder === "desc" ? db - da : da - db;
     });
 
-  const today = new Date(new Date().toDateString());
+  const today = new Date();
+  today.setHours(23, 59, 59, 999); // end of today in local time
   const upcomingFixtures = fixtures
-    .filter(f => new Date(f.rawDate || f.date) > today)
+    .filter(f => {
+      const d = new Date(f.rawDate || f.date);
+      d.setHours(23, 59, 59, 999);
+      return d > today;
+    })
     .sort((a, b) => new Date(a.rawDate || a.date) - new Date(b.rawDate || b.date));
 
   const pastFixtures = fixtures
-    .filter(f => new Date(f.rawDate || f.date) <= today)
+    .filter(f => {
+      const d = new Date(f.rawDate || f.date);
+      d.setHours(23, 59, 59, 999);
+      return d <= today;
+    })
     .sort((a, b) => new Date(b.rawDate || b.date) - new Date(a.rawDate || a.date));
 
   const h2hResults = h2hTeam ? results.filter(r => r.opposition.toLowerCase() === h2hTeam.toLowerCase()) : [];
