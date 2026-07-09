@@ -13,6 +13,33 @@ const headers = {
 };
 
 const base = () => `${SUPABASE_URL}/rest/v1`;
+const storageBase = () => `${SUPABASE_URL}/storage/v1`;
+
+// ── Storage ───────────────────────────────────────────────
+export async function uploadImage(file, bucket = "logos") {
+  // Generate a unique filename
+  const ext = file.name.split(".").pop() || "png";
+  const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+  const res = await fetch(`${storageBase()}/object/${bucket}/${filename}`, {
+    method: "POST",
+    headers: {
+      "apikey": SUPABASE_ANON_KEY,
+      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+      "Content-Type": file.type || "image/png",
+      "x-upsert": "true",
+    },
+    body: file,
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Upload failed: ${err}`);
+  }
+
+  // Return the public URL
+  return `${storageBase()}/object/public/${bucket}/${filename}`;
+}
 
 // ── Results ──────────────────────────────────────────────
 export async function fetchResults() {
