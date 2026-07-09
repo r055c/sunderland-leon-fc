@@ -427,13 +427,14 @@ export default function App() {
       return sortOrder === "desc" ? db - da : da - db;
     });
 
+  const today = new Date(new Date().toDateString());
   const upcomingFixtures = fixtures
-    .filter(f => new Date(f.date) >= new Date(new Date().toDateString()))
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
+    .filter(f => new Date(f.rawDate || f.date) > today)
+    .sort((a, b) => new Date(a.rawDate || a.date) - new Date(b.rawDate || b.date));
 
   const pastFixtures = fixtures
-    .filter(f => new Date(f.date) < new Date(new Date().toDateString()))
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
+    .filter(f => new Date(f.rawDate || f.date) <= today)
+    .sort((a, b) => new Date(b.rawDate || b.date) - new Date(a.rawDate || a.date));
 
   const h2hResults = h2hTeam ? results.filter(r => r.opposition.toLowerCase() === h2hTeam.toLowerCase()) : [];
 
