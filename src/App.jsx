@@ -111,7 +111,7 @@ function Leaderboard({ data, label, emptyMsg, filterLabel, accentColor = "#87cee
 }
 
 // ── Result Card ───────────────────────────────────────────
-function ResultCard({ match, teamName = "Under 9 Blue", compColor = "#87ceeb" }) {
+function ResultCard({ match, teamName = "Under 9 Blue", compColor = "#87ceeb", players = [] }) {
   const isWin = match.result === "W", isLoss = match.result === "L";
   const resultColor = isWin ? "#00c853" : isLoss ? "#d50000" : "#ffab00";
   const resultLabel = isWin ? "WIN" : isLoss ? "LOSS" : "DRAW";
@@ -155,11 +155,23 @@ function ResultCard({ match, teamName = "Under 9 Blue", compColor = "#87ceeb" })
         {(match.scorers || []).length > 0 && (
           <>
             <div style={{ height: 1, background: "#eee", margin: "0 20px" }} />
-            <div style={{ padding: "12px 20px 14px", display: "flex", alignItems: "flex-start", gap: 10 }}>
-              <span style={{ fontSize: 16 }}>⚽</span>
-              <div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: compColor, letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 4 }}>Goal Scorers</span>
-                <span style={{ fontSize: 15, fontWeight: 600, color: "#1a1a2e" }}>{match.scorers.join("  ·  ")}</span>
+            <div style={{ padding: "12px 20px 14px" }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: compColor, letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 8 }}>Goal Scorers</span>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {match.scorers.map((scorer, i) => {
+                  const name = scorer.replace(/\s*[×x]\d+$/, "").trim();
+                  const player = players.find(p => p.name === name);
+                  return (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      {player?.photo && (
+                        <div style={{ width: 24, height: 24, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}>
+                          <img src={player.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={name} />
+                        </div>
+                      )}
+                      <span style={{ fontSize: 14, fontWeight: 600, color: "#1a1a2e" }}>⚽ {scorer}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </>
@@ -859,7 +871,7 @@ export default function App() {
                           </button>
                         </div>
                         <div style={{ padding: 16 }}>
-                          <ResultCard match={m} teamName={teamName} compColor={getCompColor(competitions, m.competition)} />
+                          <ResultCard match={m} teamName={teamName} compColor={getCompColor(competitions, m.competition)} players={players} />
                         </div>
                       </div>
                     )}
@@ -919,25 +931,23 @@ export default function App() {
                       {seasons.map(s => <option key={s.id} value={s.id}>{s.name} — {s.age_group}{s.is_active ? " (Current)" : ""}</option>)}
                     </select>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
-                    <div>
-                      <label style={labelStyle}>⭐ Man of Match</label>
-                      <input type="text" value={editingResult.motm || ""} onChange={e => setEditingResult(r => ({ ...r, motm: e.target.value }))} style={inputStyle} />
-                    </div>
-                    <div>
-                      <label style={{ ...labelStyle, color: "#aaa" }}>🏅 Opp MOTM</label>
-                      <input type="text" value={editingResult.oppMotm || ""} onChange={e => setEditingResult(r => ({ ...r, oppMotm: e.target.value }))} style={inputStyle} />
-                    </div>
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={labelStyle}>⭐ Man of Match</label>
+                    <input type="text" value={editingResult.motm || ""} onChange={e => setEditingResult(r => ({ ...r, motm: e.target.value }))} style={inputStyle} placeholder="Type or select below" />
+                    {players.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                        {players.map(p => (
+                          <button key={p.id} onClick={() => setEditingResult(r => ({ ...r, motm: r.motm === p.name ? "" : p.name }))}
+                            style={{ padding: "4px 10px", borderRadius: 16, border: editingResult.motm === p.name ? "none" : "1.5px solid #e0e0e0", background: editingResult.motm === p.name ? "#ffd700" : "#fff", color: editingResult.motm === p.name ? "#1a1a2e" : "#888", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                            {p.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div style={{ marginBottom: 20 }}>
-                    <label style={labelStyle}>Opposition Logo</label>
-                    <input ref={editFileRef} type="file" accept="image/*" onChange={e => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = ev => setEditOppLogo(ev.target.result); reader.readAsDataURL(file); }} style={{ display: "none" }} />
-                    <button onClick={() => editFileRef.current.click()}
-                      style={{ border: "2px dashed #87ceeb", borderRadius: 10, background: (editOppLogo || editingResult.oppLogo) ? "#e8f4ff" : "#f8faff", padding: "12px 16px", width: "100%", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 700, color: "#1a1a2e", display: "flex", alignItems: "center", gap: 10, justifyContent: "center", boxSizing: "border-box" }}>
-                      {(editOppLogo || editingResult.oppLogo) ? <img src={editOppLogo || editingResult.oppLogo} style={{ width: 36, height: 36, objectFit: "contain" }} alt="" /> : "📁"}
-                      {(editOppLogo || editingResult.oppLogo) ? "Logo uploaded ✓ (tap to change)" : "Upload opposition logo"}
-                    </button>
-                    {(editOppLogo || editingResult.oppLogo) && <button onClick={() => setEditOppLogo("remove")} style={{ marginTop: 6, background: "none", border: "none", color: "#d50000", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>✕ Remove logo</button>}
+                    <label style={{ ...labelStyle, color: "#aaa" }}>🏅 Opp MOTM</label>
+                    <input type="text" value={editingResult.oppMotm || ""} onChange={e => setEditingResult(r => ({ ...r, oppMotm: e.target.value }))} style={inputStyle} placeholder="Opposition player name" />
                   </div>
                   <button onClick={handleSaveEdit} style={{ width: "100%", padding: "15px", background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 12, fontSize: 16, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit" }}>Save Changes</button>
                 </div>
@@ -1131,11 +1141,11 @@ export default function App() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
                   <div>
                     <label style={labelStyle}>Leon Score</label>
-                    <input type="number" placeholder="0" value={form.homeScore} onChange={e => setForm(f => ({ ...f, homeScore: e.target.value }))} style={inputStyle} />
+                    <input type="number" placeholder="" value={form.homeScore} onChange={e => setForm(f => ({ ...f, homeScore: e.target.value }))} style={inputStyle} />
                   </div>
                   <div>
                     <label style={labelStyle}>Opp Score</label>
-                    <input type="number" placeholder="0" value={form.awayScore} onChange={e => setForm(f => ({ ...f, awayScore: e.target.value }))} style={inputStyle} />
+                    <input type="number" placeholder="" value={form.awayScore} onChange={e => setForm(f => ({ ...f, awayScore: e.target.value }))} style={inputStyle} />
                   </div>
                 </div>
 
@@ -1163,9 +1173,10 @@ export default function App() {
                           return (
                             <button key={p.id} onClick={() => {
                               setSelectedSquad(prev => selected ? prev.filter(id => id !== p.id) : [...prev, p.id]);
-                              if (!selected === false) {
+                              if (selected) {
                                 setGoalCounts(prev => { const n = { ...prev }; delete n[p.id]; return n; });
                                 if (motmPlayerId === p.id) setMotmPlayerId(null);
+                                if (oppMotmPlayerId === p.id) setOppMotmPlayerId(null);
                               }
                             }}
                               style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 20, border: selected ? "none" : "1.5px solid #e0e0e0", background: selected ? "#1a1a2e" : "#fff", color: selected ? "#87ceeb" : "#888", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
@@ -1226,23 +1237,25 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* Opp MOTM — pick from squad or type manually */}
-                    <div style={{ marginBottom: 16 }}>
-                      <label style={{ ...labelStyle, color: "#aaa" }}>🏅 Opp. Man of Match</label>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 6 }}>
-                        {selectedSquad.map(pid => {
-                          const p = players.find(pl => pl.id === pid);
-                          if (!p) return null;
-                          const selected = oppMotmPlayerId === pid;
-                          return (
-                            <button key={pid} onClick={() => setOppMotmPlayerId(selected ? null : pid)}
-                              style={{ padding: "6px 14px", borderRadius: 20, border: selected ? "none" : "1.5px solid #e0e0e0", background: selected ? "#ff7eb3" : "#fff", color: selected ? "#fff" : "#888", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
-                              {selected ? "🏅 " : ""}{p.name}
-                            </button>
-                          );
-                        })}
+                    {/* Opp MOTM — only show when squad selected */}
+                    {selectedSquad.length > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <label style={{ ...labelStyle, color: "#aaa" }}>🏅 Opp. Man of Match</label>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          {selectedSquad.map(pid => {
+                            const p = players.find(pl => pl.id === pid);
+                            if (!p) return null;
+                            const selected = oppMotmPlayerId === pid;
+                            return (
+                              <button key={pid} onClick={() => setOppMotmPlayerId(selected ? null : pid)}
+                                style={{ padding: "6px 14px", borderRadius: 20, border: selected ? "none" : "1.5px solid #e0e0e0", background: selected ? "#ff7eb3" : "#fff", color: selected ? "#fff" : "#888", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                                {selected ? "🏅 " : ""}{p.name}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </>
                 ) : (
                   <>
@@ -1264,16 +1277,6 @@ export default function App() {
                   </>
                 )}
 
-                <div style={{ marginBottom: 20 }}>
-                  <label style={labelStyle}>Opposition Logo (optional)</label>
-                  <input ref={fileRef} type="file" accept="image/*" onChange={e => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = ev => setOppLogo(ev.target.result); reader.readAsDataURL(file); }} style={{ display: "none" }} />
-                  <button onClick={() => fileRef.current.click()}
-                    style={{ border: "2px dashed #87ceeb", borderRadius: 10, background: oppLogo ? "#e8f4ff" : "#f8faff", padding: "14px 20px", width: "100%", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 700, color: "#1a1a2e", display: "flex", alignItems: "center", gap: 10, justifyContent: "center", boxSizing: "border-box" }}>
-                    {oppLogo ? <img src={oppLogo} style={{ width: 36, height: 36, objectFit: "contain" }} alt="" /> : "📁"}
-                    {oppLogo ? "Logo uploaded ✓" : "Upload opposition logo"}
-                  </button>
-                </div>
-
                 <button onClick={handleCreate} disabled={!form.date || !form.opposition || form.homeScore === "" || form.awayScore === ""}
                   style={{ width: "100%", padding: "16px", background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 12, fontSize: 17, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", opacity: (!form.date || !form.opposition || form.homeScore === "" || form.awayScore === "") ? 0.5 : 1 }}>
                   Generate Result Card
@@ -1281,7 +1284,7 @@ export default function App() {
               </div>
             ) : (
               <div>
-                <ResultCard match={newResult} teamName={teamName} compColor={getCompColor(competitions, newResult.competition)} />
+                <ResultCard match={newResult} teamName={teamName} compColor={getCompColor(competitions, newResult.competition)} players={players} />
                 <button onClick={() => { setNewResult(null); setOppLogo(null); setSelectedSquad([]); setGoalCounts({}); setMotmPlayerId(null); setOppMotmPlayerId(null); setForm({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: form.competition, motm: "", oppMotm: "", round: "", season_id: activeSeason?.id || null }); }}
                   style={{ marginTop: 16, width: "100%", padding: "14px", background: "#fff", color: "#1a1a2e", border: "2px solid #e8e8e8", borderRadius: 12, fontSize: 15, fontWeight: 800, letterSpacing: 2, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                   ← Add Another Result
