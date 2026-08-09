@@ -772,53 +772,38 @@ export default function App() {
       )}
 
 
-      {/* Competition filter — shown on Results and Awards tabs */}
+      {/* Competition / Round filters — dropdowns, no horizontal swipe needed */}
       {(mode === "history" || mode === "scorers") && (
-        <div style={{ background: "#fff", borderBottom: "1px solid #f0f0f0", padding: "10px 16px", display: "flex", gap: 8, overflowX: "auto", alignItems: "center" }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#aaa", letterSpacing: 2, whiteSpace: "nowrap", textTransform: "uppercase" }}>Filter:</span>
-          {["All", ...competitionsInUse].map((comp, idx) => {
-            const active = filterComp === comp;
-            const isAll = comp === "All";
-            const color = isAll ? "#1a1a2e" : getCompColor(competitions, comp);
-            const compIdx = idx - 1;
-            return (
-              <div key={comp} style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                {editingComp === compIdx && !isAll ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <input autoFocus value={tempCompName} onChange={e => setTempCompName(e.target.value)}
-                      onKeyDown={e => { if (e.key === "Enter") handleRenameComp(compIdx); if (e.key === "Escape") setEditingComp(null); }}
-                      style={{ border: "1.5px solid #87ceeb", borderRadius: 16, padding: "4px 10px", fontSize: 12, fontWeight: 700, fontFamily: "inherit", outline: "none", width: 120 }} />
-                    <button onClick={() => handleRenameComp(compIdx)} style={{ background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 8, padding: "4px 8px", cursor: "pointer", fontFamily: "inherit", fontSize: 11, fontWeight: 800 }}>✓</button>
-                    <button onClick={() => setEditingComp(null)} style={{ background: "#eee", color: "#888", border: "none", borderRadius: 8, padding: "4px 8px", cursor: "pointer", fontFamily: "inherit", fontSize: 11 }}>✕</button>
-                  </div>
-                ) : (
-                  <>
-                    <button onClick={() => { setFilterComp(comp); setSelectedMatch(null); setFilterRound("All"); }}
-                      style={{ padding: "6px 12px", borderRadius: 20, border: active ? "none" : "1.5px solid #e0e0e0", background: active ? color : "#fff", color: active ? (isAll ? "#87ceeb" : "#1a1a2e") : "#888", fontWeight: 800, fontSize: 12, letterSpacing: 1, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit", textTransform: "uppercase" }}>
-                      {comp}
-                    </button>
-                    {!isAll && <button onClick={() => { setEditingComp(compIdx); setTempCompName(comp); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#bbb", padding: "2px" }}>✏️</button>}
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+        <div style={{ background: "#fff", borderBottom: "1px solid #f0f0f0", padding: "10px 16px", display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ flex: "1 1 140px", display: "flex", alignItems: "center", gap: 6 }}>
+            <select value={filterComp} onChange={e => { setFilterComp(e.target.value); setSelectedMatch(null); setFilterRound("All"); }}
+              style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: "1.5px solid #e0e0e0", background: "#fff", color: THEME.navy, fontWeight: 700, fontSize: 13, fontFamily: THEME.body, cursor: "pointer", outline: "none" }}>
+              <option value="All">All Competitions</option>
+              {competitionsInUse.map(comp => <option key={comp} value={comp}>{comp}</option>)}
+            </select>
+            {isAdmin && filterComp !== "All" && competitions.includes(filterComp) && (
+              editingComp === competitions.indexOf(filterComp) ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <input autoFocus value={tempCompName} onChange={e => setTempCompName(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") handleRenameComp(competitions.indexOf(filterComp)); if (e.key === "Escape") setEditingComp(null); }}
+                    style={{ border: `1.5px solid ${THEME.sky}`, borderRadius: 10, padding: "8px 10px", fontSize: 13, fontWeight: 700, fontFamily: THEME.body, outline: "none", width: 110 }} />
+                  <button onClick={() => handleRenameComp(competitions.indexOf(filterComp))} style={{ background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 8, padding: "8px 9px", cursor: "pointer", fontFamily: THEME.body, fontSize: 12, fontWeight: 800 }}>✓</button>
+                  <button onClick={() => setEditingComp(null)} style={{ background: "#eee", color: "#888", border: "none", borderRadius: 8, padding: "8px 9px", cursor: "pointer", fontFamily: THEME.body, fontSize: 12 }}>✕</button>
+                </div>
+              ) : (
+                <button onClick={() => { setEditingComp(competitions.indexOf(filterComp)); setTempCompName(filterComp); }}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#bbb", padding: "4px", flexShrink: 0 }}>✏️</button>
+              )
+            )}
+          </div>
 
-      {/* Round filter — only shown when a specific competition is selected and has rounds */}
-      {(mode === "history") && filterComp !== "All" && roundsInUse.length > 0 && (
-        <div style={{ background: "#f7f8fa", borderBottom: "1px solid #f0f0f0", padding: "8px 16px", display: "flex", gap: 8, overflowX: "auto", alignItems: "center" }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#aaa", letterSpacing: 2, whiteSpace: "nowrap", textTransform: "uppercase" }}>Round:</span>
-          {["All", ...roundsInUse].map(round => {
-            const active = filterRound === round;
-            return (
-              <button key={round} onClick={() => setFilterRound(round)}
-                style={{ padding: "5px 12px", borderRadius: 20, border: active ? "none" : "1.5px solid #e0e0e0", background: active ? "#1a1a2e" : "#fff", color: active ? "#87ceeb" : "#888", fontWeight: 800, fontSize: 11, letterSpacing: 1, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit", textTransform: "uppercase" }}>
-                {round}
-              </button>
-            );
-          })}
+          {mode === "history" && filterComp !== "All" && roundsInUse.length > 0 && (
+            <select value={filterRound} onChange={e => setFilterRound(e.target.value)}
+              style={{ flex: "1 1 120px", padding: "10px 12px", borderRadius: 10, border: "1.5px solid #e0e0e0", background: "#fff", color: THEME.navy, fontWeight: 700, fontSize: 13, fontFamily: THEME.body, cursor: "pointer", outline: "none" }}>
+              <option value="All">All Rounds</option>
+              {roundsInUse.map(round => <option key={round} value={round}>{round}</option>)}
+            </select>
+          )}
         </div>
       )}
 
