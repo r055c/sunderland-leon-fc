@@ -201,7 +201,7 @@ function ScoreCard({ match, compColor = "#5fb2d9", onClick, showMeta = true }) {
   );
 }
 
-function ResultCard({ match, teamName = "Under 9 Blue", compColor = "#87ceeb", players = [] }) {
+function ResultCard({ match, teamName = "Team", compColor = "#87ceeb", players = [] }) {
   const isWin = match.result === "W", isLoss = match.result === "L";
   const resultColor = isWin ? "#00c853" : isLoss ? "#d50000" : "#ffab00";
   const resultLabel = isWin ? "WIN" : isLoss ? "LOSS" : "DRAW";
@@ -383,9 +383,8 @@ export default function App() {
   const [dbError, setDbError] = useState(false);
   const [dbErrorMsg, setDbErrorMsg] = useState("");
 
-  const [teamName, setTeamName] = useState("Under 9 Blue");
   const [editingTeamName, setEditingTeamName] = useState(false);
-  const [tempTeamName, setTempTeamName] = useState("Under 9 Blue");
+  const [tempAgeGroup, setTempAgeGroup] = useState("");
   const [results, setResults] = useState([]);
   const [competitions, setCompetitions] = useState(DEFAULT_COMPETITIONS);
   const [teams, setTeams] = useState([]);
@@ -619,6 +618,17 @@ export default function App() {
     setResults(prev => prev.map(r => r.opposition === team.name ? { ...r, opposition: trimmed } : r));
   };
 
+  const handleUpdateAgeGroup = async () => {
+    const newName = tempAgeGroup.trim();
+    if (!newName || !viewingSeason || newName === viewingSeason.age_group) { setEditingTeamName(false); return; }
+    const updated = { ...viewingSeason, age_group: newName };
+    setViewingSeason(updated);
+    setSeasons(prev => prev.map(s => s.id === updated.id ? updated : s));
+    if (isViewingActive) setActiveSeasonState(updated);
+    try { await updateSeason(updated); } catch(e) {}
+    setEditingTeamName(false);
+  };
+
   const handleUnlockAdmin = () => {
     if (pinInput === ADMIN_PIN) {
       setIsAdmin(true);
@@ -724,15 +734,17 @@ export default function App() {
           <div style={{ color: THEME.white, fontFamily: THEME.display, fontWeight: 600, fontSize: 17, letterSpacing: 0.5, lineHeight: 1.1 }}>Sunderland Leon FC</div>
           {editingTeamName ? (
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-              <input autoFocus value={tempTeamName} onChange={e => setTempTeamName(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") { setTeamName(tempTeamName); setEditingTeamName(false); } if (e.key === "Escape") setEditingTeamName(false); }}
+              <input autoFocus value={tempAgeGroup} onChange={e => setTempAgeGroup(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") handleUpdateAgeGroup(); if (e.key === "Escape") setEditingTeamName(false); }}
                 style={{ background: "rgba(255,255,255,0.15)", border: `1px solid ${THEME.sky}`, borderRadius: 6, color: "#fff", fontSize: 12, fontWeight: 600, letterSpacing: 1, padding: "3px 8px", fontFamily: THEME.mono, width: 150, outline: "none" }} />
-              <button onClick={() => { setTeamName(tempTeamName); setEditingTeamName(false); }} style={{ background: THEME.sky, border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontWeight: 700, fontSize: 11, color: THEME.navy, fontFamily: THEME.body }}>Save</button>
+              <button onClick={handleUpdateAgeGroup} style={{ background: THEME.sky, border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontWeight: 700, fontSize: 11, color: THEME.navy, fontFamily: THEME.body }}>Save</button>
             </div>
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 1 }}>
-              <div style={{ color: THEME.sky, fontFamily: THEME.mono, fontWeight: 600, fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase" }}>{viewingSeason?.age_group || teamName}</div>
-              <button onClick={() => { setTempTeamName(teamName); setEditingTeamName(true); }} style={{ background: "rgba(95,178,217,0.18)", border: `1px solid rgba(95,178,217,0.35)`, borderRadius: 5, padding: "1px 6px", cursor: "pointer", color: THEME.sky, fontSize: 9, fontWeight: 700, fontFamily: THEME.body }}>Edit</button>
+              <div style={{ color: THEME.sky, fontFamily: THEME.mono, fontWeight: 600, fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase" }}>{viewingSeason?.age_group || "Team"}</div>
+              {isAdmin && isViewingActive && (
+                <button onClick={() => { setTempAgeGroup(viewingSeason?.age_group || ""); setEditingTeamName(true); }} style={{ background: "rgba(95,178,217,0.18)", border: `1px solid rgba(95,178,217,0.35)`, borderRadius: 5, padding: "1px 6px", cursor: "pointer", color: THEME.sky, fontSize: 9, fontWeight: 700, fontFamily: THEME.body }}>Edit</button>
+              )}
             </div>
           )}
         </div>
@@ -947,7 +959,7 @@ export default function App() {
                           </div>
                         )}
                         <div style={{ padding: 16 }}>
-                          <ResultCard match={m} teamName={teamName} compColor={getCompColor(competitions, m.competition)} players={players} />
+                          <ResultCard match={m} teamName={viewingSeason?.age_group} compColor={getCompColor(competitions, m.competition)} players={players} />
                         </div>
                       </div>
                     )}
@@ -1091,7 +1103,7 @@ export default function App() {
             {scorersTab === "goals" && <Leaderboard data={buildGoalBoard(filteredResults)} label="Top Goal Scorers" emptyMsg="No goals recorded yet." filterLabel={filterComp === "All" ? "All Competitions" : filterComp} accentColor="#87ceeb" />}
             {scorersTab === "motm" && <Leaderboard data={buildAwardBoard(filteredResults, "motm")} label="Man of the Match" emptyMsg="No MOTM awards yet." filterLabel={filterComp === "All" ? "All Competitions" : filterComp} accentColor="#ffd700" />}
             {scorersTab === "oppmotm" && <Leaderboard data={buildAwardBoard(filteredResults, "oppMotm")} label="Opposition MOTM" emptyMsg="No Opp. MOTM awards yet." filterLabel={filterComp === "All" ? "All Competitions" : filterComp} accentColor="#ff7eb3" />}
-            <p style={{ textAlign: "center", color: "#bbb", fontSize: 12, marginTop: 14, letterSpacing: 1 }}>SUNDERLAND LEON {teamName.toUpperCase()}</p>
+            <p style={{ textAlign: "center", color: "#bbb", fontSize: 12, marginTop: 14, letterSpacing: 1 }}>SUNDERLAND LEON {(viewingSeason?.age_group || "").toUpperCase()}</p>
           </div>
         )}
 
@@ -1393,7 +1405,7 @@ export default function App() {
               </div>
             ) : (
               <div>
-                <ResultCard match={newResult} teamName={teamName} compColor={getCompColor(competitions, newResult.competition)} players={players} />
+                <ResultCard match={newResult} teamName={viewingSeason?.age_group} compColor={getCompColor(competitions, newResult.competition)} players={players} />
                 <button onClick={() => { setNewResult(null); setOppLogo(null); setSelectedSquad([]); setGoalCounts({}); setMotmPlayerId(null); setOppMotmPlayerId(null); setForm({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: form.competition, motm: "", oppMotm: "", round: "", season_id: activeSeason?.id || null }); }}
                   style={{ marginTop: 16, width: "100%", padding: "14px", background: "#fff", color: "#1a1a2e", border: "2px solid #e8e8e8", borderRadius: 12, fontSize: 15, fontWeight: 800, letterSpacing: 2, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                   ← Add Another Result
