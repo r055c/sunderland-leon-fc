@@ -201,12 +201,15 @@ function ScoreCard({ match, compColor = "#5fb2d9", onClick, showMeta = true }) {
   );
 }
 
-function ResultCard({ match, teamName = "Team", compColor = "#87ceeb", players = [] }) {
+function ResultCard({ match, teamName = "Team", compColor = "#87ceeb", players = [], teams = [] }) {
   const isWin = match.result === "W", isLoss = match.result === "L";
   const resultColor = isWin ? "#00c853" : isLoss ? "#d50000" : "#ffab00";
   const resultLabel = isWin ? "WIN" : isLoss ? "LOSS" : "DRAW";
   const cardRef = useRef();
   const filename = `leon-vs-${(match.opposition || "result").replace(/\s+/g,"-").toLowerCase()}.png`;
+  // Prefer the logo saved on the result itself; if it wasn't set at the time (e.g. the
+  // logo was added to the team afterwards), fall back to the team's current logo.
+  const displayLogo = match.oppLogo || teams.find(t => t.name === match.opposition)?.logo || null;
   return (
     <div>
       <div ref={cardRef} style={{ background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.10)", width: "100%", maxWidth: 520, margin: "0 auto", fontFamily: "'Barlow Condensed','Arial Narrow',Arial,sans-serif", border: "1px solid #e8e8e8" }}>
@@ -237,7 +240,7 @@ function ResultCard({ match, teamName = "Team", compColor = "#87ceeb", players =
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1.2, gap: 8 }}>
             <div style={{ background: "#f0f4ff", borderRadius: 14, padding: 10, display: "flex", alignItems: "center", justifyContent: "center", width: 80, height: 80 }}>
-              {match.oppLogo ? <img src={match.oppLogo} alt={match.opposition} style={{ width: 68, height: 68, objectFit: "contain" }} /> : <span style={{ fontSize: 30 }}>⚽</span>}
+              {displayLogo ? <img src={displayLogo} alt={match.opposition} style={{ width: 68, height: 68, objectFit: "contain" }} /> : <span style={{ fontSize: 30 }}>⚽</span>}
             </div>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a2e", textAlign: "center", lineHeight: 1.2 }}>{(match.opposition || "").toUpperCase()}</span>
           </div>
@@ -959,7 +962,7 @@ export default function App() {
                           </div>
                         )}
                         <div style={{ padding: 16 }}>
-                          <ResultCard match={m} teamName={viewingSeason?.age_group} compColor={getCompColor(competitions, m.competition)} players={players} />
+                          <ResultCard match={m} teamName={viewingSeason?.age_group} compColor={getCompColor(competitions, m.competition)} players={players} teams={teams} />
                         </div>
                       </div>
                     )}
@@ -1405,7 +1408,7 @@ export default function App() {
               </div>
             ) : (
               <div>
-                <ResultCard match={newResult} teamName={viewingSeason?.age_group} compColor={getCompColor(competitions, newResult.competition)} players={players} />
+                <ResultCard match={newResult} teamName={viewingSeason?.age_group} compColor={getCompColor(competitions, newResult.competition)} players={players} teams={teams} />
                 <button onClick={() => { setNewResult(null); setOppLogo(null); setSelectedSquad([]); setGoalCounts({}); setMotmPlayerId(null); setOppMotmPlayerId(null); setForm({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: form.competition, motm: "", oppMotm: "", round: "", season_id: activeSeason?.id || null }); }}
                   style={{ marginTop: 16, width: "100%", padding: "14px", background: "#fff", color: "#1a1a2e", border: "2px solid #e8e8e8", borderRadius: 12, fontSize: 15, fontWeight: 800, letterSpacing: 2, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                   ← Add Another Result
