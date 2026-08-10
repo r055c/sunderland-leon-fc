@@ -95,6 +95,155 @@ function buildAwardBoard(results, field) {
   return Object.entries(t).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
 }
 
+// ── Player Profile ────────────────────────────────────────
+function PlayerProfileScreen({ name, players, appearances, results, seasons, ageGroup, onBack, onOpenPlayer }) {
+  const stats = getPlayerStats(name, { players, appearances, results, seasons });
+  const initials = name.slice(0, 2).toUpperCase();
+  const maxSeasonGoals = Math.max(1, ...stats.seasonBreakdown.map(sb => sb.goals));
+  const hasRecord = stats.apps > 0;
+
+  return (
+    <div style={{ maxWidth: 520, margin: "0 auto" }}>
+      <button onClick={onBack} style={{ background: "none", border: "none", color: THEME.ink60, fontFamily: THEME.mono, fontSize: 11, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", padding: "0 0 14px", display: "flex", alignItems: "center", gap: 4 }}>
+        ‹ Back
+      </button>
+
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 20 }}>
+        <div style={{ width: 76, height: 76, borderRadius: "50%", overflow: "hidden", background: THEME.navy, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10, border: `3px solid ${THEME.sky}` }}>
+          {stats.player?.photo
+            ? <img src={stats.player.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={name} />
+            : <span style={{ color: THEME.sky, fontFamily: THEME.display, fontWeight: 600, fontSize: 24 }}>{initials}</span>}
+        </div>
+        <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 20, color: THEME.navy }}>{name}</div>
+        <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: THEME.ink60, marginTop: 2 }}>
+          {ageGroup}{stats.player?.squad_number ? ` · Squad No. ${stats.player.squad_number}` : ""}
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+        {[
+          { l: "Apps", v: stats.apps, c: THEME.navy },
+          { l: "Goals", v: stats.goals, c: THEME.pitch },
+          { l: "MOTM", v: stats.motm, c: THEME.amber },
+          { l: "Clean Sheets", v: stats.cleanSheets, c: THEME.sky },
+        ].map(x => (
+          <div key={x.l} style={{ flex: 1, background: THEME.white, borderRadius: 12, padding: "10px 4px", textAlign: "center", boxShadow: "0 2px 8px rgba(18,23,46,0.06)" }}>
+            <div style={{ fontFamily: THEME.mono, fontSize: 19, fontWeight: 700, color: x.c }}>{x.v}</div>
+            <div style={{ fontSize: 9, color: THEME.ink60, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3 }}>{x.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {hasRecord && (
+        <>
+          <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, marginBottom: 10 }}>Record While Playing</div>
+          <div style={{ display: "flex", background: THEME.white, borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 8px rgba(18,23,46,0.06)", marginBottom: 20 }}>
+            {[
+              { l: "Won", v: stats.wins, c: THEME.pitch },
+              { l: "Drawn", v: stats.draws, c: THEME.amber },
+              { l: "Lost", v: stats.losses, c: THEME.loss },
+            ].map((x, i) => (
+              <div key={x.l} style={{ flex: 1, textAlign: "center", padding: "12px 4px", borderLeft: i > 0 ? "1px solid #f0f0f0" : "none" }}>
+                <div style={{ fontFamily: THEME.mono, fontSize: 18, fontWeight: 700, color: x.c }}>{x.v}</div>
+                <div style={{ fontSize: 9, color: THEME.ink60, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>{x.l}</div>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: 11, color: THEME.ink60, marginTop: -12, marginBottom: 20, lineHeight: 1.5 }}>
+            Clean sheets and record are based on matches {name} played in — grassroots squads rotate positions, so this reflects the whole team's result while they were on the pitch, not a fixed defensive role.
+          </p>
+        </>
+      )}
+
+      {stats.seasonBreakdown.length > 0 && (
+        <>
+          <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, marginBottom: 10 }}>Goals by Season</div>
+          {stats.seasonBreakdown.map(sb => (
+            <div key={sb.season.id} style={{ display: "flex", alignItems: "center", gap: 12, background: THEME.white, borderRadius: 12, padding: "10px 14px", marginBottom: 8, boxShadow: "0 2px 8px rgba(18,23,46,0.05)" }}>
+              <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 13, color: THEME.navy, width: 64, flexShrink: 0 }}>{sb.season.name}</div>
+              <div style={{ flex: 1, height: 6, background: "#eef0f4", borderRadius: 4, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${Math.round((sb.goals / maxSeasonGoals) * 100)}%`, background: THEME.pitch, borderRadius: 4 }} />
+              </div>
+              <div style={{ fontFamily: THEME.mono, fontSize: 12, fontWeight: 700, color: THEME.pitch, width: 24, textAlign: "right", flexShrink: 0 }}>{sb.goals}</div>
+            </div>
+          ))}
+        </>
+      )}
+
+      {stats.moments.length > 0 && (
+        <>
+          <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, margin: "20px 0 10px" }}>Recent Moments</div>
+          {stats.moments.slice(0, 8).map((m, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, background: THEME.white, borderRadius: 12, padding: "10px 14px", marginBottom: 8, boxShadow: "0 2px 8px rgba(18,23,46,0.05)" }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>{m.type === "motm" ? "⭐" : "⚽"}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: THEME.navy, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {m.type === "motm" ? "Man of the Match" : m.goals > 1 ? `${m.goals} goals` : "Goal"} vs {m.result.opposition}
+                </div>
+                <div style={{ fontFamily: THEME.mono, fontSize: 9, color: THEME.ink60, marginTop: 1 }}>{m.result.date}</div>
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+
+      {stats.apps === 0 && stats.goals === 0 && stats.motm === 0 && (
+        <div style={{ textAlign: "center", padding: "30px 20px", color: THEME.ink30 }}>
+          <div style={{ fontSize: 28, marginBottom: 6 }}>⚽</div>
+          <div style={{ fontSize: 13, color: THEME.ink60 }}>No stats logged for {name} yet.</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// Clean sheets and W/D/L are derived from appearances (who was on the pitch)
+// joined against results — no extra data entry required.
+function getPlayerStats(name, { players, appearances, results, seasons }) {
+  const player = players.find(p => p.name === name) || null;
+  const appResults = player
+    ? appearances.filter(a => a.player_id === player.id).map(a => results.find(r => r.id === a.result_id)).filter(Boolean)
+    : [];
+
+  const wins = appResults.filter(r => r.result === "W").length;
+  const draws = appResults.filter(r => r.result === "D").length;
+  const losses = appResults.filter(r => r.result === "L").length;
+  const cleanSheets = appResults.filter(r => Number(r.awayScore) === 0).length;
+
+  let totalGoals = 0;
+  const moments = [];
+  results.forEach(r => {
+    (r.scorers || []).forEach(s => {
+      const { name: sName, goals } = parseScorer(s);
+      if (sName === name) { totalGoals += goals; moments.push({ result: r, type: "goal", goals }); }
+    });
+    if ((r.motm || "").trim() === name) moments.push({ result: r, type: "motm" });
+  });
+  moments.sort((a, b) => new Date(b.result.date) - new Date(a.result.date));
+
+  const seasonBreakdown = seasons.map(s => {
+    let goals = 0;
+    results.filter(r => r.season_id === s.id).forEach(r => (r.scorers || []).forEach(sc => {
+      const { name: n, goals: g } = parseScorer(sc);
+      if (n === name) goals += g;
+    }));
+    return { season: s, goals };
+  }).filter(sb => sb.goals > 0);
+
+  return {
+    player,
+    apps: appResults.length,
+    goals: totalGoals,
+    motm: results.filter(r => (r.motm || "").trim() === name).length,
+    cleanSheets,
+    wins, draws, losses,
+    moments,
+    seasonBreakdown,
+  };
+}
+
+
 // ── Save card as image ────────────────────────────────────
 function loadHtml2Canvas() {
   return new Promise((resolve, reject) => {
@@ -133,7 +282,7 @@ function SaveCardButton({ cardRef, filename = "leon-result.png", onSaved }) {
 }
 
 // ── Leaderboard ───────────────────────────────────────────
-function Leaderboard({ data, label, emptyMsg, filterLabel, accentColor = "#87ceeb" }) {
+function Leaderboard({ data, label, emptyMsg, filterLabel, accentColor = "#87ceeb", onRowClick }) {
   const max = data[0]?.count || 1;
   return (
     <div>
@@ -148,7 +297,7 @@ function Leaderboard({ data, label, emptyMsg, filterLabel, accentColor = "#87cee
               {["#","NAME","",""].map((h,i) => <span key={i} style={{ fontSize: 10, fontWeight: 800, color: "#aaa", letterSpacing: 2 }}>{h}</span>)}
             </div>
             {data.map((p, i) => (
-              <div key={p.name} style={{ display: "grid", gridTemplateColumns: "36px 1fr 100px 48px", alignItems: "center", padding: "13px 18px", borderBottom: i < data.length - 1 ? "1px solid #f0f0f0" : "none", background: i === 0 ? "#fffbea" : "#fff" }}>
+              <div key={p.name} onClick={() => onRowClick && onRowClick(p.name)} style={{ display: "grid", gridTemplateColumns: "36px 1fr 100px 48px", alignItems: "center", padding: "13px 18px", borderBottom: i < data.length - 1 ? "1px solid #f0f0f0" : "none", background: i === 0 ? "#fffbea" : "#fff", cursor: onRowClick ? "pointer" : "default" }}>
                 <span style={{ fontSize: i < 3 ? 20 : 13, fontWeight: 800, color: i >= 3 ? "#bbb" : undefined }}>{i < 3 ? MEDAL[i] : i + 1}</span>
                 <span style={{ fontSize: 17, fontWeight: 800, color: "#1a1a2e" }}>{p.name}</span>
                 <div style={{ paddingRight: 10 }}>
@@ -201,7 +350,7 @@ function ScoreCard({ match, compColor = "#5fb2d9", onClick, showMeta = true }) {
   );
 }
 
-function ResultCard({ match, teamName = "Team", compColor = "#87ceeb", players = [], teams = [] }) {
+function ResultCard({ match, teamName = "Team", compColor = "#87ceeb", players = [], teams = [], onOpenPlayer }) {
   const isWin = match.result === "W", isLoss = match.result === "L";
   const resultColor = isWin ? "#00c853" : isLoss ? "#d50000" : "#ffab00";
   const resultLabel = isWin ? "WIN" : isLoss ? "LOSS" : "DRAW";
@@ -221,28 +370,28 @@ function ResultCard({ match, teamName = "Team", compColor = "#87ceeb", players =
           <span style={{ color: "#fff", fontSize: 13, fontWeight: 600, flexShrink: 0 }}>{match.date}</span>
           <span style={{ background: resultColor, color: "#fff", fontWeight: 800, fontSize: 12, letterSpacing: 2, padding: "3px 10px", borderRadius: 20, flexShrink: 0 }}>{resultLabel}</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 20px 16px", gap: 12 }}>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1.2, gap: 8 }}>
-            <div style={{ background: "#f0f4ff", borderRadius: 14, padding: 10, display: "flex", alignItems: "center", justifyContent: "center", width: 80, height: 80 }}>
-              <LeonLogo size={68} />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 12px 16px", gap: 6 }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "1 1 0", minWidth: 0, gap: 8 }}>
+            <div style={{ background: "#f0f4ff", borderRadius: 14, padding: "clamp(4px,2vw,10px)", display: "flex", alignItems: "center", justifyContent: "center", width: "clamp(48px,18vw,80px)", height: "clamp(48px,18vw,80px)", flexShrink: 0 }}>
+              <LeonLogo size={44} />
             </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a2e", textAlign: "center", lineHeight: 1.2 }}>
-              SUNDERLAND LEON<br /><span style={{ color: compColor, fontSize: 11 }}>{teamName.toUpperCase()}</span>
+            <span style={{ fontSize: "clamp(10px,3vw,13px)", fontWeight: 700, color: "#1a1a2e", textAlign: "center", lineHeight: 1.2 }}>
+              SUNDERLAND LEON<br /><span style={{ color: compColor, fontSize: "clamp(9px,2.5vw,11px)" }}>{teamName.toUpperCase()}</span>
             </span>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, gap: 4 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 56, fontWeight: 900, color: "#1a1a2e", lineHeight: 1 }}>{match.homeScore}</span>
-              <span style={{ fontSize: 28, fontWeight: 300, color: "#aaa" }}>–</span>
-              <span style={{ fontSize: 56, fontWeight: 900, color: "#1a1a2e", lineHeight: 1 }}>{match.awayScore}</span>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "0 0 auto", gap: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "clamp(4px,1.5vw,8px)" }}>
+              <span style={{ fontSize: "clamp(28px,9vw,56px)", fontWeight: 900, color: "#1a1a2e", lineHeight: 1 }}>{match.homeScore}</span>
+              <span style={{ fontSize: "clamp(16px,5vw,28px)", fontWeight: 300, color: "#aaa" }}>–</span>
+              <span style={{ fontSize: "clamp(28px,9vw,56px)", fontWeight: 900, color: "#1a1a2e", lineHeight: 1 }}>{match.awayScore}</span>
             </div>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: "#999", textTransform: "uppercase" }}>Full Time</span>
+            <span style={{ fontSize: "clamp(8px,2.2vw,11px)", fontWeight: 700, letterSpacing: 2, color: "#999", textTransform: "uppercase", whiteSpace: "nowrap" }}>Full Time</span>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1.2, gap: 8 }}>
-            <div style={{ background: "#f0f4ff", borderRadius: 14, padding: 10, display: "flex", alignItems: "center", justifyContent: "center", width: 80, height: 80 }}>
-              {displayLogo ? <img src={displayLogo} alt={match.opposition} style={{ width: 68, height: 68, objectFit: "contain" }} /> : <span style={{ fontSize: 30 }}>⚽</span>}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "1 1 0", minWidth: 0, gap: 8 }}>
+            <div style={{ background: "#f0f4ff", borderRadius: 14, padding: "clamp(4px,2vw,10px)", display: "flex", alignItems: "center", justifyContent: "center", width: "clamp(48px,18vw,80px)", height: "clamp(48px,18vw,80px)", flexShrink: 0 }}>
+              {displayLogo ? <img src={displayLogo} alt={match.opposition} style={{ width: "clamp(32px,14vw,68px)", height: "clamp(32px,14vw,68px)", objectFit: "contain" }} /> : <span style={{ fontSize: "clamp(18px,7vw,30px)" }}>⚽</span>}
             </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a2e", textAlign: "center", lineHeight: 1.2 }}>{(match.opposition || "").toUpperCase()}</span>
+            <span style={{ fontSize: "clamp(10px,3vw,13px)", fontWeight: 700, color: "#1a1a2e", textAlign: "center", lineHeight: 1.2, wordBreak: "break-word" }}>{(match.opposition || "").toUpperCase()}</span>
           </div>
         </div>
         {(match.scorers || []).length > 0 && (
@@ -255,7 +404,7 @@ function ResultCard({ match, teamName = "Team", compColor = "#87ceeb", players =
                   const name = scorer.replace(/\s*[×x]\d+$/, "").trim();
                   const player = players.find(p => p.name === name);
                   return (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div key={i} onClick={() => onOpenPlayer && onOpenPlayer(name)} style={{ display: "flex", alignItems: "center", gap: 8, cursor: onOpenPlayer ? "pointer" : "default" }}>
                       {player?.photo ? (
                         <div style={{ width: 44, height: 44, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid #87ceeb" }}>
                           <img src={player.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={name} />
@@ -278,7 +427,7 @@ function ResultCard({ match, teamName = "Team", compColor = "#87ceeb", players =
               {match.motm && (() => {
                 const player = players.find(p => p.name === match.motm);
                 return (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div onClick={() => onOpenPlayer && onOpenPlayer(match.motm)} style={{ display: "flex", alignItems: "center", gap: 10, cursor: onOpenPlayer ? "pointer" : "default" }}>
                     {player?.photo ? (
                       <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid #ffd700" }}>
                         <img src={player.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={match.motm} />
@@ -376,6 +525,8 @@ function TeamPicker({ teams, value, onChange, onAddNew }) {
 export default function App() {
   const [mode, setMode] = useState("home");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [viewingPlayerName, setViewingPlayerName] = useState(null);
+  const [playerProfileFrom, setPlayerProfileFrom] = useState("scorers");
   const [showPinGate, setShowPinGate] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
@@ -645,6 +796,13 @@ export default function App() {
     }
   };
 
+  const openPlayerProfile = (name) => {
+    if (!name) return;
+    setPlayerProfileFrom(mode);
+    setViewingPlayerName(name);
+    setMode("player");
+  };
+
   const handleLockAdmin = () => {
     setIsAdmin(false);
     setMode("home");
@@ -854,7 +1012,7 @@ export default function App() {
             {homeTopScorer && (
               <>
                 <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, margin: "24px 0 10px" }}>Top Scorer</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, background: THEME.white, borderRadius: 14, padding: "12px 16px", boxShadow: "0 2px 8px rgba(18,23,46,0.06)" }}>
+                <div onClick={() => openPlayerProfile(homeTopScorer.name)} style={{ display: "flex", alignItems: "center", gap: 12, background: THEME.white, borderRadius: 14, padding: "12px 16px", boxShadow: "0 2px 8px rgba(18,23,46,0.06)", cursor: "pointer" }}>
                   <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 20, color: THEME.amber, width: 22 }}>1</div>
                   <div style={{ width: 36, height: 36, borderRadius: "50%", background: THEME.navy, color: THEME.sky, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: THEME.display, fontWeight: 600, fontSize: 13 }}>{homeTopScorer.name.slice(0,2).toUpperCase()}</div>
                   <div style={{ flex: 1, fontWeight: 600, fontSize: 14, color: THEME.navy }}>{homeTopScorer.name}</div>
@@ -863,6 +1021,19 @@ export default function App() {
               </>
             )}
           </div>
+        )}
+
+        {/* ── PLAYER PROFILE ── */}
+        {mode === "player" && viewingPlayerName && (
+          <PlayerProfileScreen
+            name={viewingPlayerName}
+            players={players}
+            appearances={appearances}
+            results={results}
+            seasons={seasons}
+            ageGroup={viewingSeason?.age_group}
+            onBack={() => { setMode(playerProfileFrom); setViewingPlayerName(null); }}
+          />
         )}
 
         {/* ── STAFF ROOM (admin hub) ── */}
@@ -962,7 +1133,7 @@ export default function App() {
                           </div>
                         )}
                         <div style={{ padding: 16 }}>
-                          <ResultCard match={m} teamName={viewingSeason?.age_group} compColor={getCompColor(competitions, m.competition)} players={players} teams={teams} />
+                          <ResultCard match={m} teamName={viewingSeason?.age_group} compColor={getCompColor(competitions, m.competition)} players={players} teams={teams} onOpenPlayer={openPlayerProfile} />
                         </div>
                       </div>
                     )}
@@ -1103,8 +1274,8 @@ export default function App() {
                 </div>
               ))}
             </div>
-            {scorersTab === "goals" && <Leaderboard data={buildGoalBoard(filteredResults)} label="Top Goal Scorers" emptyMsg="No goals recorded yet." filterLabel={filterComp === "All" ? "All Competitions" : filterComp} accentColor="#87ceeb" />}
-            {scorersTab === "motm" && <Leaderboard data={buildAwardBoard(filteredResults, "motm")} label="Man of the Match" emptyMsg="No MOTM awards yet." filterLabel={filterComp === "All" ? "All Competitions" : filterComp} accentColor="#ffd700" />}
+            {scorersTab === "goals" && <Leaderboard data={buildGoalBoard(filteredResults)} label="Top Goal Scorers" emptyMsg="No goals recorded yet." filterLabel={filterComp === "All" ? "All Competitions" : filterComp} accentColor="#87ceeb" onRowClick={openPlayerProfile} />}
+            {scorersTab === "motm" && <Leaderboard data={buildAwardBoard(filteredResults, "motm")} label="Man of the Match" emptyMsg="No MOTM awards yet." filterLabel={filterComp === "All" ? "All Competitions" : filterComp} accentColor="#ffd700" onRowClick={openPlayerProfile} />}
             {scorersTab === "oppmotm" && <Leaderboard data={buildAwardBoard(filteredResults, "oppMotm")} label="Opposition MOTM" emptyMsg="No Opp. MOTM awards yet." filterLabel={filterComp === "All" ? "All Competitions" : filterComp} accentColor="#ff7eb3" />}
             <p style={{ textAlign: "center", color: "#bbb", fontSize: 12, marginTop: 14, letterSpacing: 1 }}>SUNDERLAND LEON {(viewingSeason?.age_group || "").toUpperCase()}</p>
           </div>
