@@ -109,6 +109,40 @@ export async function deleteTeam(id) {
   if (!res.ok) throw new Error("Failed to delete team");
 }
 
+// ── Fixtures ──────────────────────────────────────────────
+export async function fetchFixtures() {
+  const res = await fetch(`${base()}/fixtures?order=date.asc`, { headers });
+  if (!res.ok) throw new Error("Failed to fetch fixtures");
+  return res.json();
+}
+
+export async function insertFixture(fixture) {
+  const { id, ...data } = fixture;
+  const res = await fetch(`${base()}/fixtures`, {
+    method: "POST", headers, body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to insert fixture");
+  const rows = await res.json();
+  return rows[0];
+}
+
+export async function updateFixture(fixture) {
+  const { id, ...data } = fixture;
+  const res = await fetch(`${base()}/fixtures?id=eq.${id}`, {
+    method: "PATCH", headers, body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to update fixture");
+  const rows = await res.json();
+  return rows[0];
+}
+
+export async function deleteFixture(id) {
+  const res = await fetch(`${base()}/fixtures?id=eq.${id}`, {
+    method: "DELETE", headers,
+  });
+  if (!res.ok) throw new Error("Failed to delete fixture");
+}
+
 // ── Settings ──────────────────────────────────────────────
 export async function fetchSettings() {
   const res = await fetch(`${base()}/settings?id=eq.1`, { headers });
