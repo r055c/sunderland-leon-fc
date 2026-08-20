@@ -1034,7 +1034,7 @@ export default function App() {
 
 
       {/* Competition / Round filters — dropdowns, no horizontal swipe needed */}
-      {(mode === "history" || mode === "scorers") && (
+      {(mode === "history" || (mode === "scorers" && scorersTab !== "squad")) && (
         <div style={{ background: "#fff", borderBottom: "1px solid #f0f0f0", padding: "10px 16px", display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ flex: "1 1 140px", display: "flex", alignItems: "center", gap: 6 }}>
             <select value={filterComp} onChange={e => { setFilterComp(e.target.value); setSelectedMatch(null); setFilterRound("All"); }}
@@ -1585,32 +1585,66 @@ export default function App() {
           </div>
         )}
 
-        {/* ── AWARDS TAB ── */}
+        {/* ── PLAYERS TAB ── */}
         {mode === "scorers" && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
             <div style={{ display: "flex", background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.07)", marginBottom: 20 }}>
-              {[{ key: "goals", label: "⚽ Goals" }, { key: "motm", label: "⭐ MOTM" }, { key: "oppmotm", label: "🏅 Opp MOTM" }].map(st => (
+              {[{ key: "goals", label: "⚽ Goals" }, { key: "motm", label: "⭐ MOTM" }, { key: "oppmotm", label: "🏅 Opp MOTM" }, { key: "squad", label: "🏃 Squad" }].map(st => (
                 <button key={st.key} onClick={() => setScorersTab(st.key)}
-                  style={{ flex: 1, padding: "12px 6px", border: "none", background: scorersTab === st.key ? "#1a1a2e" : "none", color: scorersTab === st.key ? "#87ceeb" : "#999", fontWeight: 800, fontSize: 12, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
+                  style={{ flex: 1, padding: "12px 4px", border: "none", background: scorersTab === st.key ? "#1a1a2e" : "none", color: scorersTab === st.key ? "#87ceeb" : "#999", fontWeight: 800, fontSize: 11, letterSpacing: 0.5, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                   {st.label}
                 </button>
               ))}
             </div>
-            <div style={{ background: "#1a1a2e", borderRadius: 14, padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}>
-              {[
-                { label: "Total Goals", val: filteredResults.reduce((a, r) => a + (r.homeScore || 0), 0) },
-                { label: "Scorers", val: buildGoalBoard(filteredResults).length },
-                { label: "Win Rate", val: `${filteredResults.filter(r => r.result === "W").length}/${filteredResults.length}` },
-              ].map(s => (
-                <div key={s.label} style={{ textAlign: "center" }}>
-                  <div style={{ color: "#87ceeb", fontSize: 28, fontWeight: 900 }}>{s.val}</div>
-                  <div style={{ color: "#aaa", fontSize: 10, fontWeight: 700, letterSpacing: 2 }}>{s.label.toUpperCase()}</div>
+
+            {scorersTab === "squad" ? (
+              (() => {
+                const activePlayers = players.filter(p => p.is_active !== false);
+                const appCounts = appearanceCountBySeason(viewingSeason?.id);
+                const goalBoard = buildGoalBoard(seasonResults);
+                return activePlayers.length === 0 ? (
+                  <p style={{ textAlign: "center", color: "#bbb", fontSize: 14, marginTop: 40 }}>No active players yet.</p>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    {activePlayers.map(p => {
+                      const apps = appCounts[p.id] || 0;
+                      const goals = goalBoard.find(g => g.name === p.name)?.count || 0;
+                      return (
+                        <button key={p.id} onClick={() => openPlayerProfile(p.name)}
+                          style={{ background: "#fff", border: "none", borderRadius: 14, padding: "14px 10px", textAlign: "center", boxShadow: "0 2px 8px rgba(18,23,46,0.06)", cursor: "pointer", fontFamily: "inherit" }}>
+                          <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px", position: "relative", overflow: "hidden" }}>
+                            {p.photo
+                              ? <img src={p.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={p.name} />
+                              : <span style={{ color: "#87ceeb", fontFamily: "'Oswald',sans-serif", fontWeight: 600, fontSize: 16 }}>{p.name.slice(0,2).toUpperCase()}</span>}
+                            <span style={{ position: "absolute", bottom: -3, right: -3, background: "#ffd700", color: "#3a2a05", fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, fontWeight: 700, width: 18, height: 18, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #fff" }}>{p.squad_number || "?"}</span>
+                          </div>
+                          <div style={{ fontFamily: "'Oswald',sans-serif", fontWeight: 600, fontSize: 13, color: "#1a1a2e" }}>{p.name}</div>
+                          <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: "#888", marginTop: 2 }}>{apps} apps{goals > 0 ? ` · ${goals} goals` : ""}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()
+            ) : (
+              <>
+                <div style={{ background: "#1a1a2e", borderRadius: 14, padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}>
+                  {[
+                    { label: "Total Goals", val: filteredResults.reduce((a, r) => a + (r.homeScore || 0), 0) },
+                    { label: "Scorers", val: buildGoalBoard(filteredResults).length },
+                    { label: "Win Rate", val: `${filteredResults.filter(r => r.result === "W").length}/${filteredResults.length}` },
+                  ].map(s => (
+                    <div key={s.label} style={{ textAlign: "center" }}>
+                      <div style={{ color: "#87ceeb", fontSize: 28, fontWeight: 900 }}>{s.val}</div>
+                      <div style={{ color: "#aaa", fontSize: 10, fontWeight: 700, letterSpacing: 2 }}>{s.label.toUpperCase()}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            {scorersTab === "goals" && <Leaderboard data={buildGoalBoard(filteredResults)} label="Top Goal Scorers" emptyMsg="No goals recorded yet." filterLabel={filterComp === "All" ? "All Competitions" : filterComp} accentColor="#87ceeb" onRowClick={openPlayerProfile} />}
-            {scorersTab === "motm" && <Leaderboard data={buildAwardBoard(filteredResults, "motm")} label="Man of the Match" emptyMsg="No MOTM awards yet." filterLabel={filterComp === "All" ? "All Competitions" : filterComp} accentColor="#ffd700" onRowClick={openPlayerProfile} />}
-            {scorersTab === "oppmotm" && <Leaderboard data={buildAwardBoard(filteredResults, "oppMotm")} label="Opposition MOTM" emptyMsg="No Opp. MOTM awards yet." filterLabel={filterComp === "All" ? "All Competitions" : filterComp} accentColor="#ff7eb3" />}
+                {scorersTab === "goals" && <Leaderboard data={buildGoalBoard(filteredResults)} label="Top Goal Scorers" emptyMsg="No goals recorded yet." filterLabel={filterComp === "All" ? "All Competitions" : filterComp} accentColor="#87ceeb" onRowClick={openPlayerProfile} />}
+                {scorersTab === "motm" && <Leaderboard data={buildAwardBoard(filteredResults, "motm")} label="Man of the Match" emptyMsg="No MOTM awards yet." filterLabel={filterComp === "All" ? "All Competitions" : filterComp} accentColor="#ffd700" onRowClick={openPlayerProfile} />}
+                {scorersTab === "oppmotm" && <Leaderboard data={buildAwardBoard(filteredResults, "oppMotm")} label="Opposition MOTM" emptyMsg="No Opp. MOTM awards yet." filterLabel={filterComp === "All" ? "All Competitions" : filterComp} accentColor="#ff7eb3" />}
+              </>
+            )}
             <p style={{ textAlign: "center", color: "#bbb", fontSize: 12, marginTop: 14, letterSpacing: 1 }}>SUNDERLAND LEON {(viewingSeason?.age_group || "").toUpperCase()}</p>
           </div>
         )}
@@ -2298,7 +2332,7 @@ export default function App() {
         {[
           { key: "home", label: "Home", icon: "🏠" },
           { key: "history", label: "Results", icon: "📋" },
-          { key: "scorers", label: "Awards", icon: "⭐" },
+          { key: "scorers", label: "Players", icon: "⭐" },
         ].map(tab => (
           <button key={tab.key} onClick={() => { setMode(tab.key); setNewResult(null); setOppLogo(null); setH2hTeam(null); }}
             style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: 9, letterSpacing: 0.5, textTransform: "uppercase", color: mode === tab.key ? THEME.navy : THEME.ink60, fontWeight: mode === tab.key ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
