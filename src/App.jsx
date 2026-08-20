@@ -766,20 +766,27 @@ export default function App() {
   };
 
   const handleSavePlayer = async () => {
-    const data = { name: playerForm.name.trim(), squad_number: parseInt(playerForm.squad_number) || null, photo: playerForm.photo || null, is_active: true };
+    const data = { name: playerForm.name.trim(), squad_number: parseInt(playerForm.squad_number) || null, photo: playerForm.photo || null };
     if (!data.name) return;
     if (editingPlayer) {
       const updated = { ...editingPlayer, ...data };
       try { await updatePlayer(updated); } catch(e) {}
       setPlayers(prev => prev.map(p => p.id === updated.id ? updated : p));
     } else {
-      try { const saved = await insertPlayer(data); setPlayers(prev => [...prev, saved || { ...data, id: Date.now() }].sort((a,b) => (a.squad_number||99)-(b.squad_number||99))); }
-      catch(e) { setPlayers(prev => [...prev, { ...data, id: Date.now() }]); }
+      const newData = { ...data, is_active: true };
+      try { const saved = await insertPlayer(newData); setPlayers(prev => [...prev, saved || { ...newData, id: Date.now() }].sort((a,b) => (a.squad_number||99)-(b.squad_number||99))); }
+      catch(e) { setPlayers(prev => [...prev, { ...newData, id: Date.now() }]); }
     }
     setShowPlayerModal(false);
     setEditingPlayer(null);
     setPlayerForm({ name: "", squad_number: "", photo: null });
     showToast("✅ Player saved!");
+  };
+
+  const handleTogglePlayerActive = async (player) => {
+    const updated = { ...player, is_active: player.is_active === false ? true : false };
+    setPlayers(prev => prev.map(p => p.id === updated.id ? updated : p));
+    try { await updatePlayer(updated); } catch(e) {}
   };
 
   const handleDeletePlayer = async (id) => {
@@ -1845,7 +1852,7 @@ export default function App() {
                     <div style={{ marginBottom: 16 }}>
                       <label style={labelStyle}>Who Played Today?</label>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                        {players.map(p => {
+                        {players.filter(p => p.is_active !== false).map(p => {
                           const selected = selectedSquad.includes(p.id);
                           return (
                             <button key={p.id} onClick={() => {
@@ -1974,58 +1981,75 @@ export default function App() {
         {/* ── SQUAD TAB ── */}
         {mode === "squad" && isAdmin && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#888", letterSpacing: 2, textTransform: "uppercase" }}>
-                Squad — {viewingSeason?.age_group}
-              </span>
-              <button onClick={() => { setShowPlayerModal(true); setEditingPlayer(null); setPlayerForm({ name: "", squad_number: "", photo: null }); }}
-                style={{ background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 10, padding: "8px 16px", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
-                + Add Player
-              </button>
-            </div>
-
-            {players.length === 0 && <p style={{ textAlign: "center", color: "#bbb", fontSize: 14, marginTop: 40 }}>No players added yet. Tap + Add Player to get started.</p>}
-
             {(() => {
+              const activePlayers = players.filter(p => p.is_active !== false);
+              const inactivePlayers = players.filter(p => p.is_active === false);
               const appCounts = appearanceCountBySeason(viewingSeason?.id);
               const goalBoard = buildGoalBoard(seasonResults);
               const motmBoard = buildAwardBoard(seasonResults, "motm");
-              return (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {players.map(p => {
-                    const apps = appCounts[p.id] || 0;
-                    const goals = goalBoard.find(g => g.name === p.name)?.count || 0;
-                    const motms = motmBoard.find(m => m.name === p.name)?.count || 0;
-                    return (
-                      <div key={p.id} style={{ background: "#fff", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-                        {/* Photo or initials */}
-                        <div style={{ width: 44, height: 44, borderRadius: "50%", background: p.photo ? "transparent" : "#1a1a2e", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                          {p.photo
-                            ? <img src={p.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={p.name} />
-                            : <span style={{ color: "#87ceeb", fontSize: 14, fontWeight: 900 }}>{p.name.slice(0,2).toUpperCase()}</span>
-                          }
-                        </div>
-                        {/* Squad number */}
-                        <div style={{ width: 28, height: 28, borderRadius: 6, background: "#f0f4ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                          <span style={{ fontSize: 12, fontWeight: 900, color: "#1a1a2e" }}>{p.squad_number || "—"}</span>
-                        </div>
-                        {/* Name */}
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 15, fontWeight: 800, color: "#1a1a2e" }}>{p.name}</div>
-                          <div style={{ display: "flex", gap: 10, marginTop: 3 }}>
-                            <span style={{ fontSize: 11, color: "#888" }}>📅 {apps} apps</span>
-                            {goals > 0 && <span style={{ fontSize: 11, color: "#87ceeb" }}>⚽ {goals} goals</span>}
-                            {motms > 0 && <span style={{ fontSize: 11, color: "#ffd700" }}>⭐ {motms} MOTM</span>}
-                          </div>
-                        </div>
-                        <button onClick={() => { setEditingPlayer(p); setPlayerForm({ name: p.name, squad_number: p.squad_number || "", photo: p.photo || null }); setShowPlayerModal(true); }}
-                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#aaa" }}>✏️</button>
-                        <button onClick={() => { if (window.confirm(`Remove ${p.name} from squad?`)) handleDeletePlayer(p.id); }}
-                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#ddd" }}>🗑️</button>
+              const renderRow = (p, inactive) => {
+                const apps = appCounts[p.id] || 0;
+                const goals = goalBoard.find(g => g.name === p.name)?.count || 0;
+                const motms = motmBoard.find(m => m.name === p.name)?.count || 0;
+                return (
+                  <div key={p.id} style={{ background: "#fff", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.06)", opacity: inactive ? 0.55 : 1 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: "50%", background: p.photo ? "transparent" : "#1a1a2e", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                      {p.photo
+                        ? <img src={p.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={p.name} />
+                        : <span style={{ color: "#87ceeb", fontSize: 14, fontWeight: 900 }}>{p.name.slice(0,2).toUpperCase()}</span>
+                      }
+                    </div>
+                    <div style={{ width: 28, height: 28, borderRadius: 6, background: "#f0f4ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <span style={{ fontSize: 12, fontWeight: 900, color: "#1a1a2e" }}>{p.squad_number || "—"}</span>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: "#1a1a2e" }}>{p.name}</div>
+                      <div style={{ display: "flex", gap: 10, marginTop: 3, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 11, color: "#888" }}>📅 {apps} apps</span>
+                        {goals > 0 && <span style={{ fontSize: 11, color: "#87ceeb" }}>⚽ {goals} goals</span>}
+                        {motms > 0 && <span style={{ fontSize: 11, color: "#ffd700" }}>⭐ {motms} MOTM</span>}
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                    <button onClick={() => handleTogglePlayerActive(p)}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontFamily: THEME.mono, fontSize: 9, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: inactive ? THEME.ink60 : THEME.pitch, flexShrink: 0, whiteSpace: "nowrap" }}>
+                      {inactive ? "Restore" : "Active"}
+                    </button>
+                    <button onClick={() => { setEditingPlayer(p); setPlayerForm({ name: p.name, squad_number: p.squad_number || "", photo: p.photo || null }); setShowPlayerModal(true); }}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#aaa", flexShrink: 0 }}>✏️</button>
+                    <button onClick={() => { if (window.confirm(`Permanently remove ${p.name} from squad?`)) handleDeletePlayer(p.id); }}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#ddd", flexShrink: 0 }}>🗑️</button>
+                  </div>
+                );
+              };
+              return (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#888", letterSpacing: 2, textTransform: "uppercase" }}>
+                      {activePlayers.length} Active — {viewingSeason?.age_group}
+                    </span>
+                    <button onClick={() => { setShowPlayerModal(true); setEditingPlayer(null); setPlayerForm({ name: "", squad_number: "", photo: null }); }}
+                      style={{ background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 10, padding: "8px 16px", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                      + Add Player
+                    </button>
+                  </div>
+
+                  {players.length === 0 && <p style={{ textAlign: "center", color: "#bbb", fontSize: 14, marginTop: 40 }}>No players added yet. Tap + Add Player to get started.</p>}
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {activePlayers.map(p => renderRow(p, false))}
+                  </div>
+
+                  {inactivePlayers.length > 0 && (
+                    <>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#aaa", letterSpacing: 2, textTransform: "uppercase", margin: "20px 0 10px" }}>
+                        Inactive — {inactivePlayers.length}
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {inactivePlayers.map(p => renderRow(p, true))}
+                      </div>
+                    </>
+                  )}
+                </>
               );
             })()}
 
