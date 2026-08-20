@@ -653,7 +653,6 @@ export default function App() {
   // ── Home dashboard derived data ─────────────────────────
   const seasonResultsSorted = seasonResults.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
   const latestResult = seasonResultsSorted[0] || null;
-  const homeTopScorer = buildGoalBoard(seasonResults)[0] || null;
   const homeSeasonRecord = {
     played: seasonResults.length,
     won: seasonResults.filter(r => r.result === "W").length,
@@ -669,7 +668,6 @@ export default function App() {
     .flatMap(s => Object.entries(s.placements || {}).map(([competition, placement]) => ({ season: s, competition, placement })));
   const trophyWon = trophyList.filter(t => t.placement === "Winners").length;
   const trophyRunnerUp = trophyList.filter(t => t.placement === "Runners-up").length;
-  const featuredTrophy = trophyList[0] || null;
 
   // ── Fixtures derived data ────────────────────────────────
   const today = new Date();
@@ -1074,6 +1072,21 @@ export default function App() {
         {/* ── HOME TAB ── */}
         {mode === "home" && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
+            <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, marginBottom: 10 }}>Season Record</div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+              {[
+                { l: "Played", v: homeSeasonRecord.played, c: THEME.navy },
+                { l: "Won", v: homeSeasonRecord.won, c: THEME.pitch },
+                { l: "Drawn", v: homeSeasonRecord.drawn, c: THEME.amber },
+                { l: "Lost", v: homeSeasonRecord.lost, c: THEME.loss },
+              ].map(x => (
+                <div key={x.l} style={{ flex: 1, background: THEME.white, borderRadius: 12, padding: "10px 6px", textAlign: "center", boxShadow: "0 2px 8px rgba(18,23,46,0.06)" }}>
+                  <div style={{ fontFamily: THEME.mono, fontSize: 20, fontWeight: 700, color: x.c }}>{x.v}</div>
+                  <div style={{ fontSize: 10, color: THEME.ink60, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>{x.l}</div>
+                </div>
+              ))}
+            </div>
+
             {nextFixture && (
               <>
                 <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1137,114 +1150,46 @@ export default function App() {
               </>
             )}
 
-            {featuredTrophy && (
-              <>
-                <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  Trophy Cabinet
-                  {trophyList.length > 1 && <span onClick={() => setMode("trophies")} style={{ color: THEME.sky, fontWeight: 700, cursor: "pointer" }}>See all ›</span>}
-                </div>
-                <button onClick={() => setMode("trophies")} style={{ width: "100%", textAlign: "left", background: `linear-gradient(135deg, ${THEME.navy}, ${THEME.navySoft})`, border: "none", borderRadius: 16, padding: 16, marginBottom: 24, position: "relative", overflow: "hidden", cursor: "pointer", fontFamily: THEME.body }}>
-                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${THEME.amber}, transparent)` }} />
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 26, flexShrink: 0 }}>{PLACEMENT_META[featuredTrophy.placement]?.icon || "🏅"}</span>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 13, color: "#fff", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{featuredTrophy.competition}</div>
-                      <div style={{ fontFamily: THEME.mono, fontSize: 9, color: THEME.amber, letterSpacing: 1, textTransform: "uppercase", marginTop: 2 }}>{featuredTrophy.placement}</div>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 10, marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-                    <div style={{ textAlign: "center", flex: 1 }}>
-                      <div style={{ fontFamily: THEME.mono, fontWeight: 700, fontSize: 16, color: "#fff" }}>{trophyWon}</div>
-                      <div style={{ fontSize: 8, color: "#9aa0bd", textTransform: "uppercase", letterSpacing: 0.5 }}>Won</div>
-                    </div>
-                    <div style={{ textAlign: "center", flex: 1 }}>
-                      <div style={{ fontFamily: THEME.mono, fontWeight: 700, fontSize: 16, color: "#fff" }}>{trophyRunnerUp}</div>
-                      <div style={{ fontSize: 8, color: "#9aa0bd", textTransform: "uppercase", letterSpacing: 0.5 }}>Runner-up</div>
-                    </div>
-                    <div style={{ textAlign: "center", flex: 1 }}>
-                      <div style={{ fontFamily: THEME.mono, fontWeight: 700, fontSize: 16, color: "#fff" }}>{trophyList.length}</div>
-                      <div style={{ fontSize: 8, color: "#9aa0bd", textTransform: "uppercase", letterSpacing: 0.5 }}>Entered</div>
-                    </div>
-                  </div>
-                </button>
-              </>
-            )}
-
-            <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, marginBottom: 10 }}>Season Record</div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-              {[
-                { l: "Played", v: homeSeasonRecord.played, c: THEME.navy },
-                { l: "Won", v: homeSeasonRecord.won, c: THEME.pitch },
-                { l: "Drawn", v: homeSeasonRecord.drawn, c: THEME.amber },
-                { l: "Lost", v: homeSeasonRecord.lost, c: THEME.loss },
-              ].map(x => (
-                <div key={x.l} style={{ flex: 1, background: THEME.white, borderRadius: 12, padding: "10px 6px", textAlign: "center", boxShadow: "0 2px 8px rgba(18,23,46,0.06)" }}>
-                  <div style={{ fontFamily: THEME.mono, fontSize: 20, fontWeight: 700, color: x.c }}>{x.v}</div>
-                  <div style={{ fontSize: 10, color: THEME.ink60, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>{x.l}</div>
-                </div>
-              ))}
-            </div>
-
             <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, marginBottom: 10 }}>Latest Result</div>
             {latestResult ? (
               <ScoreCard match={latestResult} compColor={getCompColor(competitions, latestResult.competition)} />
             ) : (
-              <div style={{ textAlign: "center", padding: "30px 20px", color: THEME.ink30, background: THEME.white, borderRadius: 16 }}>
+              <div style={{ textAlign: "center", padding: "30px 20px", color: THEME.ink30, background: THEME.white, borderRadius: 16, marginBottom: 24 }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>⚽</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: THEME.ink60 }}>No results logged yet</div>
               </div>
             )}
 
-            {homeTopScorer && (
+            {trophyList.length > 0 && (
               <>
-                <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, margin: "24px 0 10px" }}>Top Scorer</div>
-                <div onClick={() => openPlayerProfile(homeTopScorer.name)} style={{ display: "flex", alignItems: "center", gap: 12, background: THEME.white, borderRadius: 14, padding: "12px 16px", boxShadow: "0 2px 8px rgba(18,23,46,0.06)", cursor: "pointer" }}>
-                  <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 20, color: THEME.amber, width: 22 }}>1</div>
-                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: THEME.navy, color: THEME.sky, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: THEME.display, fontWeight: 600, fontSize: 13 }}>{homeTopScorer.name.slice(0,2).toUpperCase()}</div>
-                  <div style={{ flex: 1, fontWeight: 600, fontSize: 14, color: THEME.navy }}>{homeTopScorer.name}</div>
-                  <div style={{ fontFamily: THEME.mono, fontWeight: 700, fontSize: 16, color: THEME.pitch }}>{homeTopScorer.count}</div>
+                <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, margin: "24px 0 10px" }}>Trophy Cabinet</div>
+                <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                  {[
+                    { l: "Won", v: trophyWon, c: THEME.amber },
+                    { l: "Runner-up", v: trophyRunnerUp, c: THEME.ink60 },
+                    { l: "3rd Place", v: trophyList.filter(t => t.placement === "3rd Place").length, c: THEME.ink60 },
+                  ].map(x => (
+                    <div key={x.l} style={{ flex: 1, background: THEME.white, borderRadius: 12, padding: "10px 4px", textAlign: "center", boxShadow: "0 2px 8px rgba(18,23,46,0.06)" }}>
+                      <div style={{ fontFamily: THEME.mono, fontSize: 19, fontWeight: 700, color: x.c }}>{x.v}</div>
+                      <div style={{ fontSize: 9, color: THEME.ink60, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.2 }}>{x.l}</div>
+                    </div>
+                  ))}
                 </div>
+                {trophyList.map((t, i) => {
+                  const meta = PLACEMENT_META[t.placement] || { icon: "🏅", bg: "#f4f6f9", color: THEME.ink60 };
+                  return (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, background: THEME.white, borderRadius: 12, padding: "10px 12px", marginBottom: 8, boxShadow: "0 2px 8px rgba(18,23,46,0.05)" }}>
+                      <div style={{ width: 30, height: 30, borderRadius: 8, background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>{meta.icon}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 12, color: THEME.navy, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.competition}</div>
+                        <div style={{ fontFamily: THEME.mono, fontSize: 9.5, fontWeight: 700, color: meta.color, marginTop: 2 }}>{t.placement}</div>
+                      </div>
+                      <span style={{ fontFamily: THEME.mono, fontSize: 9, color: THEME.ink60, flexShrink: 0 }}>{t.season.name}</span>
+                    </div>
+                  );
+                })}
               </>
             )}
-          </div>
-        )}
-
-        {/* ── TROPHY CABINET (public) ── */}
-        {mode === "trophies" && (
-          <div style={{ maxWidth: 520, margin: "0 auto" }}>
-            <button onClick={() => setMode("home")} style={{ background: "none", border: "none", color: THEME.ink60, fontFamily: THEME.mono, fontSize: 11, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", padding: "0 0 14px", display: "flex", alignItems: "center", gap: 4 }}>
-              ‹ Back
-            </button>
-            <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-              {[
-                { l: "Won", v: trophyWon, c: THEME.amber },
-                { l: "Runner-up", v: trophyRunnerUp, c: THEME.ink60 },
-                { l: "Entered", v: trophyList.length, c: THEME.navy },
-              ].map(x => (
-                <div key={x.l} style={{ flex: 1, background: THEME.white, borderRadius: 12, padding: "10px 4px", textAlign: "center", boxShadow: "0 2px 8px rgba(18,23,46,0.06)" }}>
-                  <div style={{ fontFamily: THEME.mono, fontSize: 19, fontWeight: 700, color: x.c }}>{x.v}</div>
-                  <div style={{ fontSize: 9, color: THEME.ink60, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3 }}>{x.l}</div>
-                </div>
-              ))}
-            </div>
-            {trophyList.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "30px 20px", color: THEME.ink30 }}>
-                <div style={{ fontSize: 28, marginBottom: 6 }}>🏆</div>
-                <div style={{ fontSize: 13, color: THEME.ink60 }}>No tournament placements logged yet.</div>
-              </div>
-            ) : trophyList.map((t, i) => {
-              const meta = PLACEMENT_META[t.placement] || { icon: "🏅", bg: "#f4f6f9", color: THEME.ink60 };
-              return (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, background: THEME.white, borderRadius: 14, padding: "12px 14px", marginBottom: 8, boxShadow: "0 2px 8px rgba(18,23,46,0.06)" }}>
-                  <div style={{ width: 38, height: 38, borderRadius: 10, background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{meta.icon}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 13, color: THEME.navy, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.competition}</div>
-                    <div style={{ fontFamily: THEME.mono, fontSize: 10, fontWeight: 700, color: meta.color, marginTop: 2 }}>{t.placement}</div>
-                  </div>
-                  <div style={{ fontFamily: THEME.mono, fontSize: 10, color: THEME.ink60, flexShrink: 0 }}>{t.season.name}</div>
-                </div>
-              );
-            })}
           </div>
         )}
 
