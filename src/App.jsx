@@ -33,6 +33,16 @@ const THEME = {
 // Admin PIN — change this to whatever code you want to use to gate the Staff Room.
 const ADMIN_PIN = "1966";
 
+// Tournament placement options — stored per competition, per season.
+const PLACEMENT_OPTIONS = ["Winners", "Runners-up", "3rd Place", "Semi-Final", "Group Stage"];
+const PLACEMENT_META = {
+  "Winners": { icon: "🏆", bg: "#fdf3d8", color: "#b8860b" },
+  "Runners-up": { icon: "🥈", bg: "#eef1f3", color: "#71797e" },
+  "3rd Place": { icon: "🥉", bg: "#fbe9d8", color: "#a0522d" },
+  "Semi-Final": { icon: "⚔️", bg: "#f4f6f9", color: "#6b7280" },
+  "Group Stage": { icon: "🏁", bg: "#f4f6f9", color: "#6b7280" },
+};
+
 // ── Toast ─────────────────────────────────────────────────
 function Toast({ message, onDone }) {
   useEffect(() => {
@@ -527,6 +537,7 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [viewingPlayerName, setViewingPlayerName] = useState(null);
   const [playerProfileFrom, setPlayerProfileFrom] = useState("scorers");
+  const [homeH2HExpanded, setHomeH2HExpanded] = useState(false);
   const [showPinGate, setShowPinGate] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
@@ -650,6 +661,16 @@ export default function App() {
     lost: seasonResults.filter(r => r.result === "L").length,
   };
 
+  // ── Trophy Cabinet derived data ──────────────────────────
+  // Flatten every season's placements into one list, most recent season first.
+  const trophyList = seasons
+    .slice()
+    .sort((a, b) => b.id - a.id)
+    .flatMap(s => Object.entries(s.placements || {}).map(([competition, placement]) => ({ season: s, competition, placement })));
+  const trophyWon = trophyList.filter(t => t.placement === "Winners").length;
+  const trophyRunnerUp = trophyList.filter(t => t.placement === "Runners-up").length;
+  const featuredTrophy = trophyList[0] || null;
+
   // ── Fixtures derived data ────────────────────────────────
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -668,6 +689,9 @@ export default function App() {
     .filter(f => { const d = new Date(f.rawDate || f.date); d.setHours(0,0,0,0); return d < today || findFixtureResult(f); })
     .sort((a, b) => new Date(b.rawDate || b.date) - new Date(a.rawDate || a.date));
   const nextFixture = upcomingFixtures[0] || null;
+  const nextFixtureH2H = nextFixture
+    ? results.filter(r => r.opposition.toLowerCase() === nextFixture.opposition.toLowerCase()).sort((a, b) => new Date(b.date) - new Date(a.date))
+    : [];
 
   // ── Handlers ───────────────────────────────────────────
   const handleCreate = async () => {
@@ -818,6 +842,18 @@ export default function App() {
     setFixtures(prev => prev.filter(f => f.id !== id));
   };
 
+  const handleSetPlacement = async (competition, placement) => {
+    if (!viewingSeason) return;
+    const newPlacements = { ...(viewingSeason.placements || {}) };
+    if (placement) newPlacements[competition] = placement;
+    else delete newPlacements[competition];
+    const updated = { ...viewingSeason, placements: newPlacements };
+    setViewingSeason(updated);
+    setSeasons(prev => prev.map(s => s.id === updated.id ? updated : s));
+    if (isViewingActive) setActiveSeasonState(updated);
+    try { await updateSeason(updated); } catch(e) {}
+  };
+
   const handleUpdateAgeGroup = async () => {
     const newName = tempAgeGroup.trim();
     if (!newName || !viewingSeason || newName === viewingSeason.age_group) { setEditingTeamName(false); return; }
@@ -860,6 +896,7 @@ export default function App() {
     const updated = [...competitions, name];
     setCompetitions(updated);
     setForm(f => ({ ...f, competition: name })); // auto-select the new competition
+    setFixtureForm(f => ({ ...f, competition: name }));
     // Save to the current season in Supabase
     if (viewingSeason) {
       try {
@@ -1036,16 +1073,92 @@ export default function App() {
                   Next Match
                   {upcomingFixtures.length > 1 && <span onClick={() => setMode("fixtures")} style={{ color: THEME.sky, fontWeight: 700, cursor: "pointer" }}>See all ›</span>}
                 </div>
-                <button onClick={() => setMode("fixtures")} style={{ width: "100%", textAlign: "left", background: THEME.white, border: "none", borderRadius: 16, padding: 16, marginBottom: 24, borderLeft: `4px solid ${THEME.sky}`, boxShadow: "0 4px 14px rgba(18,23,46,0.06)", cursor: "pointer", fontFamily: THEME.body, display: "flex", alignItems: "center", position: "relative" }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", background: THEME.pitchSoft, color: THEME.pitch, borderRadius: 10, padding: "6px 12px", fontFamily: THEME.mono, marginRight: 12, flexShrink: 0 }}>
-                    <span style={{ fontSize: 18, fontWeight: 700, lineHeight: 1 }}>{new Date(nextFixture.rawDate || nextFixture.date).getDate()}</span>
-                    <span style={{ fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>{new Date(nextFixture.rawDate || nextFixture.date).toLocaleDateString("en-GB", { month: "short" })}</span>
+                <div style={{ background: THEME.white, borderRadius: 16, padding: 16, marginBottom: 24, borderLeft: `4px solid ${THEME.sky}`, boxShadow: "0 4px 14px rgba(18,23,46,0.06)" }}>
+                  <button onClick={() => setMode("fixtures")} style={{ width: "100%", textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: THEME.body, display: "flex", alignItems: "center" }}>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", background: THEME.pitchSoft, color: THEME.pitch, borderRadius: 10, padding: "6px 12px", fontFamily: THEME.mono, marginRight: 12, flexShrink: 0 }}>
+                      <span style={{ fontSize: 18, fontWeight: 700, lineHeight: 1 }}>{new Date(nextFixture.rawDate || nextFixture.date).getDate()}</span>
+                      <span style={{ fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>{new Date(nextFixture.rawDate || nextFixture.date).toLocaleDateString("en-GB", { month: "short" })}</span>
+                    </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 15, color: THEME.navy, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>vs {nextFixture.opposition}</div>
+                      <div style={{ fontSize: 12, color: THEME.ink60, marginTop: 2 }}>{nextFixture.venue ? `📍 ${nextFixture.venue}` : nextFixture.competition || "\u00A0"}</div>
+                    </div>
+                    <span style={{ color: THEME.ink30, fontSize: 18, marginLeft: 8 }}>›</span>
+                  </button>
+
+                  {nextFixtureH2H.length > 0 && (() => {
+                    const h2hWins = nextFixtureH2H.filter(r => r.result === "W").length;
+                    const h2hDraws = nextFixtureH2H.filter(r => r.result === "D").length;
+                    const h2hLosses = nextFixtureH2H.filter(r => r.result === "L").length;
+                    const last5 = nextFixtureH2H.slice(0, 5);
+                    return (
+                      <>
+                        <div style={{ height: 1, background: "#eee", margin: "12px 0 10px" }} />
+                        <div onClick={() => setHomeH2HExpanded(v => !v)} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                          <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: THEME.ink60, flexShrink: 0 }}>H2H</span>
+                          {last5.map((r, i) => (
+                            <span key={i} style={{ width: 17, height: 17, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: THEME.mono, fontSize: 8, fontWeight: 700, background: r.result === "W" ? "#4ade80" : r.result === "D" ? THEME.amber : "#f3a3ad", color: r.result === "W" ? "#0a3d1f" : r.result === "D" ? "#3a2a05" : "#5c1420" }}>
+                              {r.result}
+                            </span>
+                          ))}
+                          <span style={{ marginLeft: "auto", fontFamily: THEME.mono, fontSize: 10, fontWeight: 700, color: THEME.sky, flexShrink: 0, whiteSpace: "nowrap" }}>
+                            {homeH2HExpanded ? "Hide" : "Tap for scores"} ›
+                          </span>
+                        </div>
+
+                        {homeH2HExpanded && (
+                          <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px dashed #e8e8e8" }}>
+                            <div style={{ fontFamily: THEME.mono, fontSize: 10, color: THEME.ink60, marginBottom: 6 }}>
+                              <b style={{ color: THEME.navy }}>{h2hWins}W</b> {h2hDraws}D <b style={{ color: THEME.loss }}>{h2hLosses}L</b> — {nextFixtureH2H.length} played
+                            </div>
+                            {last5.map((r, i) => (
+                              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: i > 0 ? "1px solid #f2f2f2" : "none" }}>
+                                <span style={{ width: 19, height: 19, borderRadius: 5, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: THEME.mono, fontSize: 9, fontWeight: 700, background: r.result === "W" ? "#4ade80" : r.result === "D" ? THEME.amber : "#f3a3ad", color: r.result === "W" ? "#0a3d1f" : r.result === "D" ? "#3a2a05" : "#5c1420" }}>
+                                  {r.result}
+                                </span>
+                                <span style={{ fontFamily: THEME.mono, fontSize: 12, fontWeight: 700, color: THEME.navy, width: 34, flexShrink: 0 }}>{r.homeScore}–{r.awayScore}</span>
+                                <span style={{ fontSize: 10, color: THEME.ink60, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.competition}</span>
+                                <span style={{ fontFamily: THEME.mono, fontSize: 9, color: THEME.ink60, flexShrink: 0 }}>{r.date}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              </>
+            )}
+
+            {featuredTrophy && (
+              <>
+                <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  Trophy Cabinet
+                  {trophyList.length > 1 && <span onClick={() => setMode("trophies")} style={{ color: THEME.sky, fontWeight: 700, cursor: "pointer" }}>See all ›</span>}
+                </div>
+                <button onClick={() => setMode("trophies")} style={{ width: "100%", textAlign: "left", background: `linear-gradient(135deg, ${THEME.navy}, ${THEME.navySoft})`, border: "none", borderRadius: 16, padding: 16, marginBottom: 24, position: "relative", overflow: "hidden", cursor: "pointer", fontFamily: THEME.body }}>
+                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${THEME.amber}, transparent)` }} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 26, flexShrink: 0 }}>{PLACEMENT_META[featuredTrophy.placement]?.icon || "🏅"}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 13, color: "#fff", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{featuredTrophy.competition}</div>
+                      <div style={{ fontFamily: THEME.mono, fontSize: 9, color: THEME.amber, letterSpacing: 1, textTransform: "uppercase", marginTop: 2 }}>{featuredTrophy.placement}</div>
+                    </div>
                   </div>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 15, color: THEME.navy, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>vs {nextFixture.opposition}</div>
-                    <div style={{ fontSize: 12, color: THEME.ink60, marginTop: 2 }}>{nextFixture.venue ? `📍 ${nextFixture.venue}` : nextFixture.competition || "\u00A0"}</div>
+                  <div style={{ display: "flex", gap: 10, marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+                    <div style={{ textAlign: "center", flex: 1 }}>
+                      <div style={{ fontFamily: THEME.mono, fontWeight: 700, fontSize: 16, color: "#fff" }}>{trophyWon}</div>
+                      <div style={{ fontSize: 8, color: "#9aa0bd", textTransform: "uppercase", letterSpacing: 0.5 }}>Won</div>
+                    </div>
+                    <div style={{ textAlign: "center", flex: 1 }}>
+                      <div style={{ fontFamily: THEME.mono, fontWeight: 700, fontSize: 16, color: "#fff" }}>{trophyRunnerUp}</div>
+                      <div style={{ fontSize: 8, color: "#9aa0bd", textTransform: "uppercase", letterSpacing: 0.5 }}>Runner-up</div>
+                    </div>
+                    <div style={{ textAlign: "center", flex: 1 }}>
+                      <div style={{ fontFamily: THEME.mono, fontWeight: 700, fontSize: 16, color: "#fff" }}>{trophyList.length}</div>
+                      <div style={{ fontSize: 8, color: "#9aa0bd", textTransform: "uppercase", letterSpacing: 0.5 }}>Entered</div>
+                    </div>
                   </div>
-                  <span style={{ color: THEME.ink30, fontSize: 18, marginLeft: 8 }}>›</span>
                 </button>
               </>
             )}
@@ -1089,6 +1202,83 @@ export default function App() {
           </div>
         )}
 
+        {/* ── TROPHY CABINET (public) ── */}
+        {mode === "trophies" && (
+          <div style={{ maxWidth: 520, margin: "0 auto" }}>
+            <button onClick={() => setMode("home")} style={{ background: "none", border: "none", color: THEME.ink60, fontFamily: THEME.mono, fontSize: 11, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", padding: "0 0 14px", display: "flex", alignItems: "center", gap: 4 }}>
+              ‹ Back
+            </button>
+            <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+              {[
+                { l: "Won", v: trophyWon, c: THEME.amber },
+                { l: "Runner-up", v: trophyRunnerUp, c: THEME.ink60 },
+                { l: "Entered", v: trophyList.length, c: THEME.navy },
+              ].map(x => (
+                <div key={x.l} style={{ flex: 1, background: THEME.white, borderRadius: 12, padding: "10px 4px", textAlign: "center", boxShadow: "0 2px 8px rgba(18,23,46,0.06)" }}>
+                  <div style={{ fontFamily: THEME.mono, fontSize: 19, fontWeight: 700, color: x.c }}>{x.v}</div>
+                  <div style={{ fontSize: 9, color: THEME.ink60, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.3 }}>{x.l}</div>
+                </div>
+              ))}
+            </div>
+            {trophyList.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "30px 20px", color: THEME.ink30 }}>
+                <div style={{ fontSize: 28, marginBottom: 6 }}>🏆</div>
+                <div style={{ fontSize: 13, color: THEME.ink60 }}>No tournament placements logged yet.</div>
+              </div>
+            ) : trophyList.map((t, i) => {
+              const meta = PLACEMENT_META[t.placement] || { icon: "🏅", bg: "#f4f6f9", color: THEME.ink60 };
+              return (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, background: THEME.white, borderRadius: 14, padding: "12px 14px", marginBottom: 8, boxShadow: "0 2px 8px rgba(18,23,46,0.06)" }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{meta.icon}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 13, color: THEME.navy, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.competition}</div>
+                    <div style={{ fontFamily: THEME.mono, fontSize: 10, fontWeight: 700, color: meta.color, marginTop: 2 }}>{t.placement}</div>
+                  </div>
+                  <div style={{ fontFamily: THEME.mono, fontSize: 10, color: THEME.ink60, flexShrink: 0 }}>{t.season.name}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── SET PLACEMENT (admin) ── */}
+        {mode === "placements" && isAdmin && (
+          <div style={{ maxWidth: 520, margin: "0 auto" }}>
+            <button onClick={() => setMode("staff")} style={{ background: "none", border: "none", color: THEME.ink60, fontFamily: THEME.mono, fontSize: 11, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", padding: "0 0 14px", display: "flex", alignItems: "center", gap: 4 }}>
+              ‹ Back
+            </button>
+            <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: THEME.ink60, marginBottom: 4 }}>{viewingSeason?.name}</div>
+            <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 16, color: THEME.navy, marginBottom: 18 }}>Set tournament placements</div>
+            {competitions.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "24px 20px", color: THEME.ink30 }}>No competitions added to this season yet.</div>
+            ) : competitions.map(comp => {
+              const current = viewingSeason?.placements?.[comp] || null;
+              return (
+                <div key={comp} style={{ background: THEME.white, borderRadius: 14, padding: 14, marginBottom: 12, boxShadow: "0 2px 8px rgba(18,23,46,0.05)" }}>
+                  <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 14, color: THEME.navy, marginBottom: 10 }}>{comp}</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    {PLACEMENT_OPTIONS.map(opt => {
+                      const meta = PLACEMENT_META[opt];
+                      const selected = current === opt;
+                      return (
+                        <button key={opt} onClick={() => handleSetPlacement(comp, selected ? null : opt)}
+                          style={{ display: "flex", alignItems: "center", gap: 8, border: `1.5px solid ${selected ? THEME.amber : "#e0e0e0"}`, background: selected ? "#fdf6e8" : "#fff", borderRadius: 12, padding: 10, fontSize: 11, fontWeight: 700, color: selected ? THEME.navy : "#888", cursor: "pointer", fontFamily: THEME.body, textAlign: "left" }}>
+                          <span style={{ fontSize: 16 }}>{meta.icon}</span>{opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {current && (
+                    <button onClick={() => handleSetPlacement(comp, null)} style={{ width: "100%", marginTop: 8, padding: "8px", background: "none", border: "none", color: THEME.ink60, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: THEME.body }}>
+                      Clear placement
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* ── FIXTURES ── */}
         {mode === "fixtures" && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
@@ -1113,9 +1303,24 @@ export default function App() {
                   <TeamPicker teams={teams} value={fixtureForm.opposition} onChange={v => setFixtureForm(f => ({ ...f, opposition: v }))} onAddNew={name => { handleAddTeam(name); setFixtureForm(f => ({ ...f, opposition: name })); }} />
                 </div>
                 <label style={labelStyle}>Competition</label>
-                <select value={fixtureForm.competition} onChange={e => setFixtureForm(f => ({ ...f, competition: e.target.value }))} style={{ ...inputStyle, marginBottom: 12 }}>
-                  {competitions.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                  {competitions.map(comp => (
+                    <button key={comp} onClick={() => setFixtureForm(f => ({ ...f, competition: comp }))}
+                      style={{ padding: "7px 14px", borderRadius: 20, border: fixtureForm.competition === comp ? "none" : "1.5px solid #e0e0e0", background: fixtureForm.competition === comp ? "#1a1a2e" : "#fff", color: fixtureForm.competition === comp ? "#87ceeb" : "#888", fontWeight: 800, fontSize: 12, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
+                      {comp}
+                    </button>
+                  ))}
+                  {!addingComp && (
+                    <button onClick={() => setAddingComp(true)} style={{ padding: "7px 14px", borderRadius: 20, border: "1.5px dashed #87ceeb", background: "#fff", color: "#87ceeb", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>+ New</button>
+                  )}
+                </div>
+                {addingComp && (
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                    <input autoFocus placeholder="Competition name..." value={newCompName} onChange={e => setNewCompName(e.target.value)} onKeyDown={e => { if (e.key === "Enter") handleAddComp(); if (e.key === "Escape") setAddingComp(false); }} style={{ ...inputStyle, flex: 1, padding: "10px 14px" }} />
+                    <button onClick={handleAddComp} style={{ background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontWeight: 800, fontFamily: "inherit", fontSize: 13 }}>Add</button>
+                    <button onClick={() => setAddingComp(false)} style={{ background: "#f0f0f0", color: "#888", border: "none", borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}>✕</button>
+                  </div>
+                )}
                 <label style={labelStyle}>Venue</label>
                 <input type="text" placeholder="e.g. Herrington Park, or Away" value={fixtureForm.venue} onChange={e => setFixtureForm(f => ({ ...f, venue: e.target.value }))} style={{ ...inputStyle, marginBottom: 12 }} />
                 <label style={labelStyle}>Notes (optional)</label>
@@ -1207,6 +1412,7 @@ export default function App() {
               { key: "teams", icon: "👥", accent: THEME.amber, title: "Teams", desc: "Opposition club list & badges" },
               { key: "report", icon: "📊", accent: "#c084fc", title: "Report", desc: "Season stats & shareable image" },
               { key: "seasons", icon: "🗓", accent: THEME.loss, title: "Season History", desc: "Past seasons, archive & switch" },
+              { key: "placements", icon: "🏆", accent: THEME.amber, title: "Trophy Cabinet", desc: "Set how a tournament finished" },
             ].map(item => (
               <button key={item.key} disabled={item.disabled} onClick={() => {
                   if (item.key === "fixtures") { setEditingFixture(null); setFixtureForm({ date: "", opposition: "", competition: competitions[0] || "", venue: "", notes: "", season_id: activeSeason?.id }); setShowFixtureForm(true); }
@@ -1252,6 +1458,18 @@ export default function App() {
                   </div>
                 ))}
               </div>
+
+              {filterComp !== "All" && viewingSeason?.placements?.[filterComp] && (() => {
+                const meta = PLACEMENT_META[viewingSeason.placements[filterComp]] || { icon: "🏅", color: THEME.amber };
+                return (
+                  <div style={{ maxWidth: 520, margin: "0 auto 16px", background: `linear-gradient(135deg, ${THEME.navy}, ${THEME.navySoft})`, borderRadius: 16, padding: 16, textAlign: "center", position: "relative", overflow: "hidden" }}>
+                    <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${THEME.amber}, transparent)` }} />
+                    <div style={{ fontSize: 30, marginBottom: 6 }}>{meta.icon}</div>
+                    <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 16, color: "#fff", letterSpacing: 0.5 }}>{viewingSeason.placements[filterComp]}</div>
+                    <div style={{ fontFamily: THEME.mono, fontSize: 10, color: THEME.amber, letterSpacing: 1, textTransform: "uppercase", marginTop: 3 }}>{filterComp}</div>
+                  </div>
+                );
+              })()}
 
               <div style={{ display: "flex", justifyContent: "flex-end", maxWidth: 520, margin: "0 auto 12px" }}>
                 <button onClick={() => setSortOrder(s => s === "desc" ? "asc" : "desc")}
@@ -2120,7 +2338,7 @@ export default function App() {
           </button>
         ))}
         <button onClick={() => isAdmin ? setMode("staff") : setShowPinGate(true)}
-          style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: 9, letterSpacing: 0.5, textTransform: "uppercase", color: (mode === "staff" || ["teams","squad","report","seasons","new"].includes(mode)) ? THEME.navy : THEME.ink60, fontWeight: (mode === "staff" || ["teams","squad","report","seasons","new"].includes(mode)) ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
+          style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: 9, letterSpacing: 0.5, textTransform: "uppercase", color: (mode === "staff" || ["teams","squad","report","seasons","new","fixtures","placements"].includes(mode)) ? THEME.navy : THEME.ink60, fontWeight: (mode === "staff" || ["teams","squad","report","seasons","new","fixtures","placements"].includes(mode)) ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
           <span style={{ fontSize: 18 }}>{isAdmin ? "🔓" : "🔒"}</span>
           Admin
         </button>
