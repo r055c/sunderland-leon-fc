@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yellows vs Blacks — Formation Options</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #1a1a1a;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    gap: 12px;
+    color: #fff;
+  }
+  h1 { font-size: 1.1rem; font-weight: 700; }
+  p.sub { font-size: 0.78rem; color: #aaa; text-align: center; max-width: 700px; line-height: 1.5; }
+
+  .pitches {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .pitch-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .pitch-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #f5d020;
+    letter-spacing: 0.05em;
+  }
+  .pitch-desc {
+    font-size: 0.7rem;
+    color: #aaa;
+    text-align: center;
+    max-width: 300px;
+    line-height: 1.5;
+  }
+  canvas { display: block; border-radius: 6px; }
+
+  .key {
+    display: flex; gap: 18px; flex-wrap: wrap; justify-content: center;
+    font-size: 0.72rem; color: #ccc;
+  }
+  .key-item { display: flex; align-items: center; gap: 6px; }
+  .k-dot { width: 13px; height: 13px; border-radius: 50%; }
+  .k-line { width: 28px; height: 0; border-top: 2px dashed; }
+</style>
+</head>
+<body>
+
+<h1>Yellows vs Blacks — Formation Options</h1>
+<p class="sub">They control the midfield — so either bypass it or overload it. Two options below.</p>
+
+<div class="pitches">
+  <div class="pitch-col">
+    <div class="pitch-label">Option 1 — 3-1-3</div>
+    <canvas id="c1" width="300" height="440"></canvas>
+    <p class="pitch-desc">Bypass their midfield. Quick balls over the top into three forwards. The lone DM shields the back three and disrupts their rhythm.</p>
+  </div>
+  <div class="pitch-col">
+    <div class="pitch-label">Option 2 — 3-2-2</div>
+    <canvas id="c2" width="300" height="440"></canvas>
+    <p class="pitch-desc">Contest the midfield directly. Two CMs battle for control. More solid but less attacking — good if you need a draw or go a goal up.</p>
+  </div>
+</div>
+
+<div class="key">
+  <div class="key-item"><div class="k-dot" style="background:#f5d020"></div> Us (Yellows)</div>
+  <div class="key-item"><div class="k-dot" style="background:#333;border:1px solid #777"></div> Them (Blacks)</div>
+  <div class="key-item"><div class="k-line" style="border-color:#f5d020"></div> Our movement</div>
+  <div class="key-item"><div class="k-line" style="border-color:#999"></div> Their shape</div>
+</div>
+
+<script>
+// ── Shared helpers ────────────────────────────────────────────────────────────
+function setupCanvas(id) {
+  const c = document.getElementById(id);
+  const ctx = c.getContext('2d');
+  return { c, ctx, W: c.width, H: c.height };
+}
+
+function drawPitch(ctx, W, H) {
+  const L=22, R=W-22, T=16, B=H-16;
+  const PW=R-L, PH=B-T;
+  const MX=W/2, MY=(T+B)/2;
+
+  const sh = PH/8;
+  for (let i=0;i<8;i++) {
+    ctx.fillStyle = i%2===0 ? '#2d7a3a' : '#2a7237';
+    ctx.fillRect(L, T+i*sh, PW, sh);
+  }
+
+  ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=1.4;
+  ctx.strokeRect(L,T,PW,PH);
+  ctx.beginPath(); ctx.moveTo(L,MY); ctx.lineTo(R,MY); ctx.stroke();
+  ctx.beginPath(); ctx.arc(MX,MY,36,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(MX,MY,2.5,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.fill();
+
+  // Penalty areas
+  const paW=140, paH=62, paX=(W-paW)/2;
+  ctx.strokeRect(paX,T,paW,paH);
+  ctx.strokeRect(paX,B-paH,paW,paH);
+
+  // Goals
+  ctx.strokeStyle='rgba(255,255,255,0.65)'; ctx.lineWidth=2.5;
+  const gW=60,gD=10,gX=(W-gW)/2;
+  ctx.strokeRect(gX,T-gD,gW,gD);
+  ctx.strokeRect(gX,B,gW,gD);
+
+  ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=1.4;
+
+  // Spots
+  ctx.beginPath(); ctx.arc(MX,T+50,2.5,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(MX,B-50,2.5,0,Math.PI*2); ctx.fill();
+
+  // Attack label
+  ctx.save();
+  ctx.font='bold 7px Arial'; ctx.fillStyle='rgba(255,255,255,0.18)';
+  ctx.textAlign='center'; ctx.fillText('ATTACK ↓', MX, T+9);
+  ctx.restore();
+
+  return { L,R,T,B,PW,PH,MX,MY };
+}
+
+function player(ctx, x, y, label, home) {
+  const col = home ? '#f5d020' : '#333';
+  const tc  = home ? '#111' : '#ccc';
+  const border = home ? 'rgba(255,255,255,0.2)' : 'rgba(150,150,150,0.6)';
+  ctx.save();
+  ctx.beginPath(); ctx.arc(x,y,12,0,Math.PI*2);
+  ctx.fillStyle=col; ctx.fill();
+  ctx.strokeStyle=border; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.fillStyle=tc;
+  const fs = label.length>2 ? 6.5 : 7.5;
+  ctx.font=`bold ${fs}px Arial`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(label,x,y);
+  ctx.restore();
+}
+
+function arrow(ctx, x1,y1,x2,y2,col,alpha=1) {
+  const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+  if(len<2)return;
+  const ux=dx/len,uy=dy/len;
+  ctx.save();
+  ctx.globalAlpha=alpha;
+  ctx.setLineDash([5,4]);
+  ctx.strokeStyle=col; ctx.lineWidth=1.8; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.setLineDash([]);
+  const hs=8;
+  ctx.fillStyle=col;
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-ux*hs-uy*hs*0.5, y2-uy*hs+ux*hs*0.5);
+  ctx.lineTo(x2-ux*hs+uy*hs*0.5, y2-uy*hs-ux*hs*0.5);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// ── OPTION 1: 3-1-3 ──────────────────────────────────────────────────────────
+{
+  const {ctx, W, H} = setupCanvas('c1');
+  const {L,R,T,B,PW,PH,MX,MY} = drawPitch(ctx, W, H);
+  const px = x => L+x*PW, py = y => T+y*PH;
+
+  // Opposition — solid midfield block (dark)
+  player(ctx, px(0.5),  py(0.05), 'GK', false);
+  player(ctx, px(0.22), py(0.17), 'CB', false);
+  player(ctx, px(0.78), py(0.17), 'CB', false);
+  player(ctx, px(0.22), py(0.30), 'CM', false);
+  player(ctx, px(0.5),  py(0.28), 'CM', false);
+  player(ctx, px(0.78), py(0.30), 'CM', false);
+  player(ctx, px(0.35), py(0.42), 'FW', false);
+  player(ctx, px(0.65), py(0.42), 'FW', false);
+
+  // Us — 3-1-3
+  player(ctx, px(0.5),  py(0.95), 'GK', true);
+  player(ctx, px(0.18), py(0.80), 'CB', true);
+  player(ctx, px(0.5),  py(0.80), 'CB', true);
+  player(ctx, px(0.82), py(0.80), 'CB', true);
+  player(ctx, px(0.5),  py(0.64), 'DM', true);
+  player(ctx, px(0.15), py(0.50), 'LW', true);
+  player(ctx, px(0.5),  py(0.50), 'ST', true);
+  player(ctx, px(0.85), py(0.50), 'RW', true);
+
+  // Arrows — bypass midfield with direct balls
+  arrow(ctx, px(0.5), py(0.64), px(0.15), py(0.50), '#f5d020', 0.85); // DM wide left
+  arrow(ctx, px(0.5), py(0.64), px(0.5),  py(0.50), '#f5d020', 0.85); // DM through
+  arrow(ctx, px(0.5), py(0.64), px(0.85), py(0.50), '#f5d020', 0.85); // DM wide right
+  // LW and RW run in behind
+  arrow(ctx, px(0.15), py(0.50), px(0.22), py(0.38), '#f5d020', 0.7);
+  arrow(ctx, px(0.85), py(0.50), px(0.78), py(0.38), '#f5d020', 0.7);
+}
+
+// ── OPTION 2: 3-2-2 ──────────────────────────────────────────────────────────
+{
+  const {ctx, W, H} = setupCanvas('c2');
+  const {L,R,T,B,PW,PH,MX,MY} = drawPitch(ctx, W, H);
+  const px = x => L+x*PW, py = y => T+y*PH;
+
+  // Opposition — same solid midfield
+  player(ctx, px(0.5),  py(0.05), 'GK', false);
+  player(ctx, px(0.22), py(0.17), 'CB', false);
+  player(ctx, px(0.78), py(0.17), 'CB', false);
+  player(ctx, px(0.22), py(0.30), 'CM', false);
+  player(ctx, px(0.5),  py(0.28), 'CM', false);
+  player(ctx, px(0.78), py(0.30), 'CM', false);
+  player(ctx, px(0.35), py(0.42), 'FW', false);
+  player(ctx, px(0.65), py(0.42), 'FW', false);
+
+  // Us — 3-2-2
+  player(ctx, px(0.5),  py(0.95), 'GK', true);
+  player(ctx, px(0.18), py(0.80), 'CB', true);
+  player(ctx, px(0.5),  py(0.80), 'CB', true);
+  player(ctx, px(0.82), py(0.80), 'CB', true);
+  player(ctx, px(0.32), py(0.63), 'CM', true);
+  player(ctx, px(0.68), py(0.63), 'CM', true);
+  player(ctx, px(0.3),  py(0.48), 'ST', true);
+  player(ctx, px(0.7),  py(0.48), 'ST', true);
+
+  // Arrows — CMs contest midfield, STs press their CBs
+  arrow(ctx, px(0.32), py(0.63), px(0.28), py(0.42), '#f5d020', 0.85); // left CM press
+  arrow(ctx, px(0.68), py(0.63), px(0.72), py(0.42), '#f5d020', 0.85); // right CM press
+  arrow(ctx, px(0.3),  py(0.48), px(0.22), py(0.30), '#f5d020', 0.75); // ST onto CB
+  arrow(ctx, px(0.7),  py(0.48), px(0.78), py(0.30), '#f5d020', 0.75); // ST onto CB
+  // CMs also show lateral cover
+  arrow(ctx, px(0.32), py(0.63), px(0.5),  py(0.60), '#f5d020', 0.5);
+}
+</script>
+</body>
+</html>
