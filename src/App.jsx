@@ -1866,8 +1866,6 @@ export default function App() {
           const losses = sResults.filter(r => r.result === "L").length;
           const totalGoals = sResults.reduce((a, r) => a + (r.homeScore || 0), 0);
           const goalBoard = buildGoalBoard(sResults).slice(0, 5);
-          const motmBoard = buildAwardBoard(sResults, "motm");
-          const playerOfSeason = motmBoard[0];
           const biggestWin = sResults.filter(r => r.result === "W").sort((a, b) => (b.homeScore - b.awayScore) - (a.homeScore - a.awayScore))[0];
           const compBreakdown = [...new Set(sResults.map(r => r.competition).filter(Boolean))].map(comp => {
             const cr = sResults.filter(r => r.competition === comp);
@@ -1883,7 +1881,7 @@ export default function App() {
                 <div style={{ background: "#1a1a2e", padding: "20px", textAlign: "center", borderBottom: "1px solid rgba(135,206,235,0.2)" }}>
                   <div style={{ color: "#87ceeb", fontSize: 10, fontWeight: 700, letterSpacing: 3, marginBottom: 4 }}>SUNDERLAND LEON FC</div>
                   <div style={{ color: "#fff", fontSize: 22, fontWeight: 900, letterSpacing: 2 }}>{viewingSeason?.name} SEASON</div>
-                  <div style={{ color: "#87ceeb", fontSize: 11, letterSpacing: 2, marginTop: 2 }}>{viewingSeason?.age_group?.toUpperCase()} · END OF SEASON REPORT</div>
+                  <div style={{ color: "#87ceeb", fontSize: 11, letterSpacing: 2, marginTop: 2 }}>{viewingSeason?.age_group?.toUpperCase()} · SEASON REPORT</div>
                 </div>
 
                 <div style={{ background: "#f0f2f5", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1941,29 +1939,6 @@ export default function App() {
                             </div>
                           );
                         })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Player of the season */}
-                  {playerOfSeason && (
-                    <div style={{ background: "#fff", borderRadius: 12, padding: 14 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: "#87ceeb", letterSpacing: 2, marginBottom: 10 }}>SEASON AWARD</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, background: "#fffbea", borderRadius: 10, border: "1.5px solid #ffd700" }}>
-                        <span style={{ fontSize: 28 }}>⭐</span>
-                        {(() => {
-                          const player = players.find(p => p.name === playerOfSeason.name);
-                          return (
-                            <div style={{ width: 44, height: 44, borderRadius: "50%", background: player?.photo ? "transparent" : "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-                              {player?.photo ? <img src={player.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: "#87ceeb", fontSize: 13, fontWeight: 900 }}>{playerOfSeason.name.slice(0,2).toUpperCase()}</span>}
-                            </div>
-                          );
-                        })()}
-                        <div>
-                          <div style={{ fontSize: 9, fontWeight: 700, color: "#b8960a", letterSpacing: 1 }}>PLAYER OF THE SEASON</div>
-                          <div style={{ fontSize: 18, fontWeight: 900, color: "#1a1a2e" }}>{playerOfSeason.name}</div>
-                          <div style={{ fontSize: 11, color: "#888" }}>Man of the Match · {playerOfSeason.count} times</div>
-                        </div>
                       </div>
                     </div>
                   )}
