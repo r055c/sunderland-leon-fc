@@ -1,6 +1,6 @@
 // Sunderland Leon FC — v2.3
 import { useState, useRef, useEffect, useCallback } from "react";
-import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchFixtures, insertFixture, updateFixture, deleteFixture, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage } from "./supabase.js";
+import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage } from "./supabase.js";
 
 // ── Logo ─────────────────────────────────────────────────
 const LEON_LOGO = "data:image/png;base64,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";
@@ -360,9 +360,9 @@ function ScoreCard({ match, compColor = "#5fb2d9", onClick, showMeta = true }) {
   );
 }
 
-function ResultCard({ match, teamName = "Team", compColor = "#87ceeb", players = [], teams = [], onOpenPlayer }) {
+function ResultCard({ match, teamName = "Team", compColor = "#5fb2d9", players = [], teams = [], onOpenPlayer }) {
   const isWin = match.result === "W", isLoss = match.result === "L";
-  const resultColor = isWin ? "#00c853" : isLoss ? "#d50000" : "#ffab00";
+  const pillBg = isWin ? THEME.pitch : isLoss ? THEME.loss : THEME.amber;
   const resultLabel = isWin ? "WIN" : isLoss ? "LOSS" : "DRAW";
   const cardRef = useRef();
   const filename = `leon-vs-${(match.opposition || "result").replace(/\s+/g,"-").toLowerCase()}.png`;
@@ -371,44 +371,42 @@ function ResultCard({ match, teamName = "Team", compColor = "#87ceeb", players =
   const displayLogo = match.oppLogo || teams.find(t => t.name === match.opposition)?.logo || null;
   return (
     <div>
-      <div ref={cardRef} style={{ background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.10)", width: "100%", maxWidth: 520, margin: "0 auto", fontFamily: "'Barlow Condensed','Arial Narrow',Arial,sans-serif", border: "1px solid #e8e8e8" }}>
-        <div style={{ background: "#1a1a2e", padding: "10px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", rowGap: 6, columnGap: 12 }}>
+      <div ref={cardRef} style={{ background: THEME.white, borderRadius: 18, overflow: "hidden", boxShadow: "0 4px 24px rgba(18,23,46,0.12)", width: "100%", maxWidth: 520, margin: "0 auto", fontFamily: THEME.body, border: "1px solid #eef0f4" }}>
+        <div style={{ background: THEME.navy, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <div style={{ minWidth: 0 }}>
-            <span style={{ color: compColor, fontSize: 13, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase" }}>{match.competition}</span>
-            {match.round && <span style={{ color: "#aaa", fontSize: 11, marginLeft: 8, fontWeight: 600 }}>· {match.round}</span>}
+            <div style={{ color: THEME.white, fontFamily: THEME.display, fontWeight: 600, fontSize: "clamp(12px,3.4vw,14px)", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{match.competition}</div>
+            {match.round && <div style={{ color: THEME.sky, fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", marginTop: 2 }}>{match.round}</div>}
           </div>
-          <span style={{ color: "#fff", fontSize: 13, fontWeight: 600, flexShrink: 0 }}>{match.date}</span>
-          <span style={{ background: resultColor, color: "#fff", fontWeight: 800, fontSize: 12, letterSpacing: 2, padding: "3px 10px", borderRadius: 20, flexShrink: 0 }}>{resultLabel}</span>
+          <span style={{ fontFamily: THEME.mono, fontSize: 10, fontWeight: 700, letterSpacing: 1, padding: "5px 12px", borderRadius: 20, background: pillBg, color: THEME.white, flexShrink: 0, whiteSpace: "nowrap" }}>{resultLabel}</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 12px 16px", gap: 6 }}>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 12px 16px", gap: 6 }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "1 1 0", minWidth: 0, gap: 8 }}>
-            <div style={{ background: "#f0f4ff", borderRadius: 14, padding: "clamp(4px,2vw,10px)", display: "flex", alignItems: "center", justifyContent: "center", width: "clamp(48px,18vw,80px)", height: "clamp(48px,18vw,80px)", flexShrink: 0 }}>
-              <LeonLogo size={44} />
+            <div style={{ background: THEME.chalk, border: "2px solid #eef0f4", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", width: "clamp(48px,17vw,64px)", height: "clamp(48px,17vw,64px)", flexShrink: 0 }}>
+              <LeonLogo size={38} />
             </div>
-            <span style={{ fontSize: "clamp(10px,3vw,13px)", fontWeight: 700, color: "#1a1a2e", textAlign: "center", lineHeight: 1.2 }}>
-              SUNDERLAND LEON<br /><span style={{ color: compColor, fontSize: "clamp(9px,2.5vw,11px)" }}>{teamName.toUpperCase()}</span>
-            </span>
+            <span style={{ fontSize: "clamp(9px,2.8vw,12px)", fontWeight: 600, color: THEME.navy, textAlign: "center", lineHeight: 1.2, fontFamily: THEME.display, textTransform: "uppercase" }}>Sunderland Leon</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "0 0 auto", gap: 4 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "clamp(4px,1.5vw,8px)" }}>
-              <span style={{ fontSize: "clamp(28px,9vw,56px)", fontWeight: 900, color: "#1a1a2e", lineHeight: 1 }}>{match.homeScore}</span>
-              <span style={{ fontSize: "clamp(16px,5vw,28px)", fontWeight: 300, color: "#aaa" }}>–</span>
-              <span style={{ fontSize: "clamp(28px,9vw,56px)", fontWeight: 900, color: "#1a1a2e", lineHeight: 1 }}>{match.awayScore}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "clamp(6px,2vw,10px)" }}>
+              <span style={{ fontFamily: THEME.mono, fontSize: "clamp(26px,8vw,40px)", fontWeight: 700, color: THEME.navy, lineHeight: 1 }}>{match.homeScore}</span>
+              <span style={{ fontFamily: THEME.mono, fontSize: "clamp(16px,4.5vw,22px)", color: THEME.ink30 }}>–</span>
+              <span style={{ fontFamily: THEME.mono, fontSize: "clamp(26px,8vw,40px)", fontWeight: 700, color: THEME.navy, lineHeight: 1 }}>{match.awayScore}</span>
             </div>
-            <span style={{ fontSize: "clamp(8px,2.2vw,11px)", fontWeight: 700, letterSpacing: 2, color: "#999", textTransform: "uppercase", whiteSpace: "nowrap" }}>Full Time</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "1 1 0", minWidth: 0, gap: 8 }}>
-            <div style={{ background: "#f0f4ff", borderRadius: 14, padding: "clamp(4px,2vw,10px)", display: "flex", alignItems: "center", justifyContent: "center", width: "clamp(48px,18vw,80px)", height: "clamp(48px,18vw,80px)", flexShrink: 0 }}>
-              {displayLogo ? <img src={displayLogo} alt={match.opposition} style={{ width: "clamp(32px,14vw,68px)", height: "clamp(32px,14vw,68px)", objectFit: "contain" }} /> : <span style={{ fontSize: "clamp(18px,7vw,30px)" }}>⚽</span>}
+            <div style={{ background: THEME.chalk, border: "2px solid #eef0f4", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", width: "clamp(48px,17vw,64px)", height: "clamp(48px,17vw,64px)", flexShrink: 0 }}>
+              {displayLogo ? <img src={displayLogo} alt={match.opposition} style={{ width: "clamp(30px,13vw,52px)", height: "clamp(30px,13vw,52px)", objectFit: "contain" }} /> : <span style={{ fontSize: "clamp(18px,6vw,26px)" }}>⚽</span>}
             </div>
-            <span style={{ fontSize: "clamp(10px,3vw,13px)", fontWeight: 700, color: "#1a1a2e", textAlign: "center", lineHeight: 1.2, wordBreak: "break-word" }}>{(match.opposition || "").toUpperCase()}</span>
+            <span style={{ fontSize: "clamp(9px,2.8vw,12px)", fontWeight: 600, color: THEME.navy, textAlign: "center", lineHeight: 1.2, fontFamily: THEME.display, textTransform: "uppercase", wordBreak: "break-word" }}>{(match.opposition || "").toUpperCase()}</span>
           </div>
         </div>
+
         {(match.scorers || []).length > 0 && (
           <>
-            <div style={{ height: 1, background: "#eee", margin: "0 20px" }} />
-            <div style={{ padding: "12px 20px 14px" }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: compColor, letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 8 }}>Goal Scorers</span>
+            <div style={{ height: 1, background: "#eee", margin: "0 18px" }} />
+            <div style={{ padding: "12px 18px" }}>
+              <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: THEME.sky, display: "block", marginBottom: 8 }}>Goal Scorers</span>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                 {match.scorers.map((scorer, i) => {
                   const name = scorer.replace(/\s*[×x]\d+$/, "").trim();
@@ -416,13 +414,13 @@ function ResultCard({ match, teamName = "Team", compColor = "#87ceeb", players =
                   return (
                     <div key={i} onClick={() => onOpenPlayer && onOpenPlayer(name)} style={{ display: "flex", alignItems: "center", gap: 8, cursor: onOpenPlayer ? "pointer" : "default" }}>
                       {player?.photo ? (
-                        <div style={{ width: 44, height: 44, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid #87ceeb" }}>
+                        <div style={{ width: 32, height: 32, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: `2px solid ${THEME.sky}` }}>
                           <img src={player.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={name} />
                         </div>
                       ) : (
-                        <span style={{ fontSize: 16 }}>⚽</span>
+                        <span style={{ fontSize: 15 }}>⚽</span>
                       )}
-                      <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1a2e" }}>{player?.squad_number ? `#${player.squad_number} ` : ""}{scorer}</span>
+                      <span style={{ fontFamily: THEME.body, fontSize: 13, fontWeight: 700, color: THEME.navy }}>{player?.squad_number ? `#${player.squad_number} ` : ""}{scorer}</span>
                     </div>
                   );
                 })}
@@ -430,26 +428,27 @@ function ResultCard({ match, teamName = "Team", compColor = "#87ceeb", players =
             </div>
           </>
         )}
+
         {(match.motm || match.oppMotm) && (
           <>
-            <div style={{ height: 1, background: "#eee", margin: "0 20px" }} />
-            <div style={{ padding: "12px 20px 14px", display: "flex", gap: 20, flexWrap: "wrap" }}>
+            <div style={{ height: 1, background: "#eee", margin: "0 18px" }} />
+            <div style={{ padding: "12px 18px", display: "flex", gap: 20, flexWrap: "wrap" }}>
               {match.motm && (() => {
                 const player = players.find(p => p.name === match.motm);
                 return (
                   <div onClick={() => onOpenPlayer && onOpenPlayer(match.motm)} style={{ display: "flex", alignItems: "center", gap: 10, cursor: onOpenPlayer ? "pointer" : "default" }}>
                     {player?.photo ? (
-                      <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid #ffd700" }}>
+                      <div style={{ width: 38, height: 38, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: `2px solid ${THEME.amber}` }}>
                         <img src={player.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={match.motm} />
                       </div>
                     ) : (
-                      <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: "2px solid #ffd700" }}>
-                        <span style={{ color: "#ffd700", fontSize: 13, fontWeight: 900 }}>{match.motm.slice(0,2).toUpperCase()}</span>
+                      <div style={{ width: 38, height: 38, borderRadius: "50%", background: THEME.navy, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: `2px solid ${THEME.amber}` }}>
+                        <span style={{ color: THEME.amber, fontSize: 11, fontWeight: 700, fontFamily: THEME.display }}>{match.motm.slice(0,2).toUpperCase()}</span>
                       </div>
                     )}
                     <div>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: compColor, letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 2 }}>Man of the Match</span>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: "#1a1a2e" }}>{match.motm}</span>
+                      <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: THEME.sky, display: "block", marginBottom: 2 }}>Man of the Match</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: THEME.navy }}>{match.motm}</span>
                     </div>
                   </div>
                 );
@@ -459,17 +458,17 @@ function ResultCard({ match, teamName = "Team", compColor = "#87ceeb", players =
                 return (
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     {player?.photo ? (
-                      <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid #ff7eb3" }}>
+                      <div style={{ width: 38, height: 38, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "2px solid #ff7eb3" }}>
                         <img src={player.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={match.oppMotm} />
                       </div>
                     ) : (
-                      <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#f5f5f5", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: "2px solid #ff7eb3" }}>
-                        <span style={{ color: "#ff7eb3", fontSize: 13, fontWeight: 900 }}>{match.oppMotm.slice(0,2).toUpperCase()}</span>
+                      <div style={{ width: 38, height: 38, borderRadius: "50%", background: THEME.chalk, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: "2px solid #ff7eb3" }}>
+                        <span style={{ color: "#ff7eb3", fontSize: 11, fontWeight: 700, fontFamily: THEME.display }}>{match.oppMotm.slice(0,2).toUpperCase()}</span>
                       </div>
                     )}
                     <div>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: "#aaa", letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 2 }}>Opp. Man of Match</span>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: "#555" }}>{match.oppMotm}</span>
+                      <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: THEME.ink60, display: "block", marginBottom: 2 }}>Opp. Man of Match</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: THEME.ink60 }}>{match.oppMotm}</span>
                     </div>
                   </div>
                 );
@@ -477,10 +476,10 @@ function ResultCard({ match, teamName = "Team", compColor = "#87ceeb", players =
             </div>
           </>
         )}
-        <div style={{ background: "#1a1a2e", padding: "8px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ color: compColor, fontSize: 11, fontWeight: 700, letterSpacing: 2 }}>LEON FC</span>
-          <span style={{ color: "#555", fontSize: 11, letterSpacing: 1 }}>ALWAYS KEEP ME FLYING HIGH</span>
-          <LeonLogo size={24} />
+
+        <div style={{ background: THEME.chalk, padding: "10px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid #eee" }}>
+          <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: THEME.ink60 }}>Sunderland Leon FC{teamName ? ` · ${teamName}` : ""}</span>
+          <span style={{ fontFamily: THEME.mono, fontSize: 9, color: THEME.ink60 }}>{match.date}</span>
         </div>
       </div>
       <SaveCardButton cardRef={cardRef} filename={filename} />
@@ -537,7 +536,6 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [viewingPlayerName, setViewingPlayerName] = useState(null);
   const [playerProfileFrom, setPlayerProfileFrom] = useState("scorers");
-  const [homeH2HExpanded, setHomeH2HExpanded] = useState(false);
   const [showPinGate, setShowPinGate] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
@@ -553,7 +551,6 @@ export default function App() {
   const [results, setResults] = useState([]);
   const [competitions, setCompetitions] = useState(DEFAULT_COMPETITIONS);
   const [teams, setTeams] = useState([]);
-  const [fixtures, setFixtures] = useState([]);
   const [players, setPlayers] = useState([]);
   const [appearances, setAppearances] = useState([]);
   const [seasons, setSeasons] = useState([]);
@@ -593,9 +590,6 @@ export default function App() {
   const playerPhotoRef = useRef();
 
   const [form, setForm] = useState({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: "", motm: "", oppMotm: "", round: "", season_id: null });
-  const [showFixtureForm, setShowFixtureForm] = useState(false);
-  const [editingFixture, setEditingFixture] = useState(null);
-  const [fixtureForm, setFixtureForm] = useState({ date: "", opposition: "", competition: "", venue: "", notes: "" });
   const fileRef = useRef();
   const editFileRef = useRef();
   const reportRef = useRef();
@@ -611,7 +605,6 @@ export default function App() {
         setTeams(t);
         setPlayers(pl);
         setAppearances(ap);
-        try { setFixtures(await fetchFixtures()); } catch(e) { setFixtures([]); }
         if (s && s.length > 0) {
           setSeasons(s);
           const active = s.find(x => x.is_active) || s[0];
@@ -668,28 +661,6 @@ export default function App() {
     .flatMap(s => Object.entries(s.placements || {}).map(([competition, placement]) => ({ season: s, competition, placement })));
   const trophyWon = trophyList.filter(t => t.placement === "Winners").length;
   const trophyRunnerUp = trophyList.filter(t => t.placement === "Runners-up").length;
-
-  // ── Fixtures derived data ────────────────────────────────
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const seasonFixtures = fixtures.filter(f => f.season_id === viewingSeason?.id);
-  // A fixture is "played" once a result exists for the same opponent on the same day —
-  // no manual step needed, it just shows the score once you log the result.
-  const findFixtureResult = (fx) => {
-    let fxDateStr = fx.date;
-    try { fxDateStr = new Date(fx.rawDate || fx.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); } catch(e) {}
-    return results.find(r => r.opposition.toLowerCase() === fx.opposition.toLowerCase() && r.date === fxDateStr);
-  };
-  const upcomingFixtures = seasonFixtures
-    .filter(f => { const d = new Date(f.rawDate || f.date); d.setHours(0,0,0,0); return d >= today && !findFixtureResult(f); })
-    .sort((a, b) => new Date(a.rawDate || a.date) - new Date(b.rawDate || b.date));
-  const pastFixtures = seasonFixtures
-    .filter(f => { const d = new Date(f.rawDate || f.date); d.setHours(0,0,0,0); return d < today || findFixtureResult(f); })
-    .sort((a, b) => new Date(b.rawDate || b.date) - new Date(a.rawDate || a.date));
-  const nextFixture = upcomingFixtures[0] || null;
-  const nextFixtureH2H = nextFixture
-    ? results.filter(r => r.opposition.toLowerCase() === nextFixture.opposition.toLowerCase()).sort((a, b) => new Date(b.date) - new Date(a.date))
-    : [];
 
   // ── Handlers ───────────────────────────────────────────
   const handleCreate = async () => {
@@ -825,28 +796,6 @@ export default function App() {
     setResults(prev => prev.map(r => r.opposition === team.name ? { ...r, opposition: trimmed } : r));
   };
 
-  const handleSaveFixture = async () => {
-    let displayDate = fixtureForm.date;
-    try { displayDate = new Date(fixtureForm.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); } catch(e) {}
-    const fix = { ...fixtureForm, date: displayDate, rawDate: fixtureForm.date, season_id: fixtureForm.season_id || activeSeason?.id };
-    if (editingFixture) {
-      const updated = { ...editingFixture, ...fix };
-      try { await updateFixture(updated); } catch(e) {}
-      setFixtures(prev => prev.map(f => f.id === updated.id ? updated : f));
-    } else {
-      try { const saved = await insertFixture(fix); setFixtures(prev => [...prev, saved || { ...fix, id: Date.now() }]); }
-      catch(e) { setFixtures(prev => [...prev, { ...fix, id: Date.now() }]); }
-    }
-    setShowFixtureForm(false); setEditingFixture(null);
-    setFixtureForm({ date: "", opposition: "", competition: competitions[0] || "", venue: "", notes: "" });
-    showToast("✅ Fixture saved!");
-  };
-
-  const handleDeleteFixture = async (id) => {
-    try { await deleteFixture(id); } catch(e) {}
-    setFixtures(prev => prev.filter(f => f.id !== id));
-  };
-
   const handleSetPlacement = async (competition, placement) => {
     if (!viewingSeason) return;
     const newPlacements = { ...(viewingSeason.placements || {}) };
@@ -901,7 +850,6 @@ export default function App() {
     const updated = [...competitions, name];
     setCompetitions(updated);
     setForm(f => ({ ...f, competition: name })); // auto-select the new competition
-    setFixtureForm(f => ({ ...f, competition: name }));
     // Save to the current season in Supabase
     if (viewingSeason) {
       try {
@@ -972,14 +920,15 @@ export default function App() {
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: THEME.chalk, fontFamily: THEME.body, paddingBottom: 100 }}>
+    <div style={{ minHeight: "100vh", backgroundColor: THEME.chalk, backgroundImage: "linear-gradient(rgba(18,23,46,0.035) 2px, transparent 2px), linear-gradient(90deg, rgba(18,23,46,0.035) 2px, transparent 2px)", backgroundSize: "60px 60px, 60px 60px", backgroundPosition: "30px 0, 0 30px", fontFamily: THEME.body, paddingBottom: 100 }}>
 
       {/* Top bar */}
-      <div style={{ background: THEME.navy, padding: "16px 20px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.3)" }}>
-        <div style={{ background: THEME.white, borderRadius: "50%", padding: 4, display: "flex", alignItems: "center", justifyContent: "center", width: 44, height: 44, flexShrink: 0, border: `2px solid ${THEME.sky}` }}>
+      <div style={{ background: THEME.navy, padding: "16px 20px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.3)", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: -20, right: -30, width: 140, height: 140, opacity: 0.08, backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="white" d="M20 65 Q 35 55 45 40 Q 50 30 58 32 Q 65 34 62 42 Q 58 52 68 48 Q 78 44 75 55 Q 70 68 55 70 Q 40 72 30 78 Z"/></svg>')`, backgroundSize: "contain", backgroundRepeat: "no-repeat", pointerEvents: "none" }} />
+        <div style={{ background: THEME.white, borderRadius: "50%", padding: 4, display: "flex", alignItems: "center", justifyContent: "center", width: 44, height: 44, flexShrink: 0, border: `2px solid ${THEME.sky}`, position: "relative", zIndex: 1 }}>
           <LeonLogo size={34} />
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, position: "relative", zIndex: 1 }}>
           <div style={{ color: THEME.white, fontFamily: THEME.display, fontWeight: 600, fontSize: 17, letterSpacing: 0.5, lineHeight: 1.1 }}>Sunderland Leon FC</div>
           {editingTeamName ? (
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
@@ -1087,69 +1036,6 @@ export default function App() {
               ))}
             </div>
 
-            {nextFixture && (
-              <>
-                <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  Next Match
-                  {upcomingFixtures.length > 1 && <span onClick={() => setMode("fixtures")} style={{ color: THEME.sky, fontWeight: 700, cursor: "pointer" }}>See all ›</span>}
-                </div>
-                <div style={{ background: THEME.white, borderRadius: 16, padding: 16, marginBottom: 24, borderLeft: `4px solid ${THEME.sky}`, boxShadow: "0 4px 14px rgba(18,23,46,0.06)" }}>
-                  <button onClick={() => setMode("fixtures")} style={{ width: "100%", textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: THEME.body, display: "flex", alignItems: "center" }}>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", background: THEME.pitchSoft, color: THEME.pitch, borderRadius: 10, padding: "6px 12px", fontFamily: THEME.mono, marginRight: 12, flexShrink: 0 }}>
-                      <span style={{ fontSize: 18, fontWeight: 700, lineHeight: 1 }}>{new Date(nextFixture.rawDate || nextFixture.date).getDate()}</span>
-                      <span style={{ fontSize: 9, letterSpacing: 1, textTransform: "uppercase" }}>{new Date(nextFixture.rawDate || nextFixture.date).toLocaleDateString("en-GB", { month: "short" })}</span>
-                    </div>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 15, color: THEME.navy, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>vs {nextFixture.opposition}</div>
-                      <div style={{ fontSize: 12, color: THEME.ink60, marginTop: 2 }}>{nextFixture.venue ? `📍 ${nextFixture.venue}` : nextFixture.competition || "\u00A0"}</div>
-                    </div>
-                    <span style={{ color: THEME.ink30, fontSize: 18, marginLeft: 8 }}>›</span>
-                  </button>
-
-                  {nextFixtureH2H.length > 0 && (() => {
-                    const h2hWins = nextFixtureH2H.filter(r => r.result === "W").length;
-                    const h2hDraws = nextFixtureH2H.filter(r => r.result === "D").length;
-                    const h2hLosses = nextFixtureH2H.filter(r => r.result === "L").length;
-                    const last5 = nextFixtureH2H.slice(0, 5);
-                    return (
-                      <>
-                        <div style={{ height: 1, background: "#eee", margin: "12px 0 10px" }} />
-                        <div onClick={() => setHomeH2HExpanded(v => !v)} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-                          <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: THEME.ink60, flexShrink: 0 }}>H2H</span>
-                          {last5.map((r, i) => (
-                            <span key={i} style={{ width: 17, height: 17, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: THEME.mono, fontSize: 8, fontWeight: 700, background: r.result === "W" ? "#4ade80" : r.result === "D" ? THEME.amber : "#f3a3ad", color: r.result === "W" ? "#0a3d1f" : r.result === "D" ? "#3a2a05" : "#5c1420" }}>
-                              {r.result}
-                            </span>
-                          ))}
-                          <span style={{ marginLeft: "auto", fontFamily: THEME.mono, fontSize: 10, fontWeight: 700, color: THEME.sky, flexShrink: 0, whiteSpace: "nowrap" }}>
-                            {homeH2HExpanded ? "Hide" : "Tap for scores"} ›
-                          </span>
-                        </div>
-
-                        {homeH2HExpanded && (
-                          <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px dashed #e8e8e8" }}>
-                            <div style={{ fontFamily: THEME.mono, fontSize: 10, color: THEME.ink60, marginBottom: 6 }}>
-                              <b style={{ color: THEME.navy }}>{h2hWins}W</b> {h2hDraws}D <b style={{ color: THEME.loss }}>{h2hLosses}L</b> — {nextFixtureH2H.length} played
-                            </div>
-                            {last5.map((r, i) => (
-                              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: i > 0 ? "1px solid #f2f2f2" : "none" }}>
-                                <span style={{ width: 19, height: 19, borderRadius: 5, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: THEME.mono, fontSize: 9, fontWeight: 700, background: r.result === "W" ? "#4ade80" : r.result === "D" ? THEME.amber : "#f3a3ad", color: r.result === "W" ? "#0a3d1f" : r.result === "D" ? "#3a2a05" : "#5c1420" }}>
-                                  {r.result}
-                                </span>
-                                <span style={{ fontFamily: THEME.mono, fontSize: 12, fontWeight: 700, color: THEME.navy, width: 34, flexShrink: 0 }}>{r.homeScore}–{r.awayScore}</span>
-                                <span style={{ fontSize: 10, color: THEME.ink60, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.competition}</span>
-                                <span style={{ fontFamily: THEME.mono, fontSize: 9, color: THEME.ink60, flexShrink: 0 }}>{r.date}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
-              </>
-            )}
-
             <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, marginBottom: 10 }}>Latest Result</div>
             {latestResult ? (
               <ScoreCard match={latestResult} compColor={getCompColor(competitions, latestResult.competition)} />
@@ -1231,115 +1117,6 @@ export default function App() {
           </div>
         )}
 
-        {/* ── FIXTURES ── */}
-        {mode === "fixtures" && (
-          <div style={{ maxWidth: 520, margin: "0 auto" }}>
-            <button onClick={() => setMode("home")} style={{ background: "none", border: "none", color: THEME.ink60, fontFamily: THEME.mono, fontSize: 11, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", padding: "0 0 14px", display: "flex", alignItems: "center", gap: 4 }}>
-              ‹ Back
-            </button>
-
-            {isAdmin && (
-              <button onClick={() => { setEditingFixture(null); setFixtureForm({ date: "", opposition: "", competition: competitions[0] || "", venue: "", notes: "", season_id: activeSeason?.id }); setShowFixtureForm(true); }}
-                style={{ width: "100%", padding: "12px", background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 12, fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", fontFamily: THEME.body, marginBottom: 20 }}>
-                + Add Fixture
-              </button>
-            )}
-
-            {showFixtureForm && (
-              <div style={{ background: THEME.white, borderRadius: 16, padding: 18, marginBottom: 20, boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }}>
-                <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: THEME.ink60, marginBottom: 12 }}>{editingFixture ? "Edit Fixture" : "New Fixture"}</div>
-                <label style={labelStyle}>Date</label>
-                <input type="date" value={fixtureForm.date} onChange={e => setFixtureForm(f => ({ ...f, date: e.target.value }))} style={{ ...inputStyle, marginBottom: 12 }} />
-                <label style={labelStyle}>Opposition</label>
-                <div style={{ marginBottom: 12 }}>
-                  <TeamPicker teams={teams} value={fixtureForm.opposition} onChange={v => setFixtureForm(f => ({ ...f, opposition: v }))} onAddNew={name => { handleAddTeam(name); setFixtureForm(f => ({ ...f, opposition: name })); }} />
-                </div>
-                <label style={labelStyle}>Competition</label>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-                  {competitions.map(comp => (
-                    <button key={comp} onClick={() => setFixtureForm(f => ({ ...f, competition: comp }))}
-                      style={{ padding: "7px 14px", borderRadius: 20, border: fixtureForm.competition === comp ? "none" : "1.5px solid #e0e0e0", background: fixtureForm.competition === comp ? "#1a1a2e" : "#fff", color: fixtureForm.competition === comp ? "#87ceeb" : "#888", fontWeight: 800, fontSize: 12, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
-                      {comp}
-                    </button>
-                  ))}
-                  {!addingComp && (
-                    <button onClick={() => setAddingComp(true)} style={{ padding: "7px 14px", borderRadius: 20, border: "1.5px dashed #87ceeb", background: "#fff", color: "#87ceeb", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>+ New</button>
-                  )}
-                </div>
-                {addingComp && (
-                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                    <input autoFocus placeholder="Competition name..." value={newCompName} onChange={e => setNewCompName(e.target.value)} onKeyDown={e => { if (e.key === "Enter") handleAddComp(); if (e.key === "Escape") setAddingComp(false); }} style={{ ...inputStyle, flex: 1, padding: "10px 14px" }} />
-                    <button onClick={handleAddComp} style={{ background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontWeight: 800, fontFamily: "inherit", fontSize: 13 }}>Add</button>
-                    <button onClick={() => setAddingComp(false)} style={{ background: "#f0f0f0", color: "#888", border: "none", borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}>✕</button>
-                  </div>
-                )}
-                <label style={labelStyle}>Venue</label>
-                <input type="text" placeholder="e.g. Herrington Park, or Away" value={fixtureForm.venue} onChange={e => setFixtureForm(f => ({ ...f, venue: e.target.value }))} style={{ ...inputStyle, marginBottom: 12 }} />
-                <label style={labelStyle}>Notes (optional)</label>
-                <input type="text" placeholder="e.g. Kick-off 10am, meet 9:30" value={fixtureForm.notes} onChange={e => setFixtureForm(f => ({ ...f, notes: e.target.value }))} style={{ ...inputStyle, marginBottom: 16 }} />
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => { setShowFixtureForm(false); setEditingFixture(null); }} style={{ flex: 1, padding: "12px", background: "#f0f0f0", color: "#888", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: THEME.body }}>Cancel</button>
-                  <button onClick={handleSaveFixture} disabled={!fixtureForm.date || !fixtureForm.opposition} style={{ flex: 2, padding: "12px", background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: THEME.body, opacity: (!fixtureForm.date || !fixtureForm.opposition) ? 0.5 : 1 }}>Save Fixture</button>
-                </div>
-                {editingFixture && (
-                  <button onClick={() => { if (window.confirm(`Delete fixture vs ${editingFixture.opposition}?`)) { handleDeleteFixture(editingFixture.id); setShowFixtureForm(false); setEditingFixture(null); } }}
-                    style={{ width: "100%", padding: "10px", background: "none", color: THEME.loss, border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: THEME.body, marginTop: 10 }}>
-                    🗑️ Delete Fixture
-                  </button>
-                )}
-              </div>
-            )}
-
-            <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, marginBottom: 10 }}>Upcoming</div>
-            {upcomingFixtures.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "24px 20px", color: THEME.ink30 }}>
-                <div style={{ fontSize: 24, marginBottom: 6 }}>📅</div>
-                <div style={{ fontSize: 12, color: THEME.ink60 }}>No upcoming fixtures logged yet.</div>
-              </div>
-            ) : upcomingFixtures.map((fx, i) => (
-              <div key={fx.id} onClick={() => { if (!isAdmin) return; setEditingFixture(fx); setFixtureForm({ date: fx.rawDate || "", opposition: fx.opposition, competition: fx.competition || competitions[0] || "", venue: fx.venue || "", notes: fx.notes || "", season_id: fx.season_id }); setShowFixtureForm(true); }}
-                style={{ display: "flex", alignItems: "center", gap: 12, background: i === 0 ? THEME.pitchSoft : THEME.white, borderRadius: 16, padding: "14px 16px", marginBottom: 10, boxShadow: "0 2px 8px rgba(18,23,46,0.06)", borderLeft: `4px solid ${i === 0 ? THEME.pitch : THEME.amber}`, cursor: isAdmin ? "pointer" : "default" }}>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", background: i === 0 ? THEME.pitch : "#f4f6f9", color: i === 0 ? "#fff" : THEME.navy, borderRadius: 10, padding: "6px 10px", fontFamily: THEME.mono, flexShrink: 0, width: 44 }}>
-                  <span style={{ fontSize: 16, fontWeight: 700, lineHeight: 1 }}>{new Date(fx.rawDate || fx.date).getDate()}</span>
-                  <span style={{ fontSize: 8, letterSpacing: 1, textTransform: "uppercase", opacity: i === 0 ? 0.85 : 0.6 }}>{new Date(fx.rawDate || fx.date).toLocaleDateString("en-GB", { month: "short" })}</span>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 14, color: THEME.navy, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>vs {fx.opposition}</div>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 3 }}>
-                    {fx.venue && <span style={{ fontFamily: THEME.mono, fontSize: 9, color: THEME.ink60 }}>📍 {fx.venue}</span>}
-                    {fx.notes && <span style={{ fontFamily: THEME.mono, fontSize: 9, color: THEME.ink60 }}>{fx.notes}</span>}
-                  </div>
-                </div>
-                <span style={{ fontFamily: THEME.mono, fontSize: 8, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", padding: "3px 8px", borderRadius: 20, background: i === 0 ? THEME.pitch : "#eef0f4", color: i === 0 ? "#fff" : THEME.ink60, flexShrink: 0 }}>
-                  {i === 0 ? "Next Up" : (fx.competition || "Fixture")}
-                </span>
-              </div>
-            ))}
-
-            {pastFixtures.length > 0 && (
-              <>
-                <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, margin: "22px 0 10px" }}>Played</div>
-                {pastFixtures.map(fx => {
-                  const matchedResult = findFixtureResult(fx);
-                  return (
-                    <div key={fx.id} onClick={() => { if (!isAdmin || matchedResult) return; setEditingFixture(fx); setFixtureForm({ date: fx.rawDate || "", opposition: fx.opposition, competition: fx.competition || competitions[0] || "", venue: fx.venue || "", notes: fx.notes || "", season_id: fx.season_id }); setShowFixtureForm(true); }}
-                      style={{ display: "flex", alignItems: "center", gap: 12, background: THEME.white, borderRadius: 16, padding: "12px 16px", marginBottom: 8, opacity: 0.6, cursor: (isAdmin && !matchedResult) ? "pointer" : "default" }}>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", background: "#f4f6f9", borderRadius: 10, padding: "5px 9px", fontFamily: THEME.mono, flexShrink: 0, width: 40 }}>
-                        <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1, color: THEME.navy }}>{new Date(fx.rawDate || fx.date).getDate()}</span>
-                        <span style={{ fontSize: 7, letterSpacing: 1, textTransform: "uppercase", color: THEME.ink60 }}>{new Date(fx.rawDate || fx.date).toLocaleDateString("en-GB", { month: "short" })}</span>
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0, fontFamily: THEME.display, fontWeight: 600, fontSize: 13, color: THEME.navy, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>vs {fx.opposition}</div>
-                      <span style={{ fontFamily: THEME.mono, fontSize: 9, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", padding: "3px 8px", borderRadius: 20, background: "#eef0f4", color: THEME.ink60, flexShrink: 0 }}>
-                        {matchedResult ? `${matchedResult.homeScore}–${matchedResult.awayScore} ${matchedResult.result}` : "Played"}
-                      </span>
-                    </div>
-                  );
-                })}
-              </>
-            )}
-          </div>
-        )}
-
         {/* ── PLAYER PROFILE ── */}
         {mode === "player" && viewingPlayerName && (
           <PlayerProfileScreen
@@ -1359,17 +1136,13 @@ export default function App() {
             <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, marginBottom: 10 }}>Manage</div>
             {[
               { key: "new", icon: "⚽", accent: THEME.sky, title: "Log a Result", desc: "Add a new match result", disabled: !isViewingActive },
-              { key: "fixtures", icon: "📅", accent: "#f472b6", title: "Fixtures", desc: "Add or edit upcoming matches", disabled: !isViewingActive },
               { key: "squad", icon: "🏃", accent: THEME.pitch, title: "Squad", desc: "Players, squad numbers, photos" },
               { key: "teams", icon: "👥", accent: THEME.amber, title: "Teams", desc: "Opposition club list & badges" },
               { key: "report", icon: "📊", accent: "#c084fc", title: "Report", desc: "Season stats & shareable image" },
               { key: "seasons", icon: "🗓", accent: THEME.loss, title: "Season History", desc: "Past seasons, archive & switch" },
               { key: "placements", icon: "🏆", accent: THEME.amber, title: "Trophy Cabinet", desc: "Set how a tournament finished" },
             ].map(item => (
-              <button key={item.key} disabled={item.disabled} onClick={() => {
-                  if (item.key === "fixtures") { setEditingFixture(null); setFixtureForm({ date: "", opposition: "", competition: competitions[0] || "", venue: "", notes: "", season_id: activeSeason?.id }); setShowFixtureForm(true); }
-                  setMode(item.key);
-                }}
+              <button key={item.key} disabled={item.disabled} onClick={() => setMode(item.key)}
                 style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, background: THEME.white, border: "none", borderLeft: `3px solid ${item.accent}`, borderRadius: 14, padding: "14px 16px", marginBottom: 10, boxShadow: "0 2px 8px rgba(18,23,46,0.05)", cursor: item.disabled ? "default" : "pointer", opacity: item.disabled ? 0.5 : 1, fontFamily: THEME.body, textAlign: "left" }}>
                 <div style={{ width: 38, height: 38, borderRadius: 10, background: THEME.navy, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{item.icon}</div>
                 <div style={{ flex: 1 }}>
@@ -2341,7 +2114,7 @@ export default function App() {
           </button>
         ))}
         <button onClick={() => isAdmin ? setMode("staff") : setShowPinGate(true)}
-          style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: 9, letterSpacing: 0.5, textTransform: "uppercase", color: (mode === "staff" || ["teams","squad","report","seasons","new","fixtures","placements"].includes(mode)) ? THEME.navy : THEME.ink60, fontWeight: (mode === "staff" || ["teams","squad","report","seasons","new","fixtures","placements"].includes(mode)) ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
+          style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: 9, letterSpacing: 0.5, textTransform: "uppercase", color: (mode === "staff" || ["teams","squad","report","seasons","new","placements"].includes(mode)) ? THEME.navy : THEME.ink60, fontWeight: (mode === "staff" || ["teams","squad","report","seasons","new","placements"].includes(mode)) ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
           <span style={{ fontSize: 18 }}>{isAdmin ? "🔓" : "🔒"}</span>
           Admin
         </button>
