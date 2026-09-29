@@ -1980,7 +1980,7 @@ export default function App() {
                       }
                     </div>
                     <div>
-                      <input ref={playerPhotoRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={async e => {
+                      <input ref={playerPhotoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={async e => {
                         const file = e.target.files[0]; if (!file) return;
                         setUploadingPlayerPhoto(true);
                         try {
@@ -2273,7 +2273,7 @@ export default function App() {
       </div>
 
       {/* Hidden input reused by every "+ Add" photos button — target result set just before it's clicked */}
-      <input ref={photoUploadRef} type="file" accept="image/*" capture="environment" multiple style={{ display: "none" }}
+      <input ref={photoUploadRef} type="file" accept="image/*" multiple style={{ display: "none" }}
         onChange={e => { const rid = photoUploadTargetRef.current; handleAddPhotos(rid, e.target.files); e.target.value = ""; }} />
 
       {/* Photo lightbox */}
