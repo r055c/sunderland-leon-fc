@@ -186,3 +186,20 @@ export async function deleteAppearancesByResult(resultId) {
   const res = await fetch(`${base()}/appearances?result_id=eq.${resultId}`, { method: "DELETE", headers });
   if (!res.ok) throw new Error("Failed to delete appearances");
 }
+
+// ── Match photos ──────────────────────────────────────────
+export async function fetchMatchPhotos() {
+  const res = await fetch(`${base()}/match_photos?order=id.desc`, { headers });
+  if (!res.ok) throw new Error("Failed to fetch match photos");
+  return res.json();
+}
+export async function insertMatchPhotos(records) {
+  // records: [{ result_id, url }, ...]
+  const res = await fetch(`${base()}/match_photos`, { method: "POST", headers, body: JSON.stringify(records) });
+  if (!res.ok) throw new Error("Failed to insert match photos");
+  return res.json();
+}
+export async function deleteMatchPhoto(id) {
+  const res = await fetch(`${base()}/match_photos?id=eq.${id}`, { method: "DELETE", headers });
+  if (!res.ok) throw new Error("Failed to delete match photo");
+}
