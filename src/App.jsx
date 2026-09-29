@@ -644,6 +644,7 @@ export default function App() {
   const [motmPlayerId, setMotmPlayerId] = useState(null);
   const [oppMotmPlayerId, setOppMotmPlayerId] = useState(null);
   const playerPhotoRef = useRef();
+  const [uploadingPlayerPhoto, setUploadingPlayerPhoto] = useState(false);
 
   const [form, setForm] = useState({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: "", motm: "", oppMotm: "", round: "", season_id: null });
   const fileRef = useRef();
@@ -1979,16 +1980,23 @@ export default function App() {
                       }
                     </div>
                     <div>
-                      <input ref={playerPhotoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => {
+                      <input ref={playerPhotoRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={async e => {
                         const file = e.target.files[0]; if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = ev => setPlayerForm(f => ({ ...f, photo: ev.target.result }));
-                        reader.readAsDataURL(file);
+                        setUploadingPlayerPhoto(true);
+                        try {
+                          const url = await uploadImage(file, "players");
+                          setPlayerForm(f => ({ ...f, photo: url }));
+                        } catch (err) {
+                          showToast("⚠️ Couldn't upload that photo");
+                        }
+                        setUploadingPlayerPhoto(false);
+                        e.target.value = "";
                       }} />
-                      <button onClick={() => playerPhotoRef.current.click()} style={{ background: "#f0f4ff", border: "1.5px solid #87ceeb", borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: "#87ceeb", display: "block", marginBottom: 6 }}>
-                        {playerForm.photo ? "Change photo" : "Add photo (optional)"}
+                      <button onClick={() => playerPhotoRef.current.click()} disabled={uploadingPlayerPhoto}
+                        style={{ background: "#f0f4ff", border: "1.5px solid #87ceeb", borderRadius: 8, padding: "6px 14px", cursor: uploadingPlayerPhoto ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: "#87ceeb", display: "block", marginBottom: 6, opacity: uploadingPlayerPhoto ? 0.6 : 1 }}>
+                        {uploadingPlayerPhoto ? "Uploading..." : playerForm.photo ? "Change photo" : "Add photo (optional)"}
                       </button>
-                      {playerForm.photo && <button onClick={() => setPlayerForm(f => ({ ...f, photo: null }))} style={{ background: "none", border: "none", color: "#d50000", fontSize: 11, cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>✕ Remove</button>}
+                      {playerForm.photo && !uploadingPlayerPhoto && <button onClick={() => setPlayerForm(f => ({ ...f, photo: null }))} style={{ background: "none", border: "none", color: "#d50000", fontSize: 11, cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>✕ Remove</button>}
                     </div>
                   </div>
 
