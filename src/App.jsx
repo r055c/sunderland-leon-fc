@@ -57,11 +57,11 @@ function Toast({ message, onDone }) {
 }
 
 // ── Share helper ──────────────────────────────────────────
-async function shareImage(canvas, filename) {
+async function shareImage(canvas, filename, text = "") {
   canvas.toBlob(async (blob) => {
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], filename, { type: "image/png" })] })) {
       try {
-        await navigator.share({ files: [new File([blob], filename, { type: "image/png" })], title: "Sunderland Leon FC" });
+        await navigator.share({ files: [new File([blob], filename, { type: "image/png" })], title: "Sunderland Leon FC", text });
         return;
       } catch(e) {}
     }
@@ -71,6 +71,14 @@ async function shareImage(canvas, filename) {
     link.href = URL.createObjectURL(blob);
     link.click();
   }, "image/png");
+}
+
+// Short caption for sharing a result — used as the native-share text and the WhatsApp message.
+function buildResultCaption(match) {
+  if (!match) return "";
+  const scoreLine = `Sunderland Leon ${match.homeScore}-${match.awayScore} ${match.opposition || ""}`.trim();
+  const scorers = (match.scorers || []).length ? ` ⚽ ${match.scorers.join(", ")}` : "";
+  return `${scoreLine}${scorers}`;
 }
 
 const DEFAULT_COMPETITIONS = [];
@@ -265,7 +273,7 @@ function loadHtml2Canvas() {
     document.head.appendChild(script);
   });
 }
-function SaveCardButton({ cardRef, filename = "leon-result.png", onSaved }) {
+function SaveCardButton({ cardRef, filename = "leon-result.png", onSaved, shareText = "" }) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(false);
   const handleSave = async () => {
@@ -274,10 +282,14 @@ function SaveCardButton({ cardRef, filename = "leon-result.png", onSaved }) {
     try {
       const h2c = await loadHtml2Canvas();
       const canvas = await h2c(cardRef.current, { backgroundColor: "#ffffff", scale: 3, useCORS: true, logging: false, allowTaint: true });
-      await shareImage(canvas, filename);
+      await shareImage(canvas, filename, shareText);
       if (onSaved) onSaved();
     } catch(e) { setErr(true); }
     setSaving(false);
+  };
+  const handleWhatsApp = () => {
+    const url = `https://wa.me/?text=${encodeURIComponent(shareText || "Sunderland Leon FC")}`;
+    window.open(url, "_blank", "noopener");
   };
   const canShare = typeof navigator !== "undefined" && !!navigator.share;
   return (
@@ -287,6 +299,12 @@ function SaveCardButton({ cardRef, filename = "leon-result.png", onSaved }) {
         {saving ? "⏳ Saving..." : canShare ? "📤 Share Result Card" : "📸 Save as Image"}
       </button>
       {err && <p style={{ textAlign: "center", color: "#d50000", fontSize: 12, marginTop: 6 }}>Couldn't share — try a screenshot instead.</p>}
+      {shareText && (
+        <button onClick={handleWhatsApp}
+          style={{ width: "100%", marginTop: 8, padding: "11px", background: "#25D366", color: "#fff", border: "none", borderRadius: 12, fontSize: 13, fontWeight: 800, letterSpacing: 0.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          💬 Share to WhatsApp
+        </button>
+      )}
     </div>
   );
 }
@@ -482,7 +500,7 @@ function ResultCard({ match, teamName = "Team", compColor = "#5fb2d9", players =
           <span style={{ fontFamily: THEME.mono, fontSize: 9, color: THEME.ink60 }}>{match.date}</span>
         </div>
       </div>
-      <SaveCardButton cardRef={cardRef} filename={filename} />
+      <SaveCardButton cardRef={cardRef} filename={filename} shareText={buildResultCaption(match)} />
     </div>
   );
 }
@@ -540,7 +558,39 @@ export default function App() {
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
   const [toast, setToast] = useState(null);
-  const showToast = (msg) => setToast(msg);
+  const showToast = (msg) => {
+    setToast(msg);
+    // Small haptic buzz on save confirmations, where supported (most Android phones; no-op on iOS Safari).
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      try { navigator.vibrate(35); } catch (e) {}
+    }
+  };
+
+  // ── Install prompt (Add to Home Screen) ─────────────────
+  const [installPromptEvent, setInstallPromptEvent] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setInstallPromptEvent(e);
+      const dismissed = localStorage.getItem("leon_install_dismissed");
+      const isStandalone = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(display-mode: standalone)").matches;
+      if (!dismissed && !isStandalone) setShowInstallBanner(true);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+  const handleInstallClick = async () => {
+    if (!installPromptEvent) return;
+    installPromptEvent.prompt();
+    try { await installPromptEvent.userChoice; } catch (e) {}
+    setShowInstallBanner(false);
+    setInstallPromptEvent(null);
+  };
+  const handleDismissInstall = () => {
+    setShowInstallBanner(false);
+    localStorage.setItem("leon_install_dismissed", "1");
+  };
   const [scorersTab, setScorersTab] = useState("goals");
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState(false);
@@ -2072,6 +2122,18 @@ export default function App() {
               Unlock
             </button>
           </div>
+        </div>
+      )}
+
+      {showInstallBanner && (
+        <div style={{ position: "fixed", left: 12, right: 12, bottom: 84, background: THEME.navy, borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 6px 20px rgba(0,0,0,0.28)", zIndex: 70 }}>
+          <span style={{ fontSize: 24, flexShrink: 0 }}>📲</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ color: THEME.white, fontFamily: THEME.display, fontWeight: 600, fontSize: 13 }}>Add Leon FC to your home screen</div>
+            <div style={{ color: THEME.ink30, fontSize: 11, marginTop: 1 }}>Quick access, just like an app</div>
+          </div>
+          <button onClick={handleDismissInstall} style={{ background: "none", border: "none", color: THEME.ink30, fontSize: 12, fontWeight: 600, padding: "6px 4px", cursor: "pointer", fontFamily: THEME.body, flexShrink: 0 }}>Not now</button>
+          <button onClick={handleInstallClick} style={{ background: THEME.sky, border: "none", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 12, color: THEME.navy, cursor: "pointer", fontFamily: THEME.body, flexShrink: 0 }}>Install</button>
         </div>
       )}
 
