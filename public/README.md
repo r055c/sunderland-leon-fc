@@ -38,7 +38,7 @@ alter table fixtures add column if not exists season_id bigint references season
 
 -- Create your first season
 insert into seasons (name, age_group, is_active, competitions)
-values ('2025/26', 'Under 9 Blue', true, array['Spring Cup'])
+values ('2025/26', '', true, array['Spring Cup'])
 returning id;
 
 -- IMPORTANT: copy the id returned above and use it below

@@ -11,7 +11,7 @@ export default defineConfig({
       manifest: {
         name: 'Sunderland Leon FC',
         short_name: 'Leon FC',
-        description: 'Match results and stats for Sunderland Leon FC Under 9s Blue',
+        description: 'Match results and stats for Sunderland Leon FC',
         theme_color: '#1a1a2e',
         background_color: '#1a1a2e',
         display: 'standalone',

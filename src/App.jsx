@@ -134,7 +134,7 @@ function PlayerProfileScreen({ name, players, appearances, results, seasons, age
         </div>
         <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 20, color: THEME.navy }}>{name}</div>
         <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: THEME.ink60, marginTop: 2 }}>
-          {ageGroup}{stats.player?.squad_number ? ` · Squad No. ${stats.player.squad_number}` : ""}
+          {[ageGroup, stats.player?.squad_number ? `Squad No. ${stats.player.squad_number}` : null].filter(Boolean).join(" · ")}
         </div>
       </div>
 
@@ -673,7 +673,7 @@ export default function App() {
           setForm(f => ({ ...f, competition: comps[0] || "" }));
         } else {
           // No seasons yet — create the first one
-          const created = await insertSeason({ name: "2025/26", age_group: "Under 9 Blue", is_active: true, competitions: DEFAULT_COMPETITIONS });
+          const created = await insertSeason({ name: "2025/26", age_group: "", is_active: true, competitions: DEFAULT_COMPETITIONS });
           setSeasons([created]);
           setActiveSeasonState(created);
           setViewingSeason(created);
@@ -981,7 +981,7 @@ export default function App() {
   const isViewingActive = !viewingSeason || !activeSeason || viewingSeason?.id === activeSeason?.id;
 
   const handleStartNewSeason = async () => {
-    if (!newSeasonForm.name || !newSeasonForm.age_group) return;
+    if (!newSeasonForm.name) return;
     try {
       await setActiveSeason(0);
       const created = await insertSeason({ name: newSeasonForm.name, age_group: newSeasonForm.age_group, is_active: true, competitions: DEFAULT_COMPETITIONS });
@@ -1075,7 +1075,7 @@ export default function App() {
       {/* Past season banner */}
       {!isViewingActive && (
         <div style={{ background: THEME.amber, padding: "8px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#3a2a05", letterSpacing: 0.5 }}>📅 Viewing: {viewingSeason?.name} — {viewingSeason?.age_group}</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "#3a2a05", letterSpacing: 0.5 }}>📅 Viewing: {viewingSeason?.name}{viewingSeason?.age_group ? ` — ${viewingSeason.age_group}` : ""}</span>
           <button onClick={() => { setViewingSeason(activeSeason); setFilterComp("All"); }} style={{ background: THEME.navy, color: THEME.amber, border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: THEME.body }}>Back to Current</button>
         </div>
       )}
@@ -1443,7 +1443,7 @@ export default function App() {
                     <label style={labelStyle}>Season</label>
                     <select value={editingResult.season_id || ""} onChange={e => setEditingResult(r => ({ ...r, season_id: parseInt(e.target.value) }))}
                       style={{ ...inputStyle, colorScheme: "light" }}>
-                      {seasons.map(s => <option key={s.id} value={s.id}>{s.name} — {s.age_group}{s.is_active ? " (Current)" : ""}</option>)}
+                      {seasons.map(s => <option key={s.id} value={s.id}>{s.name}{s.age_group ? ` — ${s.age_group}` : ""}{s.is_active ? " (Current)" : ""}</option>)}
                     </select>
                   </div>
                   <div style={{ marginBottom: 14 }}>
@@ -1751,7 +1751,7 @@ export default function App() {
                   <label style={labelStyle}>Season</label>
                   <select value={form.season_id || activeSeason?.id || ""} onChange={e => setForm(f => ({ ...f, season_id: parseInt(e.target.value) }))}
                     style={{ ...inputStyle, colorScheme: "light" }}>
-                    {seasons.map(s => <option key={s.id} value={s.id}>{s.name} — {s.age_group}{s.is_active ? " (Current)" : ""}</option>)}
+                    {seasons.map(s => <option key={s.id} value={s.id}>{s.name}{s.age_group ? ` — ${s.age_group}` : ""}{s.is_active ? " (Current)" : ""}</option>)}
                   </select>
                 </div>
 
@@ -1934,7 +1934,7 @@ export default function App() {
                 <>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: "#888", letterSpacing: 2, textTransform: "uppercase" }}>
-                      {activePlayers.length} Active — {viewingSeason?.age_group}
+                      {activePlayers.length} Active{viewingSeason?.age_group ? ` — ${viewingSeason.age_group}` : ""}
                     </span>
                     <button onClick={() => { setShowPlayerModal(true); setEditingPlayer(null); setPlayerForm({ name: "", squad_number: "", photo: null }); }}
                       style={{ background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 10, padding: "8px 16px", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
@@ -2045,7 +2045,7 @@ export default function App() {
                 <div style={{ background: "#1a1a2e", padding: "20px", textAlign: "center", borderBottom: "1px solid rgba(135,206,235,0.2)" }}>
                   <div style={{ color: "#87ceeb", fontSize: 10, fontWeight: 700, letterSpacing: 3, marginBottom: 4 }}>SUNDERLAND LEON FC</div>
                   <div style={{ color: "#fff", fontSize: 22, fontWeight: 900, letterSpacing: 2 }}>{viewingSeason?.name} SEASON</div>
-                  <div style={{ color: "#87ceeb", fontSize: 11, letterSpacing: 2, marginTop: 2 }}>{viewingSeason?.age_group?.toUpperCase()} · SEASON REPORT</div>
+                  <div style={{ color: "#87ceeb", fontSize: 11, letterSpacing: 2, marginTop: 2 }}>{viewingSeason?.age_group ? `${viewingSeason.age_group.toUpperCase()} · ` : ""}SEASON REPORT</div>
                 </div>
 
                 <div style={{ background: "#f0f2f5", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -2206,11 +2206,11 @@ export default function App() {
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#87ceeb", letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>Age Group</label>
-              <input type="text" placeholder="e.g. Under 10 Blue" value={newSeasonForm.age_group} onChange={e => setNewSeasonForm(f => ({ ...f, age_group: e.target.value }))} style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: "#1a1a2e", outline: "none", boxSizing: "border-box" }} />
+              <input type="text" placeholder="Age group (optional)" value={newSeasonForm.age_group} onChange={e => setNewSeasonForm(f => ({ ...f, age_group: e.target.value }))} style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: "#1a1a2e", outline: "none", boxSizing: "border-box" }} />
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => { setShowSeasonModal(false); setNewSeasonForm({ name: "", age_group: "" }); }} style={{ flex: 1, padding: "14px", background: "#f0f0f0", color: "#888", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-              <button onClick={handleStartNewSeason} disabled={!newSeasonForm.name || !newSeasonForm.age_group}
+              <button onClick={handleStartNewSeason} disabled={!newSeasonForm.name}
                 style={{ flex: 2, padding: "14px", background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 900, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", opacity: !newSeasonForm.name || !newSeasonForm.age_group ? 0.5 : 1 }}>
                 Start New Season
               </button>
