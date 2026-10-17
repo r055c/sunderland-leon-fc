@@ -1,14 +1,20 @@
 // Sunderland Leon FC — v2.3
 import { useState, useRef, useEffect, useCallback } from "react";
-import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto } from "./supabase.js";
+import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchClubSettings, saveClubSettings } from "./supabase.js";
+import { DEFAULT_BADGE } from "./defaultBadge.js";
+import { DEFAULT_BRANDING, FONTS, PRESETS, applyBranding, deriveTheme, loadCachedBranding, cacheBranding, contrast } from "./branding.js";
 
 // ── Logo ─────────────────────────────────────────────────
-const LEON_LOGO = "data:image/png;base64,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";
 
-function LeonLogo({ size = 68 }) {
+// Club identity — mutable, filled from the club's branding settings at startup.
+const BRAND = { name: DEFAULT_BRANDING.club_name, short: DEFAULT_BRANDING.short_name, slogan: DEFAULT_BRANDING.slogan, badge: null };
+
+function ClubLogo({ size = 68 }) {
   const [err, setErr] = useState(false);
-  if (err) return <span style={{ fontSize: size * 0.6, lineHeight: 1 }}>🦢</span>;
-  return <img src={LEON_LOGO} alt="Leon FC" onError={() => setErr(true)} style={{ width: size, height: size, objectFit: "contain", display: "block" }} />;
+  const src = BRAND.badge || DEFAULT_BADGE;
+  useEffect(() => { setErr(false); }, [src]);
+  if (err) return <span style={{ fontSize: size * 0.6, lineHeight: 1 }}>⚽</span>;
+  return <img src={src} alt={BRAND.short} onError={() => setErr(true)} style={{ width: size, height: size, objectFit: "contain", display: "block" }} />;
 }
 
 // ── Constants ─────────────────────────────────────────────
@@ -39,8 +45,8 @@ const PLACEMENT_META = {
   "Winners": { icon: "🏆", bg: "#fdf3d8", color: "#b8860b" },
   "Runners-up": { icon: "🥈", bg: "#eef1f3", color: "#71797e" },
   "3rd Place": { icon: "🥉", bg: "#fbe9d8", color: "#a0522d" },
-  "Semi-Final": { icon: "⚔️", bg: "#f4f6f9", color: "#6b7280" },
-  "Group Stage": { icon: "🏁", bg: "#f4f6f9", color: "#6b7280" },
+  "Semi-Final": { icon: "⚔️", bg: THEME.chalk, color: "#6b7280" },
+  "Group Stage": { icon: "🏁", bg: THEME.chalk, color: "#6b7280" },
 };
 
 // ── Toast ─────────────────────────────────────────────────
@@ -50,7 +56,7 @@ function Toast({ message, onDone }) {
     return () => clearTimeout(t);
   }, []);
   return (
-    <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "#1a1a2e", color: "#87ceeb", padding: "12px 24px", borderRadius: 30, fontWeight: 800, fontSize: 14, letterSpacing: 1, zIndex: 999, boxShadow: "0 4px 20px rgba(0,0,0,0.3)", whiteSpace: "nowrap", animation: "fadein 0.2s ease" }}>
+    <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: THEME.navy, color: THEME.sky, padding: "12px 24px", borderRadius: 30, fontWeight: 800, fontSize: 14, letterSpacing: 1, zIndex: 999, boxShadow: "0 4px 20px rgba(0,0,0,0.3)", whiteSpace: "nowrap", animation: "fadein 0.2s ease" }}>
       {message}
     </div>
   );
@@ -61,7 +67,7 @@ async function shareImage(canvas, filename, text = "") {
   canvas.toBlob(async (blob) => {
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], filename, { type: "image/png" })] })) {
       try {
-        await navigator.share({ files: [new File([blob], filename, { type: "image/png" })], title: "Sunderland Leon FC", text });
+        await navigator.share({ files: [new File([blob], filename, { type: "image/png" })], title: BRAND.name, text });
         return;
       } catch(e) {}
     }
@@ -76,7 +82,7 @@ async function shareImage(canvas, filename, text = "") {
 // Short caption for sharing a result — used as the native-share text and the WhatsApp message.
 function buildResultCaption(match) {
   if (!match) return "";
-  const scoreLine = `Sunderland Leon ${match.homeScore}-${match.awayScore} ${match.opposition || ""}`.trim();
+  const scoreLine = `${BRAND.name.replace(/ FC$/i, "")} ${match.homeScore}-${match.awayScore} ${match.opposition || ""}`.trim();
   const scorers = (match.scorers || []).length ? ` ⚽ ${match.scorers.join(", ")}` : "";
   return `${scoreLine}${scorers}`;
 }
@@ -94,7 +100,7 @@ function formatDate(str) {
 }
 const MEDAL = ["🥇", "🥈", "🥉"];
 const COMP_COLORS = ["#87ceeb","#ffd700","#ff7eb3","#90ee90","#ffb347","#dda0dd","#87cefa"];
-function getCompColor(comps, comp) { const i = comps.indexOf(comp); return COMP_COLORS[i % COMP_COLORS.length] || "#87ceeb"; }
+function getCompColor(comps, comp) { const i = comps.indexOf(comp); const c = COMP_COLORS[(i < 0 ? 0 : i) % COMP_COLORS.length]; return c === COMP_COLORS[0] ? THEME.sky : c; }
 
 // ── Helpers ───────────────────────────────────────────────
 function parseScorer(str) {
@@ -288,7 +294,7 @@ function SaveCardButton({ cardRef, filename = "leon-result.png", onSaved, shareT
     setSaving(false);
   };
   const handleWhatsApp = () => {
-    const url = `https://wa.me/?text=${encodeURIComponent(shareText || "Sunderland Leon FC")}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(shareText || BRAND.name)}`;
     window.open(url, "_blank", "noopener");
   };
   const canShare = typeof navigator !== "undefined" && !!navigator.share;
@@ -310,7 +316,7 @@ function SaveCardButton({ cardRef, filename = "leon-result.png", onSaved, shareT
 }
 
 // ── Leaderboard ───────────────────────────────────────────
-function Leaderboard({ data, label, emptyMsg, filterLabel, accentColor = "#87ceeb", onRowClick }) {
+function Leaderboard({ data, label, emptyMsg, filterLabel, accentColor = THEME.sky, onRowClick }) {
   const max = data[0]?.count || 1;
   return (
     <div>
@@ -327,13 +333,13 @@ function Leaderboard({ data, label, emptyMsg, filterLabel, accentColor = "#87cee
             {data.map((p, i) => (
               <div key={p.name} onClick={() => onRowClick && onRowClick(p.name)} style={{ display: "grid", gridTemplateColumns: "36px 1fr 100px 48px", alignItems: "center", padding: "13px 18px", borderBottom: i < data.length - 1 ? "1px solid #f0f0f0" : "none", background: i === 0 ? "#fffbea" : "#fff", cursor: onRowClick ? "pointer" : "default" }}>
                 <span style={{ fontSize: i < 3 ? 20 : 13, fontWeight: 800, color: i >= 3 ? "#bbb" : undefined }}>{i < 3 ? MEDAL[i] : i + 1}</span>
-                <span style={{ fontSize: 17, fontWeight: 800, color: "#1a1a2e" }}>{p.name}</span>
+                <span style={{ fontSize: 17, fontWeight: 800, color: THEME.navy }}>{p.name}</span>
                 <div style={{ paddingRight: 10 }}>
                   <div style={{ height: 8, background: "#eee", borderRadius: 4, overflow: "hidden" }}>
                     <div style={{ height: "100%", width: `${Math.round((p.count / max) * 100)}%`, background: i === 0 ? `linear-gradient(90deg,${accentColor},#1a9be8)` : i === 1 ? "linear-gradient(90deg,#b0bec5,#607d8b)" : i === 2 ? "linear-gradient(90deg,#ffcc80,#ff9800)" : "#ddd", borderRadius: 4 }} />
                   </div>
                 </div>
-                <span style={{ fontSize: 20, fontWeight: 900, color: "#1a1a2e", textAlign: "right" }}>{p.count}</span>
+                <span style={{ fontSize: 20, fontWeight: 900, color: THEME.navy, textAlign: "right" }}>{p.count}</span>
               </div>
             ))}
           </div>
@@ -344,42 +350,42 @@ function Leaderboard({ data, label, emptyMsg, filterLabel, accentColor = "#87cee
 
 // ── Result Card ───────────────────────────────────────────
 // ── Scoreboard card (signature element) ────────────────────
-function ScoreCard({ match, compColor = "#5fb2d9", onClick, showMeta = true, photoCount = 0 }) {
+function ScoreCard({ match, compColor = THEME.sky, onClick, showMeta = true, photoCount = 0 }) {
   const isWin = match.result === "W", isLoss = match.result === "L";
   const resultBg = isWin ? "#4ade80" : isLoss ? "#f3a3ad" : "#e8a93b";
   const resultLabel = isWin ? "WIN" : isLoss ? "LOSS" : "DRAW";
   return (
-    <button onClick={onClick} style={{ width: "100%", textAlign: "left", background: "#12172e", border: "none", borderRadius: 16, padding: "16px 18px", marginBottom: 12, cursor: onClick ? "pointer" : "default", position: "relative", overflow: "hidden", fontFamily: "'Work Sans',sans-serif" }}>
+    <button onClick={onClick} style={{ width: "100%", textAlign: "left", background: THEME.navy, border: "none", borderRadius: 16, padding: "16px 18px", marginBottom: 12, cursor: onClick ? "pointer" : "default", position: "relative", overflow: "hidden", fontFamily: THEME.body }}>
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${compColor}, transparent)` }} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: compColor }}>{match.competition}</span>
-        <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, fontWeight: 700, letterSpacing: 1, padding: "3px 9px", borderRadius: 6, color: "#12172e", background: resultBg }}>{resultLabel}</span>
+        <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: compColor }}>{match.competition}</span>
+        <span style={{ fontFamily: THEME.mono, fontSize: 10, fontWeight: 700, letterSpacing: 1, padding: "3px 9px", borderRadius: 6, color: THEME.navy, background: resultBg }}>{resultLabel}</span>
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ flex: 1, textAlign: "center" }}>
-          <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 700, fontSize: 30, color: "#fff", background: "#1c2344", borderRadius: 8, padding: "2px 12px", display: "inline-block", minWidth: 40 }}>{match.homeScore}</span>
-          <div style={{ fontFamily: "'Oswald',sans-serif", fontSize: 11, color: "#fff", fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", marginTop: 6 }}>Sunderland Leon</div>
+          <span style={{ fontFamily: THEME.mono, fontWeight: 700, fontSize: 30, color: "#fff", background: THEME.navySoft, borderRadius: 8, padding: "2px 12px", display: "inline-block", minWidth: 40 }}>{match.homeScore}</span>
+          <div style={{ fontFamily: THEME.display, fontSize: 11, color: "#fff", fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", marginTop: 6 }}>{BRAND.name.replace(/ FC$/i, "")}</div>
         </div>
-        <span style={{ color: compColor, fontFamily: "'IBM Plex Mono',monospace", fontSize: 18, margin: "0 6px" }}>–</span>
+        <span style={{ color: compColor, fontFamily: THEME.mono, fontSize: 18, margin: "0 6px" }}>–</span>
         <div style={{ flex: 1, textAlign: "center" }}>
-          <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 700, fontSize: 30, color: "#fff", background: "#1c2344", borderRadius: 8, padding: "2px 12px", display: "inline-block", minWidth: 40 }}>{match.awayScore}</span>
-          <div style={{ fontFamily: "'Oswald',sans-serif", fontSize: 11, color: "#c6cbe0", fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", marginTop: 6 }}>{(match.opposition || "").toUpperCase()}</div>
+          <span style={{ fontFamily: THEME.mono, fontWeight: 700, fontSize: 30, color: "#fff", background: THEME.navySoft, borderRadius: 8, padding: "2px 12px", display: "inline-block", minWidth: 40 }}>{match.awayScore}</span>
+          <div style={{ fontFamily: THEME.display, fontSize: 11, color: "#c6cbe0", fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", marginTop: 6 }}>{(match.opposition || "").toUpperCase()}</div>
         </div>
       </div>
       {showMeta && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 12, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-          {match.motm && <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#e8a93b" }}>⭐ {match.motm}</span>}
-          {(match.scorers || []).length > 0 && <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#e8a93b" }}>⚽ {match.scorers.join(", ")}</span>}
-          {match.round && <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#8b91ad" }}>{match.round}</span>}
-          {photoCount > 0 && <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, letterSpacing: 1, color: "#5fb2d9" }}>📷 {photoCount}</span>}
-          <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: "#6b7191", marginLeft: "auto" }}>{match.date}</span>
+          {match.motm && <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#e8a93b" }}>⭐ {match.motm}</span>}
+          {(match.scorers || []).length > 0 && <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#e8a93b" }}>⚽ {match.scorers.join(", ")}</span>}
+          {match.round && <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#8b91ad" }}>{match.round}</span>}
+          {photoCount > 0 && <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, color: THEME.sky }}>📷 {photoCount}</span>}
+          <span style={{ fontFamily: THEME.mono, fontSize: 9, color: "#6b7191", marginLeft: "auto" }}>{match.date}</span>
         </div>
       )}
     </button>
   );
 }
 
-function ResultCard({ match, teamName = "Team", compColor = "#5fb2d9", players = [], teams = [], onOpenPlayer }) {
+function ResultCard({ match, teamName = "Team", compColor = THEME.sky, players = [], teams = [], onOpenPlayer }) {
   const isWin = match.result === "W", isLoss = match.result === "L";
   const pillBg = isWin ? THEME.pitch : isLoss ? THEME.loss : THEME.amber;
   const resultLabel = isWin ? "WIN" : isLoss ? "LOSS" : "DRAW";
@@ -402,9 +408,9 @@ function ResultCard({ match, teamName = "Team", compColor = "#5fb2d9", players =
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 12px 16px", gap: 6 }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "1 1 0", minWidth: 0, gap: 8 }}>
             <div style={{ background: THEME.chalk, border: "2px solid #eef0f4", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", width: "clamp(48px,17vw,64px)", height: "clamp(48px,17vw,64px)", flexShrink: 0 }}>
-              <LeonLogo size={38} />
+              <ClubLogo size={38} />
             </div>
-            <span style={{ fontSize: "clamp(9px,2.8vw,12px)", fontWeight: 600, color: THEME.navy, textAlign: "center", lineHeight: 1.2, fontFamily: THEME.display, textTransform: "uppercase" }}>Sunderland Leon</span>
+            <span style={{ fontSize: "clamp(9px,2.8vw,12px)", fontWeight: 600, color: THEME.navy, textAlign: "center", lineHeight: 1.2, fontFamily: THEME.display, textTransform: "uppercase" }}>{BRAND.name.replace(/ FC$/i, "")}</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "0 0 auto", gap: 4 }}>
             <div style={{ display: "flex", alignItems: "center", gap: "clamp(6px,2vw,10px)" }}>
@@ -425,7 +431,7 @@ function ResultCard({ match, teamName = "Team", compColor = "#5fb2d9", players =
           <>
             <div style={{ height: 1, background: "#eee", margin: "0 18px" }} />
             <div style={{ padding: "12px 18px" }}>
-              <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: THEME.sky, display: "block", marginBottom: 8 }}>Goal Scorers</span>
+              <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: THEME.skyInk, display: "block", marginBottom: 8 }}>Goal Scorers</span>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                 {match.scorers.map((scorer, i) => {
                   const name = scorer.replace(/\s*[×x]\d+$/, "").trim();
@@ -497,7 +503,7 @@ function ResultCard({ match, teamName = "Team", compColor = "#5fb2d9", players =
         )}
 
         <div style={{ background: THEME.chalk, padding: "10px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid #eee" }}>
-          <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: THEME.ink60 }}>Sunderland Leon FC{teamName ? ` · ${teamName}` : ""}</span>
+          <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: THEME.ink60 }}>{BRAND.name}{teamName ? ` · ${teamName}` : ""}</span>
           <span style={{ fontFamily: THEME.mono, fontSize: 9, color: THEME.ink60 }}>{match.date}</span>
         </div>
       </div>
@@ -517,7 +523,7 @@ function TeamPicker({ teams, value, onChange, onAddNew }) {
       <div onClick={() => setOpen(o => !o)} style={{ border: "2px solid #e8e8e8", borderRadius: 10, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", background: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {selected?.logo ? <img src={selected.logo} style={{ width: 28, height: 28, objectFit: "contain" }} alt="" /> : <span style={{ fontSize: 22 }}>⚽</span>}
-          <span style={{ fontSize: 16, fontWeight: 600, color: value ? "#1a1a2e" : "#aaa", fontFamily: "inherit" }}>{value || "Select opposition..."}</span>
+          <span style={{ fontSize: 16, fontWeight: 600, color: value ? THEME.navy : "#aaa", fontFamily: "inherit" }}>{value || "Select opposition..."}</span>
         </div>
         <span style={{ color: "#aaa" }}>▼</span>
       </div>
@@ -532,7 +538,7 @@ function TeamPicker({ teams, value, onChange, onAddNew }) {
               <div key={t.id} onClick={() => { onChange(t.name); setSearch(""); setOpen(false); }}
                 style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", background: t.name === value ? "#f0f4ff" : "#fff", borderBottom: "1px solid #f8f8f8" }}>
                 {t.logo ? <img src={t.logo} style={{ width: 32, height: 32, objectFit: "contain" }} alt="" /> : <span style={{ fontSize: 24 }}>⚽</span>}
-                <span style={{ fontSize: 15, fontWeight: 700, color: "#1a1a2e", fontFamily: "inherit" }}>{t.name}</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: THEME.navy, fontFamily: "inherit" }}>{t.name}</span>
               </div>
             ))}
             {filtered.length === 0 && (
@@ -540,7 +546,7 @@ function TeamPicker({ teams, value, onChange, onAddNew }) {
             )}
           </div>
           <div onClick={() => { onAddNew(search); setOpen(false); }}
-            style={{ padding: "12px 16px", borderTop: "2px solid #f0f0f0", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "#87ceeb", fontWeight: 800, fontSize: 14, fontFamily: "inherit" }}>
+            style={{ padding: "12px 16px", borderTop: "2px solid #f0f0f0", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: THEME.sky, fontWeight: 800, fontSize: 14, fontFamily: "inherit" }}>
             <span>+</span> Add "{search || "new team"}" to list
           </div>
         </div>
@@ -549,8 +555,148 @@ function TeamPicker({ teams, value, onChange, onAddNew }) {
   );
 }
 
+// ── Branding screen (Admin) ───────────────────────────────
+function BrandingScreen({ branding, onSave, onBack, showToast }) {
+  const [d, setD] = useState({ ...branding });
+  const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInput = useRef();
+  const t = deriveTheme(d);
+  const set = (k, v) => setD(x => ({ ...x, [k]: v }));
+  const lab = { fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: THEME.ink60, margin: "20px 0 8px", display: "block" };
+  const inp = { width: "100%", boxSizing: "border-box", padding: "11px 12px", borderRadius: 10, border: `1.5px solid ${THEME.ink30}`, fontSize: 14, fontFamily: "inherit", background: THEME.white, color: THEME.navy };
+  const card = { background: THEME.white, borderRadius: 14, padding: 14, boxShadow: "0 2px 8px rgba(18,23,46,0.06)" };
+  const lightAccent = contrast(d.accent_color, "#ffffff") < 4.5;
+  const mainDarkened = t.navy.toLowerCase() !== (d.primary_color || "").toLowerCase();
+  const name = (d.club_name || "").trim() || "Your Club FC";
+  const short = (d.short_name || "").trim() || "Club";
+
+  const pickBadge = async e => {
+    const file = e.target.files?.[0]; e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    try { set("badge_url", await uploadImage(file, "branding")); } catch (err) { showToast("Badge upload failed"); }
+    setUploading(false);
+  };
+  const save = async () => {
+    setBusy(true);
+    try { await onSave({ ...d, club_name: name, short_name: short, slogan: (d.slogan || "").trim() }); showToast("Branding saved ✓"); }
+    catch (err) { showToast("Could not save branding"); }
+    setBusy(false);
+  };
+
+  return (
+    <div style={{ maxWidth: 520, margin: "0 auto", paddingBottom: 30 }}>
+      <button onClick={onBack} style={{ background: "none", border: "none", color: THEME.ink60, fontFamily: THEME.mono, fontSize: 11, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", padding: "0 0 14px" }}>‹ Back</button>
+      <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 18, color: THEME.navy }}>Club branding</div>
+
+      {/* Live preview */}
+      <span style={lab}>Preview</span>
+      <div style={{ borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 18px rgba(18,23,46,0.15)", background: t.chalk }}>
+        <div style={{ background: t.navy, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <img src={d.badge_url || DEFAULT_BADGE} alt="" style={{ width: 44, height: 44, objectFit: "contain" }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ color: "#fff", fontFamily: t.display, fontWeight: 600, fontSize: 17, lineHeight: 1.1 }}>{name}</div>
+            <div style={{ color: t.sky, fontFamily: t.body, fontSize: 11, marginTop: 3 }}>{d.slogan}</div>
+          </div>
+        </div>
+        <div style={{ padding: 14 }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderLeft: "4px solid #1f6f4a" }}>
+            <div>
+              <div style={{ fontFamily: t.body, fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: t.skyInk, fontWeight: 700 }}>League</div>
+              <div style={{ fontFamily: t.body, fontSize: 14, color: t.navy, fontWeight: 600 }}>{short} v Rovers</div>
+            </div>
+            <div style={{ background: t.navy, color: "#fff", fontFamily: t.display, fontSize: 18, padding: "4px 12px", borderRadius: 8 }}>3 – 1</div>
+          </div>
+          <button style={{ marginTop: 10, background: t.sky, color: t.onSky, border: "none", borderRadius: 10, padding: "9px 16px", fontFamily: t.body, fontWeight: 700, fontSize: 13 }}>Share result</button>
+        </div>
+      </div>
+      {(lightAccent || mainDarkened) && (
+        <div style={{ fontSize: 11, color: THEME.ink60, marginTop: 8, lineHeight: 1.4 }}>
+          {lightAccent && "Your highlight colour is light, so a darker shade is used for text on white. "}
+          {mainDarkened && "Your main colour was darkened slightly so white text stays readable."}
+        </div>
+      )}
+
+      <span style={lab}>Colour presets</span>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        {PRESETS.map(p => {
+          const sel = p.p.toLowerCase() === (d.primary_color || "").toLowerCase() && p.a.toLowerCase() === (d.accent_color || "").toLowerCase();
+          return (
+            <button key={p.n} onClick={() => setD(x => ({ ...x, primary_color: p.p, accent_color: p.a }))}
+              style={{ ...card, padding: 10, display: "flex", alignItems: "center", gap: 10, border: sel ? `2px solid ${THEME.skyInk}` : "2px solid transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+              <span style={{ display: "flex", flexShrink: 0 }}>
+                <span style={{ width: 18, height: 28, background: p.p, borderRadius: "6px 0 0 6px" }} />
+                <span style={{ width: 18, height: 28, background: p.a, borderRadius: "0 6px 6px 0" }} />
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: THEME.navy }}>{p.n}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <span style={lab}>Custom colours</span>
+      <div style={{ ...card, display: "flex", gap: 16 }}>
+        {[["primary_color", "Main colour"], ["accent_color", "Highlight"]].map(([k, l]) => (
+          <label key={k} style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: THEME.navy, fontWeight: 600 }}>
+            <input type="color" value={d[k]} onChange={e => set(k, e.target.value)} style={{ width: 44, height: 36, border: "none", padding: 0, background: "none" }} />
+            {l}
+          </label>
+        ))}
+      </div>
+
+      <span style={lab}>Club badge</span>
+      <div style={{ ...card, display: "flex", alignItems: "center", gap: 12 }}>
+        <img src={d.badge_url || DEFAULT_BADGE} alt="" style={{ width: 52, height: 52, objectFit: "contain" }} />
+        <div style={{ flex: 1, display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={() => fileInput.current?.click()} disabled={uploading} style={{ background: THEME.navy, color: "#fff", border: "none", borderRadius: 10, padding: "9px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>{uploading ? "Uploading…" : "Upload badge"}</button>
+          {d.badge_url && <button onClick={() => set("badge_url", null)} style={{ background: "none", border: `1.5px solid ${THEME.ink30}`, borderRadius: 10, padding: "9px 14px", fontSize: 12, color: THEME.ink60, cursor: "pointer" }}>Use default</button>}
+        </div>
+        <input ref={fileInput} type="file" accept="image/*" onChange={pickBadge} style={{ display: "none" }} />
+      </div>
+
+      <span style={lab}>Club name</span>
+      <input style={inp} value={d.club_name} onChange={e => set("club_name", e.target.value)} placeholder="e.g. Sunderland Leon FC" />
+      <span style={lab}>Short name</span>
+      <input style={inp} value={d.short_name} onChange={e => set("short_name", e.target.value)} placeholder="e.g. Leon FC" />
+      <span style={lab}>Slogan</span>
+      <input style={inp} value={d.slogan} onChange={e => set("slogan", e.target.value)} placeholder="Your club motto" />
+
+      <span style={lab}>Font style</span>
+      <div style={{ display: "grid", gap: 8 }}>
+        {FONTS.map(f => (
+          <button key={f.id} onClick={() => set("font_pairing", f.id)}
+            style={{ ...card, display: "flex", alignItems: "center", justifyContent: "space-between", border: d.font_pairing === f.id ? `2px solid ${THEME.skyInk}` : "2px solid transparent", cursor: "pointer", fontFamily: "inherit" }}>
+            <span style={{ fontFamily: f.display, fontSize: 20, color: THEME.navy }}>{f.sample}</span>
+            <span style={{ fontSize: 11, color: THEME.ink60 }}>{f.name}</span>
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+        <button onClick={() => setD({ ...DEFAULT_BRANDING })} style={{ flex: 1, background: "none", border: `1.5px solid ${THEME.ink30}`, borderRadius: 12, padding: 13, fontWeight: 700, fontSize: 13, color: THEME.ink60, cursor: "pointer" }}>Reset to defaults</button>
+        <button onClick={save} disabled={busy} style={{ flex: 2, background: THEME.navy, color: "#fff", border: "none", borderRadius: 12, padding: 13, fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: busy ? 0.6 : 1 }}>{busy ? "Saving…" : "Save branding"}</button>
+      </div>
+      <div style={{ fontSize: 11, color: THEME.ink60, marginTop: 12, lineHeight: 1.4 }}>Changes apply to everyone who opens the app. The home-screen icon and installed app name are fixed when the app is built.</div>
+    </div>
+  );
+}
+
 // ── Main App ──────────────────────────────────────────────
 export default function App() {
+  const [branding, setBranding] = useState(() => loadCachedBranding());
+  applyBranding(THEME, branding);
+  BRAND.name = branding.club_name || DEFAULT_BRANDING.club_name;
+  BRAND.short = branding.short_name || DEFAULT_BRANDING.short_name;
+  BRAND.slogan = branding.slogan ?? "";
+  BRAND.badge = branding.badge_url || null;
+  useEffect(() => {
+    document.title = BRAND.name;
+    const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute("content", THEME.navy);
+    document.body.style.fontFamily = THEME.body;
+  }, [branding]);
   const [mode, setMode] = useState("home");
   const [isAdmin, setIsAdmin] = useState(false);
   const [viewingPlayerName, setViewingPlayerName] = useState(null);
@@ -657,6 +803,8 @@ export default function App() {
   useEffect(() => {
     async function load() {
       try {
+        const cs = await fetchClubSettings().catch(() => null);
+        if (cs) { const b = { ...DEFAULT_BRANDING, ...cs }; setBranding(b); cacheBranding(b); }
         const [r, t, s, pl, ap, mp] = await Promise.all([fetchResults(), fetchTeams(), fetchSeasons(), fetchPlayers(), fetchAppearances(), fetchMatchPhotos()]);
         setResults(r);
         setTeams(t);
@@ -996,25 +1144,25 @@ export default function App() {
   };
 
   // ── Styles ─────────────────────────────────────────────
-  const inputStyle = { width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: "#1a1a2e", outline: "none", boxSizing: "border-box" };
-  const labelStyle = { display: "block", fontSize: 11, fontWeight: 700, color: "#87ceeb", letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" };
+  const inputStyle = { width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: THEME.navy, outline: "none", boxSizing: "border-box" };
+  const labelStyle = { display: "block", fontSize: 11, fontWeight: 700, color: THEME.skyInk, letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" };
   const cardStyle = { background: "#fff", borderRadius: 16, padding: 20, boxShadow: "0 4px 20px rgba(0,0,0,0.08)", maxWidth: 520, margin: "0 auto" };
 
   // ── Loading / Error screens ─────────────────────────────
   if (loading) return (
-    <div style={{ minHeight: "100vh", background: "#1a1a2e", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, fontFamily: "inherit" }}>
-      <LeonLogo size={80} />
-      <div style={{ color: "#87ceeb", fontSize: 22, fontWeight: 800, letterSpacing: 3 }}>LOADING...</div>
+    <div style={{ minHeight: "100vh", background: THEME.navy, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, fontFamily: "inherit" }}>
+      <ClubLogo size={80} />
+      <div style={{ color: THEME.sky, fontSize: 22, fontWeight: 800, letterSpacing: 3 }}>LOADING...</div>
     </div>
   );
 
   if (dbError) return (
-    <div style={{ minHeight: "100vh", background: "#1a1a2e", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 24, fontFamily: "inherit", textAlign: "center" }}>
-      <LeonLogo size={80} />
+    <div style={{ minHeight: "100vh", background: THEME.navy, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 24, fontFamily: "inherit", textAlign: "center" }}>
+      <ClubLogo size={80} />
       <div style={{ color: "#d50000", fontSize: 22, fontWeight: 800, letterSpacing: 2 }}>⚠️ CONNECTION ERROR</div>
-      <div style={{ color: "#aaa", fontSize: 15, maxWidth: 320, lineHeight: 1.5 }}>Could not connect to the database. Check your Supabase URL and API key in <code style={{ color: "#87ceeb" }}>src/supabase.js</code></div>
+      <div style={{ color: "#aaa", fontSize: 15, maxWidth: 320, lineHeight: 1.5 }}>Could not connect to the database. Check your Supabase URL and API key in <code style={{ color: THEME.sky }}>src/supabase.js</code></div>
       {dbErrorMsg && <div style={{ color: "#ff7eb3", fontSize: 12, maxWidth: 320, marginTop: 8, wordBreak: "break-all", background: "rgba(255,255,255,0.05)", padding: "8px 12px", borderRadius: 8 }}>{dbErrorMsg}</div>}
-      <button onClick={() => window.location.reload()} style={{ background: "#87ceeb", color: "#1a1a2e", border: "none", borderRadius: 10, padding: "12px 24px", fontWeight: 800, fontSize: 15, cursor: "pointer", fontFamily: "inherit" }}>Try Again</button>
+      <button onClick={() => window.location.reload()} style={{ background: THEME.sky, color: THEME.navy, border: "none", borderRadius: 10, padding: "12px 24px", fontWeight: 800, fontSize: 15, cursor: "pointer", fontFamily: "inherit" }}>Try Again</button>
     </div>
   );
 
@@ -1025,10 +1173,10 @@ export default function App() {
       <div style={{ background: THEME.navy, padding: "16px 20px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.3)", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -20, right: -30, width: 140, height: 140, opacity: 0.08, backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="white" d="M20 65 Q 35 55 45 40 Q 50 30 58 32 Q 65 34 62 42 Q 58 52 68 48 Q 78 44 75 55 Q 70 68 55 70 Q 40 72 30 78 Z"/></svg>')`, backgroundSize: "contain", backgroundRepeat: "no-repeat", pointerEvents: "none" }} />
         <div style={{ background: THEME.white, borderRadius: "50%", padding: 4, display: "flex", alignItems: "center", justifyContent: "center", width: 44, height: 44, flexShrink: 0, border: `2px solid ${THEME.sky}`, position: "relative", zIndex: 1 }}>
-          <LeonLogo size={34} />
+          <ClubLogo size={34} />
         </div>
         <div style={{ flex: 1, minWidth: 0, position: "relative", zIndex: 1 }}>
-          <div style={{ color: THEME.white, fontFamily: THEME.display, fontWeight: 600, fontSize: 17, letterSpacing: 0.5, lineHeight: 1.1 }}>Sunderland Leon FC</div>
+          <div style={{ color: THEME.white, fontFamily: THEME.display, fontWeight: 600, fontSize: 17, letterSpacing: 0.5, lineHeight: 1.1 }}>{BRAND.name}</div>
           {editingTeamName ? (
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
               <input autoFocus value={tempAgeGroup} onChange={e => setTempAgeGroup(e.target.value)}
@@ -1161,7 +1309,7 @@ export default function App() {
                   ))}
                 </div>
                 {trophyList.map((t, i) => {
-                  const meta = PLACEMENT_META[t.placement] || { icon: "🏅", bg: "#f4f6f9", color: THEME.ink60 };
+                  const meta = PLACEMENT_META[t.placement] || { icon: "🏅", bg: THEME.chalk, color: THEME.ink60 };
                   return (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, background: THEME.white, borderRadius: 12, padding: "10px 12px", marginBottom: 8, boxShadow: "0 2px 8px rgba(18,23,46,0.05)" }}>
                       <div style={{ width: 30, height: 30, borderRadius: 8, background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>{meta.icon}</div>
@@ -1229,6 +1377,11 @@ export default function App() {
           />
         )}
 
+        {mode === "branding" && isAdmin && (
+          <BrandingScreen branding={branding} showToast={showToast} onBack={() => setMode("staff")}
+            onSave={async d => { const saved = await saveClubSettings(d); const b = { ...DEFAULT_BRANDING, ...(saved || d) }; setBranding(b); cacheBranding(b); }} />
+        )}
+
         {/* ── STAFF ROOM (admin hub) ── */}
         {mode === "staff" && isAdmin && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
@@ -1239,6 +1392,7 @@ export default function App() {
               { key: "teams", icon: "👥", accent: THEME.amber, title: "Teams", desc: "Opposition club list & badges" },
               { key: "report", icon: "📊", accent: "#c084fc", title: "Report", desc: "Season stats & shareable image" },
               { key: "seasons", icon: "🗓", accent: THEME.loss, title: "Season History", desc: "Past seasons, archive & switch" },
+              { key: "branding", icon: "🎨", accent: THEME.sky, title: "Branding", desc: "Club colours, badge, name & slogan" },
               { key: "placements", icon: "🏆", accent: THEME.amber, title: "Trophy Cabinet", desc: "Set how a tournament finished" },
             ].map(item => (
               <button key={item.key} disabled={item.disabled} onClick={() => setMode(item.key)}
@@ -1270,11 +1424,11 @@ export default function App() {
             <div>
               <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 20, flexWrap: "wrap" }}>
                 {[
-                  { label: "Played", val: filteredResults.length, color: "#1a1a2e" },
+                  { label: "Played", val: filteredResults.length, color: THEME.navy },
                   { label: "Won", val: filteredResults.filter(r => r.result === "W").length, color: "#00c853" },
                   { label: "Drawn", val: filteredResults.filter(r => r.result === "D").length, color: "#ffab00" },
                   { label: "Lost", val: filteredResults.filter(r => r.result === "L").length, color: "#d50000" },
-                  { label: "Goals", val: filteredResults.reduce((a, r) => a + (r.homeScore || 0), 0), color: "#87ceeb" },
+                  { label: "Goals", val: filteredResults.reduce((a, r) => a + (r.homeScore || 0), 0), color: THEME.sky },
                 ].map(s => (
                   <div key={s.label} style={{ background: "#fff", borderRadius: 12, padding: "10px 18px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.07)", minWidth: 70, borderBottom: `3px solid ${s.color}` }}>
                     <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.val}</div>
@@ -1353,7 +1507,7 @@ export default function App() {
                                 setEditGoalCounts(initialGoalCounts);
                                 setEditingResult({ ...m, scorers: (m.scorers || []).join(", ") });
                               }}
-                              style={{ flex: 1, padding: "12px", background: "none", border: "none", borderRight: "1px solid #e8eeff", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 13, color: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                              style={{ flex: 1, padding: "12px", background: "none", border: "none", borderRight: "1px solid #e8eeff", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 13, color: THEME.navy, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                               ✏️ Edit
                             </button>
                             <button onClick={() => { if (window.confirm(`Delete result vs ${m.opposition}?`)) handleDeleteResult(m.id); }}
@@ -1377,7 +1531,7 @@ export default function App() {
               <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
                 <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                    <span style={{ fontSize: 18, fontWeight: 900, color: "#1a1a2e", letterSpacing: 1 }}>✏️ EDIT RESULT</span>
+                    <span style={{ fontSize: 18, fontWeight: 900, color: THEME.navy, letterSpacing: 1 }}>✏️ EDIT RESULT</span>
                     <button onClick={() => { setEditingResult(null); setEditOppLogo(null); }} style={{ background: "#f0f0f0", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
                   </div>
                   <div style={{ marginBottom: 14 }}>
@@ -1385,7 +1539,7 @@ export default function App() {
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       {[...new Set([...competitions, editingResult.competition].filter(Boolean))].map(comp => (
                         <button key={comp} onClick={() => setEditingResult(r => ({ ...r, competition: comp }))}
-                          style={{ padding: "6px 12px", borderRadius: 20, border: editingResult.competition === comp ? "none" : "1.5px solid #e0e0e0", background: editingResult.competition === comp ? "#1a1a2e" : "#fff", color: editingResult.competition === comp ? "#87ceeb" : "#888", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
+                          style={{ padding: "6px 12px", borderRadius: 20, border: editingResult.competition === comp ? "none" : "1.5px solid #e0e0e0", background: editingResult.competition === comp ? THEME.navy : "#fff", color: editingResult.competition === comp ? THEME.sky : "#888", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                           {comp}
                         </button>
                       ))}
@@ -1400,7 +1554,7 @@ export default function App() {
                     <TeamPicker teams={teams} value={editingResult.opposition} onChange={v => setEditingResult(r => ({ ...r, opposition: v }))} onAddNew={name => { handleAddTeam(name); setEditingResult(r => ({ ...r, opposition: name })); }} />
                   </div>
                   {[
-                    { label: "Leon Score", key: "homeScore", type: "number" },
+                    { label: `${BRAND.short} Score`, key: "homeScore", type: "number" },
                     { label: "Opposition Score", key: "awayScore", type: "number" },
                   ].map(field => (
                     <div key={field.key} style={{ marginBottom: 14 }}>
@@ -1415,17 +1569,17 @@ export default function App() {
                         {players.map(p => {
                           const count = editGoalCounts[p.id] || 0;
                           return (
-                            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, background: count > 0 ? "#f0f4ff" : "#f7f8fa", borderRadius: 10, padding: "8px 12px", border: count > 0 ? "1.5px solid #87ceeb" : "1.5px solid #e8e8e8" }}>
-                              <div style={{ width: 28, height: 28, borderRadius: "50%", background: p.photo ? "transparent" : "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-                                {p.photo ? <img src={p.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: "#87ceeb", fontSize: 9, fontWeight: 900 }}>{p.name.slice(0,2).toUpperCase()}</span>}
+                            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, background: count > 0 ? "#f0f4ff" : "#f7f8fa", borderRadius: 10, padding: "8px 12px", border: count > 0 ? `1.5px solid ${THEME.sky}` : "1.5px solid #e8e8e8" }}>
+                              <div style={{ width: 28, height: 28, borderRadius: "50%", background: p.photo ? "transparent" : THEME.navy, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                                {p.photo ? <img src={p.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: THEME.sky, fontSize: 9, fontWeight: 900 }}>{p.name.slice(0,2).toUpperCase()}</span>}
                               </div>
-                              <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: "#1a1a2e" }}>{p.name}</span>
+                              <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: THEME.navy }}>{p.name}</span>
                               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                 <button onClick={() => setEditGoalCounts(prev => ({ ...prev, [p.id]: Math.max(0, (prev[p.id] || 0) - 1) }))}
                                   style={{ width: 28, height: 28, borderRadius: "50%", border: "1.5px solid #e0e0e0", background: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#888", fontFamily: "inherit" }}>−</button>
-                                <span style={{ fontSize: 18, fontWeight: 900, color: "#1a1a2e", minWidth: 18, textAlign: "center" }}>{count}</span>
+                                <span style={{ fontSize: 18, fontWeight: 900, color: THEME.navy, minWidth: 18, textAlign: "center" }}>{count}</span>
                                 <button onClick={() => setEditGoalCounts(prev => ({ ...prev, [p.id]: (prev[p.id] || 0) + 1 }))}
-                                  style={{ width: 28, height: 28, borderRadius: "50%", border: "none", background: "#1a1a2e", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#87ceeb", fontFamily: "inherit" }}>+</button>
+                                  style={{ width: 28, height: 28, borderRadius: "50%", border: "none", background: THEME.navy, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: THEME.sky, fontFamily: "inherit" }}>+</button>
                               </div>
                             </div>
                           );
@@ -1453,7 +1607,7 @@ export default function App() {
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
                         {players.map(p => (
                           <button key={p.id} onClick={() => setEditingResult(r => ({ ...r, motm: r.motm === p.name ? "" : p.name }))}
-                            style={{ padding: "4px 10px", borderRadius: 16, border: editingResult.motm === p.name ? "none" : "1.5px solid #e0e0e0", background: editingResult.motm === p.name ? "#ffd700" : "#fff", color: editingResult.motm === p.name ? "#1a1a2e" : "#888", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                            style={{ padding: "4px 10px", borderRadius: 16, border: editingResult.motm === p.name ? "none" : "1.5px solid #e0e0e0", background: editingResult.motm === p.name ? "#ffd700" : "#fff", color: editingResult.motm === p.name ? THEME.navy : "#888", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
                             {p.name}
                           </button>
                         ))}
@@ -1474,7 +1628,7 @@ export default function App() {
                       </div>
                     )}
                   </div>
-                  <button onClick={handleSaveEdit} style={{ width: "100%", padding: "15px", background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 12, fontSize: 16, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit" }}>Save Changes</button>
+                  <button onClick={handleSaveEdit} style={{ width: "100%", padding: "15px", background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 12, fontSize: 16, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit" }}>Save Changes</button>
                 </div>
               </div>
             )}
@@ -1521,7 +1675,7 @@ export default function App() {
             <div style={{ display: "flex", background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.07)", marginBottom: 20 }}>
               {[{ key: "goals", label: "⚽ Goals" }, { key: "motm", label: "⭐ MOTM" }, { key: "oppmotm", label: "🏅 Opp MOTM" }, { key: "squad", label: "🏃 Squad" }].map(st => (
                 <button key={st.key} onClick={() => setScorersTab(st.key)}
-                  style={{ flex: 1, padding: "12px 4px", border: "none", background: scorersTab === st.key ? "#1a1a2e" : "none", color: scorersTab === st.key ? "#87ceeb" : "#999", fontWeight: 800, fontSize: 11, letterSpacing: 0.5, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
+                  style={{ flex: 1, padding: "12px 4px", border: "none", background: scorersTab === st.key ? THEME.navy : "none", color: scorersTab === st.key ? THEME.sky : "#999", fontWeight: 800, fontSize: 11, letterSpacing: 0.5, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                   {st.label}
                 </button>
               ))}
@@ -1542,14 +1696,14 @@ export default function App() {
                       return (
                         <button key={p.id} onClick={() => openPlayerProfile(p.name)}
                           style={{ background: "#fff", border: "none", borderRadius: 14, padding: "14px 10px", textAlign: "center", boxShadow: "0 2px 8px rgba(18,23,46,0.06)", cursor: "pointer", fontFamily: "inherit" }}>
-                          <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px", position: "relative", overflow: "hidden" }}>
+                          <div style={{ width: 52, height: 52, borderRadius: "50%", background: THEME.navy, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px", position: "relative", overflow: "hidden" }}>
                             {p.photo
                               ? <img src={p.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={p.name} />
-                              : <span style={{ color: "#87ceeb", fontFamily: "'Oswald',sans-serif", fontWeight: 600, fontSize: 16 }}>{p.name.slice(0,2).toUpperCase()}</span>}
-                            <span style={{ position: "absolute", bottom: -3, right: -3, background: "#ffd700", color: "#3a2a05", fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, fontWeight: 700, width: 18, height: 18, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #fff" }}>{p.squad_number || "?"}</span>
+                              : <span style={{ color: THEME.sky, fontFamily: THEME.display, fontWeight: 600, fontSize: 16 }}>{p.name.slice(0,2).toUpperCase()}</span>}
+                            <span style={{ position: "absolute", bottom: -3, right: -3, background: "#ffd700", color: "#3a2a05", fontFamily: THEME.mono, fontSize: 9, fontWeight: 700, width: 18, height: 18, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #fff" }}>{p.squad_number || "?"}</span>
                           </div>
-                          <div style={{ fontFamily: "'Oswald',sans-serif", fontWeight: 600, fontSize: 13, color: "#1a1a2e" }}>{p.name}</div>
-                          <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: "#888", marginTop: 2 }}>{apps} apps{goals > 0 ? ` · ${goals} goals` : ""}</div>
+                          <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 13, color: THEME.navy }}>{p.name}</div>
+                          <div style={{ fontFamily: THEME.mono, fontSize: 10, color: "#888", marginTop: 2 }}>{apps} apps{goals > 0 ? ` · ${goals} goals` : ""}</div>
                         </button>
                       );
                     })}
@@ -1558,24 +1712,24 @@ export default function App() {
               })()
             ) : (
               <>
-                <div style={{ background: "#1a1a2e", borderRadius: 14, padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}>
+                <div style={{ background: THEME.navy, borderRadius: 14, padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}>
                   {[
                     { label: "Total Goals", val: filteredResults.reduce((a, r) => a + (r.homeScore || 0), 0) },
                     { label: "Scorers", val: buildGoalBoard(filteredResults).length },
                     { label: "Win Rate", val: `${filteredResults.filter(r => r.result === "W").length}/${filteredResults.length}` },
                   ].map(s => (
                     <div key={s.label} style={{ textAlign: "center" }}>
-                      <div style={{ color: "#87ceeb", fontSize: 28, fontWeight: 900 }}>{s.val}</div>
+                      <div style={{ color: THEME.sky, fontSize: 28, fontWeight: 900 }}>{s.val}</div>
                       <div style={{ color: "#aaa", fontSize: 10, fontWeight: 700, letterSpacing: 2 }}>{s.label.toUpperCase()}</div>
                     </div>
                   ))}
                 </div>
-                {scorersTab === "goals" && <Leaderboard data={buildGoalBoard(filteredResults)} label="Top Goal Scorers" emptyMsg="No goals recorded yet." filterLabel={filterComp === "All" ? "All Competitions" : filterComp} accentColor="#87ceeb" onRowClick={openPlayerProfile} />}
+                {scorersTab === "goals" && <Leaderboard data={buildGoalBoard(filteredResults)} label="Top Goal Scorers" emptyMsg="No goals recorded yet." filterLabel={filterComp === "All" ? "All Competitions" : filterComp} accentColor={THEME.sky} onRowClick={openPlayerProfile} />}
                 {scorersTab === "motm" && <Leaderboard data={buildAwardBoard(filteredResults, "motm")} label="Man of the Match" emptyMsg="No MOTM awards yet." filterLabel={filterComp === "All" ? "All Competitions" : filterComp} accentColor="#ffd700" onRowClick={openPlayerProfile} />}
                 {scorersTab === "oppmotm" && <Leaderboard data={buildAwardBoard(filteredResults, "oppMotm")} label="Opposition MOTM" emptyMsg="No Opp. MOTM awards yet." filterLabel={filterComp === "All" ? "All Competitions" : filterComp} accentColor="#ff7eb3" />}
               </>
             )}
-            <p style={{ textAlign: "center", color: "#bbb", fontSize: 12, marginTop: 14, letterSpacing: 1 }}>SUNDERLAND LEON {(viewingSeason?.age_group || "").toUpperCase()}</p>
+            <p style={{ textAlign: "center", color: "#bbb", fontSize: 12, marginTop: 14, letterSpacing: 1 }}>{BRAND.name.toUpperCase()} {(viewingSeason?.age_group || "").toUpperCase()}</p>
           </div>
         )}
 
@@ -1599,7 +1753,7 @@ export default function App() {
                     <>
                       <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 14, flexWrap: "wrap" }}>
                         {[
-                          { label: "Played", val: h2hResults.length, color: "#1a1a2e" },
+                          { label: "Played", val: h2hResults.length, color: THEME.navy },
                           { label: "Won", val: h2hResults.filter(r => r.result === "W").length, color: "#00c853" },
                           { label: "Drawn", val: h2hResults.filter(r => r.result === "D").length, color: "#ffab00" },
                           { label: "Lost", val: h2hResults.filter(r => r.result === "L").length, color: "#d50000" },
@@ -1614,7 +1768,7 @@ export default function App() {
                         {h2hResults.map(m => (
                           <div key={m.id} style={{ background: "#fff", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)", borderLeft: `4px solid ${m.result === "W" ? "#00c853" : m.result === "L" ? "#d50000" : "#ffab00"}` }}>
                             <span style={{ background: m.result === "W" ? "#00c853" : m.result === "L" ? "#d50000" : "#ffab00", color: "#fff", fontWeight: 800, fontSize: 13, borderRadius: 8, padding: "3px 8px" }}>{m.result}</span>
-                            <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: "#1a1a2e" }}>{m.homeScore}–{m.awayScore}</span>
+                            <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: THEME.navy }}>{m.homeScore}–{m.awayScore}</span>
                             <span style={{ fontSize: 12, color: "#aaa" }}>{m.date}</span>
                             <span style={{ fontSize: 11, color: getCompColor(competitions, m.competition), fontWeight: 700, background: "#f5f5f5", borderRadius: 8, padding: "2px 8px" }}>{m.competition}</span>
                           </div>
@@ -1652,7 +1806,7 @@ export default function App() {
                       {/* Logo — tap to upload */}
                       <button onClick={() => { setUploadingLogoForTeam(t.id); teamLogoRef.current.click(); }}
                         title="Upload logo"
-                        style={{ width: 44, height: 44, borderRadius: 10, background: "#f0f4ff", border: "1.5px dashed #87ceeb", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", overflow: "hidden", padding: 0 }}>
+                        style={{ width: 44, height: 44, borderRadius: 10, background: "#f0f4ff", border: `1.5px dashed ${THEME.sky}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", overflow: "hidden", padding: 0 }}>
                         {t.logo
                           ? <img src={t.logo} style={{ width: "100%", height: "100%", objectFit: "contain" }} alt={t.name} />
                           : <span style={{ fontSize: 20 }}>⚽</span>}
@@ -1661,17 +1815,17 @@ export default function App() {
                         <div style={{ display: "flex", gap: 6, flex: 1, alignItems: "center" }}>
                           <input autoFocus value={editingTeamNameVal} onChange={e => setEditingTeamNameVal(e.target.value)}
                             onKeyDown={e => { if (e.key === "Enter") { handleRenameTeam(t.id, editingTeamNameVal); setEditingTeam(null); } if (e.key === "Escape") setEditingTeam(null); }}
-                            style={{ flex: 1, border: "2px solid #87ceeb", borderRadius: 8, padding: "7px 10px", fontSize: 15, fontFamily: "inherit", fontWeight: 700, color: "#1a1a2e", outline: "none" }} />
+                            style={{ flex: 1, border: `2px solid ${THEME.sky}`, borderRadius: 8, padding: "7px 10px", fontSize: 15, fontFamily: "inherit", fontWeight: 700, color: THEME.navy, outline: "none" }} />
                           <button onClick={() => { handleRenameTeam(t.id, editingTeamNameVal); setEditingTeam(null); }}
-                            style={{ background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 8, padding: "7px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 13 }}>✓</button>
+                            style={{ background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 8, padding: "7px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 13 }}>✓</button>
                           <button onClick={() => setEditingTeam(null)}
                             style={{ background: "#f0f0f0", color: "#888", border: "none", borderRadius: 8, padding: "7px 10px", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}>✕</button>
                         </div>
                       ) : (
                         <>
-                          <span style={{ flex: 1, fontSize: 16, fontWeight: 800, color: "#1a1a2e" }}>{t.name}</span>
+                          <span style={{ flex: 1, fontSize: 16, fontWeight: 800, color: THEME.navy }}>{t.name}</span>
                           <button onClick={() => { setH2hTeam(t.name); setTeamSearch(t.name); }}
-                            style={{ background: "#f0f4ff", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: "#87ceeb" }}>H2H</button>
+                            style={{ background: "#f0f4ff", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: THEME.sky }}>H2H</button>
                           <button onClick={() => { setEditingTeam(t); setEditingTeamNameVal(t.name); }}
                             style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#aaa" }}>✏️</button>
                           <button onClick={() => { if (window.confirm(`Remove ${t.name}?`)) handleDeleteTeam(t.id); }}
@@ -1684,7 +1838,7 @@ export default function App() {
                 </div>
                 <p style={{ textAlign: "center", color: "#bbb", fontSize: 12, marginBottom: 12 }}>Tap the badge icon on any team to upload their logo</p>
                 <button onClick={() => handleAddTeam(teamSearch || "New Team")}
-                  style={{ width: "100%", padding: "13px", background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
+                  style={{ width: "100%", padding: "13px", background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                   + Add Team Manually
                 </button>
               </>
@@ -1697,25 +1851,25 @@ export default function App() {
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
             {!newResult ? (
               <div style={{ ...cardStyle }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: "#1a1a2e", marginBottom: 20, letterSpacing: 1 }}>🏆 POST A RESULT</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: THEME.navy, marginBottom: 20, letterSpacing: 1 }}>🏆 POST A RESULT</div>
 
                 <div style={{ marginBottom: 16 }}>
                   <label style={labelStyle}>Competition</label>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                     {competitions.map(comp => (
                       <button key={comp} onClick={() => setForm(f => ({ ...f, competition: comp }))}
-                        style={{ padding: "7px 14px", borderRadius: 20, border: form.competition === comp ? "none" : "1.5px solid #e0e0e0", background: form.competition === comp ? "#1a1a2e" : "#fff", color: form.competition === comp ? "#87ceeb" : "#888", fontWeight: 800, fontSize: 12, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
+                        style={{ padding: "7px 14px", borderRadius: 20, border: form.competition === comp ? "none" : "1.5px solid #e0e0e0", background: form.competition === comp ? THEME.navy : "#fff", color: form.competition === comp ? THEME.sky : "#888", fontWeight: 800, fontSize: 12, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                         {comp}
                       </button>
                     ))}
                     {!addingComp && (
-                      <button onClick={() => setAddingComp(true)} style={{ padding: "7px 14px", borderRadius: 20, border: "1.5px dashed #87ceeb", background: "#fff", color: "#87ceeb", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>+ New</button>
+                      <button onClick={() => setAddingComp(true)} style={{ padding: "7px 14px", borderRadius: 20, border: `1.5px dashed ${THEME.sky}`, background: "#fff", color: THEME.skyInk, fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>+ New</button>
                     )}
                   </div>
                   {addingComp && (
                     <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
                       <input autoFocus placeholder="Competition name..." value={newCompName} onChange={e => setNewCompName(e.target.value)} onKeyDown={e => { if (e.key === "Enter") handleAddComp(); if (e.key === "Escape") setAddingComp(false); }} style={{ ...inputStyle, flex: 1, padding: "10px 14px" }} />
-                      <button onClick={handleAddComp} style={{ background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontWeight: 800, fontFamily: "inherit", fontSize: 13 }}>Add</button>
+                      <button onClick={handleAddComp} style={{ background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontWeight: 800, fontFamily: "inherit", fontSize: 13 }}>Add</button>
                       <button onClick={() => setAddingComp(false)} style={{ background: "#f0f0f0", color: "#888", border: "none", borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}>✕</button>
                     </div>
                   )}
@@ -1733,7 +1887,7 @@ export default function App() {
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
                   <div>
-                    <label style={labelStyle}>Leon Score</label>
+                    <label style={labelStyle}>{BRAND.short} Score</label>
                     <input type="number" placeholder="" value={form.homeScore} onChange={e => setForm(f => ({ ...f, homeScore: e.target.value }))} style={inputStyle} />
                   </div>
                   <div>
@@ -1772,8 +1926,8 @@ export default function App() {
                                 if (oppMotmPlayerId === p.id) setOppMotmPlayerId(null);
                               }
                             }}
-                              style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 20, border: selected ? "none" : "1.5px solid #e0e0e0", background: selected ? "#1a1a2e" : "#fff", color: selected ? "#87ceeb" : "#888", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
-                              <span style={{ fontWeight: 900, fontSize: 11, color: selected ? "#87ceeb" : "#aaa" }}>#{p.squad_number || "?"}</span>
+                              style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 20, border: selected ? "none" : "1.5px solid #e0e0e0", background: selected ? THEME.navy : "#fff", color: selected ? THEME.sky : "#888", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                              <span style={{ fontWeight: 900, fontSize: 11, color: selected ? THEME.sky : "#aaa" }}>#{p.squad_number || "?"}</span>
                               {p.name}
                             </button>
                           );
@@ -1791,17 +1945,17 @@ export default function App() {
                             if (!p) return null;
                             const count = goalCounts[pid] || 0;
                             return (
-                              <div key={pid} style={{ display: "flex", alignItems: "center", gap: 12, background: count > 0 ? "#f0f4ff" : "#f7f8fa", borderRadius: 10, padding: "10px 14px", border: count > 0 ? "1.5px solid #87ceeb" : "1.5px solid #e8e8e8" }}>
-                                <div style={{ width: 32, height: 32, borderRadius: "50%", background: p.photo ? "transparent" : "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-                                  {p.photo ? <img src={p.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: "#87ceeb", fontSize: 10, fontWeight: 900 }}>{p.name.slice(0,2).toUpperCase()}</span>}
+                              <div key={pid} style={{ display: "flex", alignItems: "center", gap: 12, background: count > 0 ? "#f0f4ff" : "#f7f8fa", borderRadius: 10, padding: "10px 14px", border: count > 0 ? `1.5px solid ${THEME.sky}` : "1.5px solid #e8e8e8" }}>
+                                <div style={{ width: 32, height: 32, borderRadius: "50%", background: p.photo ? "transparent" : THEME.navy, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                                  {p.photo ? <img src={p.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: THEME.sky, fontSize: 10, fontWeight: 900 }}>{p.name.slice(0,2).toUpperCase()}</span>}
                                 </div>
-                                <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: "#1a1a2e" }}>{p.name}</span>
+                                <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: THEME.navy }}>{p.name}</span>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                   <button onClick={() => setGoalCounts(prev => ({ ...prev, [pid]: Math.max(0, (prev[pid] || 0) - 1) }))}
                                     style={{ width: 32, height: 32, borderRadius: "50%", border: "1.5px solid #e0e0e0", background: "#fff", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#888", fontFamily: "inherit" }}>−</button>
-                                  <span style={{ fontSize: 20, fontWeight: 900, color: "#1a1a2e", minWidth: 20, textAlign: "center" }}>{count}</span>
+                                  <span style={{ fontSize: 20, fontWeight: 900, color: THEME.navy, minWidth: 20, textAlign: "center" }}>{count}</span>
                                   <button onClick={() => setGoalCounts(prev => ({ ...prev, [pid]: (prev[pid] || 0) + 1 }))}
-                                    style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: "#1a1a2e", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#87ceeb", fontFamily: "inherit" }}>+</button>
+                                    style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: THEME.navy, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: THEME.sky, fontFamily: "inherit" }}>+</button>
                                 </div>
                               </div>
                             );
@@ -1821,7 +1975,7 @@ export default function App() {
                             const selected = motmPlayerId === pid;
                             return (
                               <button key={pid} onClick={() => setMotmPlayerId(selected ? null : pid)}
-                                style={{ padding: "6px 14px", borderRadius: 20, border: selected ? "none" : "1.5px solid #e0e0e0", background: selected ? "#ffd700" : "#fff", color: selected ? "#1a1a2e" : "#888", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                                style={{ padding: "6px 14px", borderRadius: 20, border: selected ? "none" : "1.5px solid #e0e0e0", background: selected ? "#ffd700" : "#fff", color: selected ? THEME.navy : "#888", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                                 {selected ? "⭐ " : ""}{p.name}
                               </button>
                             );
@@ -1871,7 +2025,7 @@ export default function App() {
                 )}
 
                 <button onClick={handleCreate} disabled={!form.date || !form.opposition || form.homeScore === "" || form.awayScore === ""}
-                  style={{ width: "100%", padding: "16px", background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 12, fontSize: 17, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", opacity: (!form.date || !form.opposition || form.homeScore === "" || form.awayScore === "") ? 0.5 : 1 }}>
+                  style={{ width: "100%", padding: "16px", background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 12, fontSize: 17, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", opacity: (!form.date || !form.opposition || form.homeScore === "" || form.awayScore === "") ? 0.5 : 1 }}>
                   Generate Result Card
                 </button>
               </div>
@@ -1879,7 +2033,7 @@ export default function App() {
               <div>
                 <ResultCard match={newResult} teamName={viewingSeason?.age_group} compColor={getCompColor(competitions, newResult.competition)} players={players} teams={teams} />
                 <button onClick={() => { setNewResult(null); setOppLogo(null); setSelectedSquad([]); setGoalCounts({}); setMotmPlayerId(null); setOppMotmPlayerId(null); setForm({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: form.competition, motm: "", oppMotm: "", round: "", season_id: activeSeason?.id || null }); }}
-                  style={{ marginTop: 16, width: "100%", padding: "14px", background: "#fff", color: "#1a1a2e", border: "2px solid #e8e8e8", borderRadius: 12, fontSize: 15, fontWeight: 800, letterSpacing: 2, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
+                  style={{ marginTop: 16, width: "100%", padding: "14px", background: "#fff", color: THEME.navy, border: "2px solid #e8e8e8", borderRadius: 12, fontSize: 15, fontWeight: 800, letterSpacing: 2, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                   ← Add Another Result
                 </button>
               </div>
@@ -1902,20 +2056,20 @@ export default function App() {
                 const motms = motmBoard.find(m => m.name === p.name)?.count || 0;
                 return (
                   <div key={p.id} style={{ background: "#fff", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.06)", opacity: inactive ? 0.55 : 1 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: "50%", background: p.photo ? "transparent" : "#1a1a2e", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                    <div style={{ width: 44, height: 44, borderRadius: "50%", background: p.photo ? "transparent" : THEME.navy, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                       {p.photo
                         ? <img src={p.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={p.name} />
-                        : <span style={{ color: "#87ceeb", fontSize: 14, fontWeight: 900 }}>{p.name.slice(0,2).toUpperCase()}</span>
+                        : <span style={{ color: THEME.sky, fontSize: 14, fontWeight: 900 }}>{p.name.slice(0,2).toUpperCase()}</span>
                       }
                     </div>
                     <div style={{ width: 28, height: 28, borderRadius: 6, background: "#f0f4ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <span style={{ fontSize: 12, fontWeight: 900, color: "#1a1a2e" }}>{p.squad_number || "—"}</span>
+                      <span style={{ fontSize: 12, fontWeight: 900, color: THEME.navy }}>{p.squad_number || "—"}</span>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: "#1a1a2e" }}>{p.name}</div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: THEME.navy }}>{p.name}</div>
                       <div style={{ display: "flex", gap: 10, marginTop: 3, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 11, color: "#888" }}>📅 {apps} apps</span>
-                        {goals > 0 && <span style={{ fontSize: 11, color: "#87ceeb" }}>⚽ {goals} goals</span>}
+                        {goals > 0 && <span style={{ fontSize: 11, color: THEME.skyInk }}>⚽ {goals} goals</span>}
                         {motms > 0 && <span style={{ fontSize: 11, color: "#ffd700" }}>⭐ {motms} MOTM</span>}
                       </div>
                     </div>
@@ -1937,7 +2091,7 @@ export default function App() {
                       {activePlayers.length} Active{viewingSeason?.age_group ? ` — ${viewingSeason.age_group}` : ""}
                     </span>
                     <button onClick={() => { setShowPlayerModal(true); setEditingPlayer(null); setPlayerForm({ name: "", squad_number: "", photo: null }); }}
-                      style={{ background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 10, padding: "8px 16px", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                      style={{ background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 10, padding: "8px 16px", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                       + Add Player
                     </button>
                   </div>
@@ -1967,13 +2121,13 @@ export default function App() {
               <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
                 <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 400 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                    <span style={{ fontSize: 18, fontWeight: 900, color: "#1a1a2e" }}>{editingPlayer ? "✏️ EDIT PLAYER" : "➕ ADD PLAYER"}</span>
+                    <span style={{ fontSize: 18, fontWeight: 900, color: THEME.navy }}>{editingPlayer ? "✏️ EDIT PLAYER" : "➕ ADD PLAYER"}</span>
                     <button onClick={() => { setShowPlayerModal(false); setEditingPlayer(null); }} style={{ background: "#f0f0f0", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
                   </div>
 
                   {/* Photo */}
                   <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
-                    <div style={{ width: 64, height: 64, borderRadius: "50%", background: playerForm.photo ? "transparent" : "#f0f4ff", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, border: "2px dashed #87ceeb" }}>
+                    <div style={{ width: 64, height: 64, borderRadius: "50%", background: playerForm.photo ? "transparent" : "#f0f4ff", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, border: `2px dashed ${THEME.sky}` }}>
                       {playerForm.photo
                         ? <img src={playerForm.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" />
                         : <span style={{ fontSize: 24 }}>📷</span>
@@ -1993,7 +2147,7 @@ export default function App() {
                         e.target.value = "";
                       }} />
                       <button onClick={() => playerPhotoRef.current.click()} disabled={uploadingPlayerPhoto}
-                        style={{ background: "#f0f4ff", border: "1.5px solid #87ceeb", borderRadius: 8, padding: "6px 14px", cursor: uploadingPlayerPhoto ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: "#87ceeb", display: "block", marginBottom: 6, opacity: uploadingPlayerPhoto ? 0.6 : 1 }}>
+                        style={{ background: "#f0f4ff", border: `1.5px solid ${THEME.sky}`, borderRadius: 8, padding: "6px 14px", cursor: uploadingPlayerPhoto ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: THEME.sky, display: "block", marginBottom: 6, opacity: uploadingPlayerPhoto ? 0.6 : 1 }}>
                         {uploadingPlayerPhoto ? "Uploading..." : playerForm.photo ? "Change photo" : "Add photo (optional)"}
                       </button>
                       {playerForm.photo && !uploadingPlayerPhoto && <button onClick={() => setPlayerForm(f => ({ ...f, photo: null }))} style={{ background: "none", border: "none", color: "#d50000", fontSize: 11, cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>✕ Remove</button>}
@@ -2001,19 +2155,19 @@ export default function App() {
                   </div>
 
                   <div style={{ marginBottom: 14 }}>
-                    <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#87ceeb", letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>Player Name</label>
+                    <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: THEME.skyInk, letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>Player Name</label>
                     <input type="text" placeholder="e.g. Grayson" value={playerForm.name} onChange={e => setPlayerForm(f => ({ ...f, name: e.target.value }))}
-                      style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: "#1a1a2e", outline: "none", boxSizing: "border-box" }} />
+                      style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: THEME.navy, outline: "none", boxSizing: "border-box" }} />
                   </div>
 
                   <div style={{ marginBottom: 20 }}>
-                    <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#87ceeb", letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>Squad Number</label>
+                    <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: THEME.skyInk, letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>Squad Number</label>
                     <input type="number" placeholder="e.g. 7" value={playerForm.squad_number} onChange={e => setPlayerForm(f => ({ ...f, squad_number: e.target.value }))}
-                      style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: "#1a1a2e", outline: "none", boxSizing: "border-box" }} />
+                      style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: THEME.navy, outline: "none", boxSizing: "border-box" }} />
                   </div>
 
                   <button onClick={handleSavePlayer} disabled={!playerForm.name.trim()}
-                    style={{ width: "100%", padding: "15px", background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 12, fontSize: 16, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", opacity: !playerForm.name.trim() ? 0.5 : 1 }}>
+                    style={{ width: "100%", padding: "15px", background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 12, fontSize: 16, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", opacity: !playerForm.name.trim() ? 0.5 : 1 }}>
                     {editingPlayer ? "Save Changes" : "Add to Squad"}
                   </button>
                 </div>
@@ -2039,22 +2193,22 @@ export default function App() {
 
           return (
             <div style={{ maxWidth: 520, margin: "0 auto" }}>
-              <div ref={reportRef} style={{ background: "#1a1a2e", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.15)" }}>
+              <div ref={reportRef} style={{ background: THEME.navy, borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.15)" }}>
 
                 {/* Header */}
-                <div style={{ background: "#1a1a2e", padding: "20px", textAlign: "center", borderBottom: "1px solid rgba(135,206,235,0.2)" }}>
-                  <div style={{ color: "#87ceeb", fontSize: 10, fontWeight: 700, letterSpacing: 3, marginBottom: 4 }}>SUNDERLAND LEON FC</div>
+                <div style={{ background: THEME.navy, padding: "20px", textAlign: "center", borderBottom: "1px solid rgba(135,206,235,0.2)" }}>
+                  <div style={{ color: THEME.sky, fontSize: 10, fontWeight: 700, letterSpacing: 3, marginBottom: 4 }}>{BRAND.name.toUpperCase()}</div>
                   <div style={{ color: "#fff", fontSize: 22, fontWeight: 900, letterSpacing: 2 }}>{viewingSeason?.name} SEASON</div>
-                  <div style={{ color: "#87ceeb", fontSize: 11, letterSpacing: 2, marginTop: 2 }}>{viewingSeason?.age_group ? `${viewingSeason.age_group.toUpperCase()} · ` : ""}SEASON REPORT</div>
+                  <div style={{ color: THEME.sky, fontSize: 11, letterSpacing: 2, marginTop: 2 }}>{viewingSeason?.age_group ? `${viewingSeason.age_group.toUpperCase()} · ` : ""}SEASON REPORT</div>
                 </div>
 
                 <div style={{ background: "#f0f2f5", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
 
                   {/* Overall record */}
-                  <div style={{ background: "#1a1a2e", borderRadius: 14, padding: 16 }}>
-                    <div style={{ color: "#87ceeb", fontSize: 10, fontWeight: 700, letterSpacing: 2, marginBottom: 12, textAlign: "center" }}>SEASON RECORD</div>
+                  <div style={{ background: THEME.navy, borderRadius: 14, padding: 16 }}>
+                    <div style={{ color: THEME.sky, fontSize: 10, fontWeight: 700, letterSpacing: 2, marginBottom: 12, textAlign: "center" }}>SEASON RECORD</div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6, textAlign: "center" }}>
-                      {[{ l: "PLAYED", v: sResults.length, c: "#fff" }, { l: "WON", v: wins, c: "#00c853" }, { l: "DRAWN", v: draws, c: "#ffab00" }, { l: "LOST", v: losses, c: "#d50000" }, { l: "GOALS", v: totalGoals, c: "#87ceeb" }].map(s => (
+                      {[{ l: "PLAYED", v: sResults.length, c: "#fff" }, { l: "WON", v: wins, c: "#00c853" }, { l: "DRAWN", v: draws, c: "#ffab00" }, { l: "LOST", v: losses, c: "#d50000" }, { l: "GOALS", v: totalGoals, c: THEME.sky }].map(s => (
                         <div key={s.l}>
                           <div style={{ color: s.c, fontSize: 24, fontWeight: 900, lineHeight: 1 }}>{s.v}</div>
                           <div style={{ color: "#aaa", fontSize: 8, fontWeight: 700, letterSpacing: 1, marginTop: 3 }}>{s.l}</div>
@@ -2070,9 +2224,9 @@ export default function App() {
                         <div key={c.comp} style={{ background: "#fff", borderRadius: 12, padding: 12, borderLeft: `4px solid ${COMP_COLORS[i % COMP_COLORS.length]}` }}>
                           <div style={{ fontSize: 9, fontWeight: 700, color: COMP_COLORS[i % COMP_COLORS.length], letterSpacing: 1, marginBottom: 6, textTransform: "uppercase" }}>{c.comp}</div>
                           <div style={{ display: "flex", justifyContent: "space-between", textAlign: "center" }}>
-                            {[{ l: "P", v: c.p }, { l: "W", v: c.w, col: "#00c853" }, { l: "D", v: c.d, col: "#ffab00" }, { l: "L", v: c.l, col: "#d50000" }, { l: "GF", v: c.gf, col: "#87ceeb" }].map(x => (
+                            {[{ l: "P", v: c.p }, { l: "W", v: c.w, col: "#00c853" }, { l: "D", v: c.d, col: "#ffab00" }, { l: "L", v: c.l, col: "#d50000" }, { l: "GF", v: c.gf, col: THEME.sky }].map(x => (
                               <div key={x.l}>
-                                <div style={{ fontSize: 16, fontWeight: 900, color: x.col || "#1a1a2e" }}>{x.v}</div>
+                                <div style={{ fontSize: 16, fontWeight: 900, color: x.col || THEME.navy }}>{x.v}</div>
                                 <div style={{ fontSize: 8, color: "#aaa", fontWeight: 700 }}>{x.l}</div>
                               </div>
                             ))}
@@ -2085,19 +2239,19 @@ export default function App() {
                   {/* Top scorers */}
                   {goalBoard.length > 0 && (
                     <div style={{ background: "#fff", borderRadius: 12, padding: 14 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: "#87ceeb", letterSpacing: 2, marginBottom: 10 }}>TOP GOAL SCORERS</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: THEME.skyInk, letterSpacing: 2, marginBottom: 10 }}>TOP GOAL SCORERS</div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         {goalBoard.map((g, i) => {
                           const player = players.find(p => p.name === g.name);
                           return (
                             <div key={g.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                               <span style={{ fontSize: i === 0 ? 20 : 16 }}>{["🥇","🥈","🥉","4️⃣","5️⃣"][i]}</span>
-                              <div style={{ width: 32, height: 32, borderRadius: "50%", background: player?.photo ? "transparent" : "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-                                {player?.photo ? <img src={player.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: "#87ceeb", fontSize: 10, fontWeight: 900 }}>{g.name.slice(0,2).toUpperCase()}</span>}
+                              <div style={{ width: 32, height: 32, borderRadius: "50%", background: player?.photo ? "transparent" : THEME.navy, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                                {player?.photo ? <img src={player.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: THEME.sky, fontSize: 10, fontWeight: 900 }}>{g.name.slice(0,2).toUpperCase()}</span>}
                               </div>
-                              <span style={{ flex: 1, fontSize: 15, fontWeight: 800, color: "#1a1a2e" }}>{g.name}</span>
+                              <span style={{ flex: 1, fontSize: 15, fontWeight: 800, color: THEME.navy }}>{g.name}</span>
                               <div style={{ textAlign: "right" }}>
-                                <div style={{ fontSize: 20, fontWeight: 900, color: "#1a1a2e" }}>{g.count}</div>
+                                <div style={{ fontSize: 20, fontWeight: 900, color: THEME.navy }}>{g.count}</div>
                                 <div style={{ fontSize: 8, color: "#aaa", fontWeight: 700 }}>GOALS</div>
                               </div>
                             </div>
@@ -2109,12 +2263,12 @@ export default function App() {
 
                   {/* Biggest win */}
                   {biggestWin && (
-                    <div style={{ background: "#1a1a2e", borderRadius: 12, padding: 14 }}>
-                      <div style={{ color: "#87ceeb", fontSize: 10, fontWeight: 700, letterSpacing: 2, marginBottom: 10, textAlign: "center" }}>BIGGEST WIN OF THE SEASON</div>
+                    <div style={{ background: THEME.navy, borderRadius: 12, padding: 14 }}>
+                      <div style={{ color: THEME.sky, fontSize: 10, fontWeight: 700, letterSpacing: 2, marginBottom: 10, textAlign: "center" }}>BIGGEST WIN OF THE SEASON</div>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         <div style={{ textAlign: "center", flex: 1 }}>
-                          <div style={{ color: "#fff", fontSize: 11, fontWeight: 700 }}>SUNDERLAND LEON</div>
-                          <div style={{ color: "#87ceeb", fontSize: 9 }}>{viewingSeason?.age_group?.toUpperCase()}</div>
+                          <div style={{ color: "#fff", fontSize: 11, fontWeight: 700 }}>{BRAND.name.replace(/ FC$/i, "").toUpperCase()}</div>
+                          <div style={{ color: THEME.sky, fontSize: 9 }}>{viewingSeason?.age_group?.toUpperCase()}</div>
                         </div>
                         <div style={{ textAlign: "center", flex: 1 }}>
                           <div style={{ color: "#fff", fontSize: 36, fontWeight: 900, lineHeight: 1 }}>{biggestWin.homeScore}–{biggestWin.awayScore}</div>
@@ -2135,10 +2289,10 @@ export default function App() {
                 </div>
 
                 {/* Footer */}
-                <div style={{ background: "#1a1a2e", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ color: "#87ceeb", fontSize: 10, fontWeight: 700, letterSpacing: 2 }}>LEON FC</span>
-                  <span style={{ color: "#555", fontSize: 10, letterSpacing: 1 }}>ALWAYS KEEP ME FLYING HIGH</span>
-                  <LeonLogo size={20} />
+                <div style={{ background: THEME.navy, padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ color: THEME.sky, fontSize: 10, fontWeight: 700, letterSpacing: 2 }}>{BRAND.short.toUpperCase()}</span>
+                  <span style={{ color: "#555", fontSize: 10, letterSpacing: 1 }}>{BRAND.slogan.toUpperCase()}</span>
+                  <ClubLogo size={20} />
                 </div>
               </div>
 
@@ -2162,19 +2316,19 @@ export default function App() {
               const goals = sResults.reduce((a, r) => a + (r.homeScore || 0), 0);
               const comps = [...new Set(sResults.map(r => r.competition))].filter(Boolean);
               return (
-                <div key={s.id} style={{ background: "#fff", borderRadius: 16, padding: 20, marginBottom: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.08)", borderLeft: `4px solid ${s.is_active ? "#87ceeb" : "#e0e0e0"}` }}>
+                <div key={s.id} style={{ background: "#fff", borderRadius: 16, padding: 20, marginBottom: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.08)", borderLeft: `4px solid ${s.is_active ? THEME.sky : "#e0e0e0"}` }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                     <div>
-                      <div style={{ fontSize: 18, fontWeight: 900, color: "#1a1a2e" }}>{s.name}</div>
-                      <div style={{ fontSize: 12, color: "#87ceeb", fontWeight: 700, letterSpacing: 1 }}>{s.age_group}</div>
+                      <div style={{ fontSize: 18, fontWeight: 900, color: THEME.navy }}>{s.name}</div>
+                      <div style={{ fontSize: 12, color: THEME.skyInk, fontWeight: 700, letterSpacing: 1 }}>{s.age_group}</div>
                     </div>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      {s.is_active && <span style={{ background: "#87ceeb", color: "#1a1a2e", fontSize: 9, fontWeight: 800, padding: "3px 8px", borderRadius: 10, letterSpacing: 1 }}>CURRENT</span>}
-                      <button onClick={() => { setViewingSeason(s); setMode("history"); setFilterComp("All"); setCompetitions(s.competitions || []); }} style={{ background: "#f0f4ff", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: "#1a1a2e" }}>View →</button>
+                      {s.is_active && <span style={{ background: THEME.sky, color: THEME.navy, fontSize: 9, fontWeight: 800, padding: "3px 8px", borderRadius: 10, letterSpacing: 1 }}>CURRENT</span>}
+                      <button onClick={() => { setViewingSeason(s); setMode("history"); setFilterComp("All"); setCompetitions(s.competitions || []); }} style={{ background: "#f0f4ff", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: THEME.navy }}>View →</button>
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-                    {[{ l: "P", v: sResults.length, c: "#1a1a2e" }, { l: "W", v: wins, c: "#00c853" }, { l: "D", v: drawn, c: "#ffab00" }, { l: "L", v: lost, c: "#d50000" }, { l: "GF", v: goals, c: "#87ceeb" }].map(x => (
+                    {[{ l: "P", v: sResults.length, c: THEME.navy }, { l: "W", v: wins, c: "#00c853" }, { l: "D", v: drawn, c: "#ffab00" }, { l: "L", v: lost, c: "#d50000" }, { l: "GF", v: goals, c: THEME.sky }].map(x => (
                       <div key={x.l} style={{ background: "#f7f8fa", borderRadius: 8, padding: "6px 10px", textAlign: "center", borderBottom: `2px solid ${x.c}` }}>
                         <div style={{ fontSize: 16, fontWeight: 900, color: x.c }}>{x.v}</div>
                         <div style={{ fontSize: 9, color: "#aaa", fontWeight: 700 }}>{x.l}</div>
@@ -2183,7 +2337,7 @@ export default function App() {
                   </div>
                   {comps.length > 0 && (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {comps.map(c => <span key={c} style={{ background: "#f0f4ff", color: "#87ceeb", fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 8 }}>{c}</span>)}
+                      {comps.map(c => <span key={c} style={{ background: "#f0f4ff", color: THEME.skyInk, fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 8 }}>{c}</span>)}
                     </div>
                   )}
                 </div>
@@ -2198,20 +2352,20 @@ export default function App() {
       {showSeasonModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 400 }}>
-            <div style={{ fontSize: 18, fontWeight: 900, color: "#1a1a2e", marginBottom: 6, letterSpacing: 1 }}>🗓 START NEW SEASON</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: THEME.navy, marginBottom: 6, letterSpacing: 1 }}>🗓 START NEW SEASON</div>
             <p style={{ fontSize: 13, color: "#888", marginBottom: 20, lineHeight: 1.5 }}>This creates a new season with fresh results. All previous data is preserved in Season History.</p>
             <div style={{ marginBottom: 14 }}>
-              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#87ceeb", letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>Season Name</label>
-              <input type="text" placeholder="e.g. 2026/27" value={newSeasonForm.name} onChange={e => setNewSeasonForm(f => ({ ...f, name: e.target.value }))} style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: "#1a1a2e", outline: "none", boxSizing: "border-box" }} />
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: THEME.skyInk, letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>Season Name</label>
+              <input type="text" placeholder="e.g. 2026/27" value={newSeasonForm.name} onChange={e => setNewSeasonForm(f => ({ ...f, name: e.target.value }))} style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: THEME.navy, outline: "none", boxSizing: "border-box" }} />
             </div>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#87ceeb", letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>Age Group</label>
-              <input type="text" placeholder="Age group (optional)" value={newSeasonForm.age_group} onChange={e => setNewSeasonForm(f => ({ ...f, age_group: e.target.value }))} style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: "#1a1a2e", outline: "none", boxSizing: "border-box" }} />
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: THEME.skyInk, letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>Age Group</label>
+              <input type="text" placeholder="Age group (optional)" value={newSeasonForm.age_group} onChange={e => setNewSeasonForm(f => ({ ...f, age_group: e.target.value }))} style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: THEME.navy, outline: "none", boxSizing: "border-box" }} />
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => { setShowSeasonModal(false); setNewSeasonForm({ name: "", age_group: "" }); }} style={{ flex: 1, padding: "14px", background: "#f0f0f0", color: "#888", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
               <button onClick={handleStartNewSeason} disabled={!newSeasonForm.name}
-                style={{ flex: 2, padding: "14px", background: "#1a1a2e", color: "#87ceeb", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 900, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", opacity: !newSeasonForm.name || !newSeasonForm.age_group ? 0.5 : 1 }}>
+                style={{ flex: 2, padding: "14px", background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 12, fontSize: 15, fontWeight: 900, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", opacity: !newSeasonForm.name || !newSeasonForm.age_group ? 0.5 : 1 }}>
                 Start New Season
               </button>
             </div>
@@ -2243,7 +2397,7 @@ export default function App() {
         <div style={{ position: "fixed", left: 12, right: 12, bottom: 84, background: THEME.navy, borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 6px 20px rgba(0,0,0,0.28)", zIndex: 70 }}>
           <span style={{ fontSize: 24, flexShrink: 0 }}>📲</span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ color: THEME.white, fontFamily: THEME.display, fontWeight: 600, fontSize: 13 }}>Add Leon FC to your home screen</div>
+            <div style={{ color: THEME.white, fontFamily: THEME.display, fontWeight: 600, fontSize: 13 }}>Add {BRAND.short} to your home screen</div>
             <div style={{ color: THEME.ink30, fontSize: 11, marginTop: 1 }}>Quick access, just like an app</div>
           </div>
           <button onClick={handleDismissInstall} style={{ background: "none", border: "none", color: THEME.ink30, fontSize: 12, fontWeight: 600, padding: "6px 4px", cursor: "pointer", fontFamily: THEME.body, flexShrink: 0 }}>Not now</button>
@@ -2266,7 +2420,7 @@ export default function App() {
           </button>
         ))}
         <button onClick={() => isAdmin ? setMode("staff") : setShowPinGate(true)}
-          style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: 9, letterSpacing: 0.5, textTransform: "uppercase", color: (mode === "staff" || ["teams","squad","report","seasons","new","placements"].includes(mode)) ? THEME.navy : THEME.ink60, fontWeight: (mode === "staff" || ["teams","squad","report","seasons","new","placements"].includes(mode)) ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
+          style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: 9, letterSpacing: 0.5, textTransform: "uppercase", color: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding"].includes(mode)) ? THEME.navy : THEME.ink60, fontWeight: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding"].includes(mode)) ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
           <span style={{ fontSize: 18 }}>{isAdmin ? "🔓" : "🔒"}</span>
           Admin
         </button>

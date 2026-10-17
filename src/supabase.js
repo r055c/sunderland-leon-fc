@@ -203,3 +203,16 @@ export async function deleteMatchPhoto(id) {
   const res = await fetch(`${base()}/match_photos?id=eq.${id}`, { method: "DELETE", headers });
   if (!res.ok) throw new Error("Failed to delete match photo");
 }
+
+// ── Club settings (branding) ──────────────────────────────
+export async function fetchClubSettings() {
+  const res = await fetch(`${base()}/club_settings?id=eq.1`, { headers });
+  if (!res.ok) throw new Error("Failed to fetch club settings");
+  return (await res.json())[0] || null;
+}
+export async function saveClubSettings(s) {
+  const { id, ...data } = s;
+  const res = await fetch(`${base()}/club_settings?id=eq.1`, { method: "PATCH", headers, body: JSON.stringify({ ...data, updated_at: new Date().toISOString() }) });
+  if (!res.ok) throw new Error("Failed to save club settings");
+  return (await res.json())[0];
+}
