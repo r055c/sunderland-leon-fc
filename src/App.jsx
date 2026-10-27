@@ -756,7 +756,7 @@ function TournamentCard({ cardRef, name, date, placement, games, players }) {
   const gf = games.reduce((a, g) => a + (g.homeScore || 0), 0), ga = games.reduce((a, g) => a + (g.awayScore || 0), 0);
   const tally = {};
   games.forEach(g => (g.scorers || []).forEach(sc => { const { name: n, goals } = parseScorer(sc); tally[n] = (tally[n] || 0) + goals; }));
-  const top = Object.entries(tally).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const top = Object.entries(tally).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 5);
   const meta = PLACEMENT_META[placement] || null;
   const col = r => r === "W" ? "#00c853" : r === "L" ? "#d50000" : "#ffab00";
   return (
@@ -790,9 +790,15 @@ function TournamentCard({ cardRef, name, date, placement, games, players }) {
         ))}
       </div>
       {top.length > 0 && (
-        <div style={{ padding: "8px 16px 12px", fontSize: 12, color: THEME.ink60 }}>
-          <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: THEME.skyInk, fontWeight: 700 }}>Top scorers</span><br />
-          {top.map(([n, g]) => `${n} ${g}`).join(" · ")}
+        <div style={{ padding: "8px 16px 12px" }}>
+          <div style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: THEME.skyInk, fontWeight: 700, marginBottom: 4 }}>⚽ Top scorers</div>
+          {top.map(([n, g], i) => (
+            <div key={n} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0", fontSize: 12.5 }}>
+              <span style={{ width: 16, color: "#aaa", fontWeight: 700 }}>{i + 1}</span>
+              <span style={{ flex: 1, fontWeight: 600, color: THEME.navy }}>{n}</span>
+              <span style={{ fontWeight: 800, color: THEME.navy }}>{g}</span>
+            </div>
+          ))}
         </div>
       )}
       <div style={{ background: THEME.chalk, padding: "9px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -896,6 +902,8 @@ export default function App() {
   const [tourSetup, setTourSetup] = useState({ name: "", date: new Date().toISOString().slice(0, 10), squad: [], creating: false });
   const [tourStage, setTourStage] = useState(TOUR_DRAFT?.stage || "Group stage");
   const tourCardRef = useRef();
+  const tourShareRef = useRef();
+  const [showTourShare, setShowTourShare] = useState(false);
   const [tourPlacement, setTourPlacement] = useState(null);
   const [lastTourGame, setLastTourGame] = useState(null);
   const [tourFinishing, setTourFinishing] = useState(false);
@@ -1232,8 +1240,9 @@ export default function App() {
   const addCompNamed = async (rawName, type) => {
     const name = rawName.trim().replace(/\b\w/g, c => c.toUpperCase()); // title case
     if (!name) return null;
-    if (competitions.includes(name)) return name;
-    const updated = [...competitions, name];
+    const current = viewingSeason?.competitions || competitions;
+    if (current.includes(name)) return name;
+    const updated = [...current, name];
     const updatedTypes = { ...compTypes, [name]: type };
     setCompetitions(updated);
     if (viewingSeason) {
@@ -1250,6 +1259,8 @@ export default function App() {
     const list = competitions.filter(c => ((viewingSeason?.competition_types || {})[c] || (/friendly/i.test(c) ? "friendly" : "league")) === logType);
     if (list.length && !list.includes(form.competition)) setForm(f => ({ ...f, competition: list[0] }));
   }, [logType, competitions, viewingSeason]);
+  // Safety net: the competition list always follows the season being viewed.
+  useEffect(() => { if (viewingSeason?.competitions) setCompetitions(viewingSeason.competitions); }, [viewingSeason?.id]);
   const handleAddComp = async () => {
     const name = await addCompNamed(newCompName, logType);
     if (name) setForm(f => ({ ...f, competition: name })); // auto-select the new competition
@@ -1609,7 +1620,7 @@ export default function App() {
       {!isViewingActive && (
         <div style={{ background: THEME.amber, padding: "8px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: "#3a2a05", letterSpacing: 0.5 }}>📅 Viewing: {viewingSeason?.name}{viewingSeason?.age_group ? ` — ${viewingSeason.age_group}` : ""}</span>
-          <button onClick={() => { setViewingSeason(activeSeason); setFilterComp("All"); }} style={{ background: THEME.navy, color: THEME.amber, border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: THEME.body }}>Back to Current</button>
+          <button onClick={() => { setViewingSeason(activeSeason); setCompetitions(activeSeason?.competitions || []); setFilterComp("All"); }} style={{ background: THEME.navy, color: THEME.amber, border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: THEME.body }}>Back to Current</button>
         </div>
       )}
 
@@ -1831,6 +1842,32 @@ export default function App() {
                     <div style={{ fontSize: 30, marginBottom: 6 }}>{meta.icon}</div>
                     <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 16, color: "#fff", letterSpacing: 0.5 }}>{viewingSeason.placements[filterComp]}</div>
                     <div style={{ fontFamily: THEME.mono, fontSize: 10, color: THEME.amber, letterSpacing: 1, textTransform: "uppercase", marginTop: 3 }}>{filterComp}</div>
+                  </div>
+                );
+              })()}
+
+              {filterComp !== "All" && compTypeOf(filterComp) === "tournament" && (() => {
+                const tGames = seasonResults.filter(r => r.competition === filterComp);
+                if (tGames.length === 0) return null;
+                const dates = [...new Set(tGames.map(r => r.date))].sort((a, b) => new Date(a) - new Date(b));
+                const dateLabel = dates.length > 1 ? `${dates[0]} – ${dates[dates.length - 1]}` : dates[0];
+                const tp = viewingSeason?.placements?.[filterComp] || null;
+                const wN = tGames.filter(r => r.result === "W").length, dN = tGames.filter(r => r.result === "D").length, lN = tGames.filter(r => r.result === "L").length;
+                return (
+                  <div style={{ maxWidth: 520, margin: "0 auto 16px" }}>
+                    <button onClick={() => setShowTourShare(v => !v)}
+                      style={{ width: "100%", background: "#fff", border: `1.5px solid ${THEME.ink30}`, borderRadius: 12, padding: "11px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 13, color: THEME.navy, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                      📸 {showTourShare ? "Hide tournament summary" : "Share tournament summary"}
+                    </button>
+                    {showTourShare && (
+                      <div style={{ marginTop: 12 }}>
+                        <TournamentCard cardRef={tourShareRef} name={filterComp} date={dateLabel} placement={tp} games={tGames.slice().sort((a, b) => new Date(a.date) - new Date(b.date) || a.id - b.id)} players={players} />
+                        <div style={{ marginTop: 10 }}>
+                          <SaveCardButton cardRef={tourShareRef} filename="tournament-summary.png" onSaved={() => showToast("📸 Card ready")}
+                            shareText={`${tp ? (PLACEMENT_META[tp]?.icon || "🏆") + " " + tp + " — " : ""}${filterComp} · P${tGames.length} W${wN} D${dN} L${lN}`} />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })()}
