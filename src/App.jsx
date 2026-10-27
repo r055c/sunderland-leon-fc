@@ -684,6 +684,60 @@ function BrandingScreen({ branding, onSave, onBack, showToast }) {
   );
 }
 
+// ── Head-to-head (public) ─────────────────────────────────
+function H2HPanel({ results, competitions }) {
+  const [q, setQ] = useState("");
+  const [team, setTeam] = useState(null);
+  const names = [...new Set(results.map(r => (r.opposition || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const matches = q.trim() ? names.filter(n => n.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 6) : [];
+  const games = team ? results.filter(r => (r.opposition || "").trim().toLowerCase() === team.toLowerCase())
+    .sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
+  const count = k => games.filter(r => r.result === k).length;
+  const gf = games.reduce((a, r) => a + (r.homeScore || 0), 0), ga = games.reduce((a, r) => a + (r.awayScore || 0), 0);
+  const col = r => r === "W" ? "#00c853" : r === "L" ? "#d50000" : "#ffab00";
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ position: "relative" }}>
+        <input type="text" placeholder="🔍 Head-to-head — search an opponent…" value={q}
+          onChange={e => { setQ(e.target.value); setTeam(null); }}
+          style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12, border: `1.5px solid ${THEME.ink30}`, fontSize: 14, fontFamily: "inherit", background: "#fff", color: THEME.navy }} />
+        {!team && matches.length > 0 && (
+          <div style={{ background: "#fff", borderRadius: 12, marginTop: 6, boxShadow: "0 4px 16px rgba(18,23,46,0.12)", overflow: "hidden" }}>
+            {matches.map(n => (
+              <button key={n} onClick={() => { setTeam(n); setQ(n); }}
+                style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 14px", border: "none", borderBottom: "1px solid #f0f0f0", background: "none", fontSize: 14, color: THEME.navy, cursor: "pointer", fontFamily: "inherit" }}>{n}</button>
+            ))}
+          </div>
+        )}
+      </div>
+      {team && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: THEME.ink60, marginBottom: 10 }}>Head-to-head · {team}</div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 12, flexWrap: "wrap" }}>
+            {[["Played", games.length, THEME.navy], ["Won", count("W"), "#00c853"], ["Drawn", count("D"), "#ffab00"], ["Lost", count("L"), "#d50000"], ["Goals", `${gf}–${ga}`, THEME.skyInk]].map(([l, v, c]) => (
+              <div key={l} style={{ background: "#fff", borderRadius: 12, padding: "8px 14px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.07)", borderBottom: `3px solid ${c}`, minWidth: 58 }}>
+                <div style={{ fontSize: 19, fontWeight: 900, color: c }}>{v}</div>
+                <div style={{ fontSize: 10, color: "#999", fontWeight: 700 }}>{l.toUpperCase()}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {games.map(m => (
+              <div key={m.id} style={{ background: "#fff", borderRadius: 12, padding: "11px 14px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)", borderLeft: `4px solid ${col(m.result)}` }}>
+                <span style={{ background: col(m.result), color: "#fff", fontWeight: 800, fontSize: 13, borderRadius: 8, padding: "3px 8px" }}>{m.result}</span>
+                <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: THEME.navy }}>{m.homeScore}–{m.awayScore}</span>
+                <span style={{ fontSize: 12, color: "#aaa" }}>{m.date}</span>
+                <span style={{ fontSize: 11, color: getCompColor(competitions, m.competition), fontWeight: 700, background: "#f5f5f5", borderRadius: 8, padding: "2px 8px" }}>{m.competition}</span>
+              </div>
+            ))}
+          </div>
+          <button onClick={() => { setTeam(null); setQ(""); }} style={{ marginTop: 10, background: "none", border: "1.5px solid #e0e0e0", borderRadius: 10, padding: 10, width: "100%", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13, color: "#888" }}>Clear</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main App ──────────────────────────────────────────────
 export default function App() {
   const [branding, setBranding] = useState(() => loadCachedBranding());
@@ -1424,6 +1478,7 @@ export default function App() {
         {/* ── RESULTS TAB ── */}
         {mode === "history" && (
           <div>
+            <H2HPanel results={results} competitions={competitions} />
             <div>
               <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 20, flexWrap: "wrap" }}>
                 {[
@@ -1676,7 +1731,7 @@ export default function App() {
         {mode === "scorers" && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
             <div style={{ display: "flex", background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.07)", marginBottom: 20 }}>
-              {[{ key: "goals", label: "⚽ Goals" }, { key: "motm", label: "⭐ MOTM" }, { key: "oppmotm", label: "🏅 Opp MOTM" }, { key: "squad", label: "🏃 Squad" }].map(st => (
+              {[{ key: "squad", label: "🏃 Squad" }, { key: "goals", label: "⚽ Goals" }, { key: "motm", label: "⭐ MOTM" }, { key: "oppmotm", label: "🏅 Opp MOTM" }].map(st => (
                 <button key={st.key} onClick={() => setScorersTab(st.key)}
                   style={{ flex: 1, padding: "12px 4px", border: "none", background: scorersTab === st.key ? THEME.navy : "none", color: scorersTab === st.key ? THEME.sky : "#999", fontWeight: 800, fontSize: 11, letterSpacing: 0.5, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                   {st.label}
