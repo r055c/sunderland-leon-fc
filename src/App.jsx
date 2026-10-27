@@ -869,12 +869,15 @@ export default function App() {
   const trophyRunnerUp = trophyList.filter(t => t.placement === "Runners-up").length;
 
   // ── Handlers ───────────────────────────────────────────
+  // With a squad set up, our score is the total of the goals logged against the players selected.
+  const scoreFromScorers = players.length > 0;
+  const leonGoals = selectedSquad.reduce((sum, pid) => sum + (goalCounts[pid] || 0), 0);
   const handleCreate = async () => {
-    const hs = parseInt(form.homeScore), as_ = parseInt(form.awayScore);
+    const hs = scoreFromScorers ? leonGoals : parseInt(form.homeScore), as_ = parseInt(form.awayScore);
     const result = hs > as_ ? "W" : hs < as_ ? "L" : "D";
     // Build scorers list from goalCounts
     const scorerList = Object.entries(goalCounts)
-      .filter(([, count]) => count > 0)
+      .filter(([pid, count]) => count > 0 && (!scoreFromScorers || selectedSquad.includes(parseInt(pid))))
       .map(([pid, count]) => {
         const p = players.find(pl => pl.id === parseInt(pid));
         return p ? (count > 1 ? `${p.name} ×${count}` : p.name) : null;
@@ -1888,7 +1891,14 @@ export default function App() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
                   <div>
                     <label style={labelStyle}>{BRAND.short} Score</label>
-                    <input type="number" placeholder="" value={form.homeScore} onChange={e => setForm(f => ({ ...f, homeScore: e.target.value }))} style={inputStyle} />
+                    {scoreFromScorers ? (
+                      <>
+                        <div style={{ ...inputStyle, display: "flex", alignItems: "center", background: "#f0f2f6", color: THEME.navy, fontWeight: 800, fontSize: 20 }}>{leonGoals}</div>
+                        <div style={{ fontSize: 10, color: THEME.ink60, marginTop: 4 }}>Counted from goal scorers below</div>
+                      </>
+                    ) : (
+                      <input type="number" placeholder="" value={form.homeScore} onChange={e => setForm(f => ({ ...f, homeScore: e.target.value }))} style={inputStyle} />
+                    )}
                   </div>
                   <div>
                     <label style={labelStyle}>Opp Score</label>
@@ -2024,7 +2034,7 @@ export default function App() {
                   </>
                 )}
 
-                <button onClick={handleCreate} disabled={!form.date || !form.opposition || form.homeScore === "" || form.awayScore === ""}
+                <button onClick={handleCreate} disabled={!form.date || !form.opposition || (!scoreFromScorers && form.homeScore === "") || form.awayScore === ""}
                   style={{ width: "100%", padding: "16px", background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 12, fontSize: 17, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", opacity: (!form.date || !form.opposition || form.homeScore === "" || form.awayScore === "") ? 0.5 : 1 }}>
                   Generate Result Card
                 </button>
