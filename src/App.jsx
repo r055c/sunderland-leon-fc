@@ -39,6 +39,15 @@ const THEME = {
 // Admin PIN — change this to whatever code you want to use to gate the Staff Room.
 const ADMIN_PIN = "1966";
 
+// Game types and tournament stages (used when logging a result).
+const COMP_TYPES = [
+  { key: "league", label: "League", icon: "📋" },
+  { key: "cup", label: "Cup", icon: "🏆" },
+  { key: "tournament", label: "Tournament", icon: "🎪" },
+  { key: "friendly", label: "Friendly", icon: "🤝" },
+];
+const STAGES = ["Group stage", "Last 16", "Quarter-final", "Semi-final", "3rd place", "Final"];
+
 // Tournament placement options — stored per competition, per season.
 const PLACEMENT_OPTIONS = ["Winners", "Runners-up", "3rd Place", "Semi-Final", "Group Stage"];
 const PLACEMENT_META = {
@@ -826,6 +835,14 @@ export default function App() {
   const [editGoalCounts, setEditGoalCounts] = useState({});
   const [oppLogo, setOppLogo] = useState(null);
   const [newResult, setNewResult] = useState(null);
+  const [logType, setLogType] = useState("league");
+  const [tourDay, setTourDay] = useState(() => { try { return JSON.parse(localStorage.getItem("leon_tour_day") || "null"); } catch (e) { return null; } });
+  const [tourSetup, setTourSetup] = useState({ name: "", date: new Date().toISOString().slice(0, 10), squad: [], creating: false });
+  const [tourStage, setTourStage] = useState("Group stage");
+  const [tourFinishing, setTourFinishing] = useState(false);
+  const [tourEditSquad, setTourEditSquad] = useState(false);
+  const [tourMore, setTourMore] = useState(false);
+  const [tourBusy, setTourBusy] = useState(false);
   const [addingComp, setAddingComp] = useState(false);
   const [newCompName, setNewCompName] = useState("");
 
@@ -1148,22 +1165,89 @@ export default function App() {
     setMode("home");
   };
 
-  const handleAddComp = async () => {
-    const name = newCompName.trim().replace(/\b\w/g, c => c.toUpperCase()); // title case
-    if (!name || competitions.includes(name)) { setNewCompName(""); setAddingComp(false); return; }
+  const compTypes = viewingSeason?.competition_types || {};
+  const compTypeOf = name => compTypes[name] || (/friendly/i.test(name) ? "friendly" : "league");
+  const compsOfType = t => competitions.filter(c => compTypeOf(c) === t);
+
+  // Adds a competition of a given type to the season being viewed.
+  const addCompNamed = async (rawName, type) => {
+    const name = rawName.trim().replace(/\b\w/g, c => c.toUpperCase()); // title case
+    if (!name) return null;
+    if (competitions.includes(name)) return name;
     const updated = [...competitions, name];
+    const updatedTypes = { ...compTypes, [name]: type };
     setCompetitions(updated);
-    setForm(f => ({ ...f, competition: name })); // auto-select the new competition
-    // Save to the current season in Supabase
     if (viewingSeason) {
-      try {
-        await updateSeason({ ...viewingSeason, competitions: updated });
-        setViewingSeason(s => s ? { ...s, competitions: updated } : s);
-        if (isViewingActive) setActiveSeasonState(s => s ? { ...s, competitions: updated } : s);
-      } catch(e) {}
+      const next = { ...viewingSeason, competitions: updated, competition_types: updatedTypes };
+      setViewingSeason(next);
+      setSeasons(prev => prev.map(x => x.id === next.id ? next : x));
+      if (isViewingActive) setActiveSeasonState(next);
+      try { await updateSeason(next); } catch(e) {}
     }
+    return name;
+  };
+  useEffect(() => {
+    if (logType === "tournament") return;
+    const list = competitions.filter(c => ((viewingSeason?.competition_types || {})[c] || (/friendly/i.test(c) ? "friendly" : "league")) === logType);
+    if (list.length && !list.includes(form.competition)) setForm(f => ({ ...f, competition: list[0] }));
+  }, [logType, competitions, viewingSeason]);
+  const handleAddComp = async () => {
+    const name = await addCompNamed(newCompName, logType);
+    if (name) setForm(f => ({ ...f, competition: name })); // auto-select the new competition
     setNewCompName("");
     setAddingComp(false);
+  };
+  const chooseLogType = async t => {
+    setLogType(t); setAddingComp(false);
+    if (t === "friendly") {
+      const name = compsOfType("friendly")[0] || await addCompNamed("Friendly", "friendly");
+      if (name) setForm(f => ({ ...f, competition: name, round: "" }));
+    } else if (t !== "tournament") {
+      const list = compsOfType(t);
+      setForm(f => ({ ...f, competition: list.includes(f.competition) ? f.competition : (list[0] || ""), round: t === "cup" ? f.round : "" }));
+    }
+  };
+  useEffect(() => { try { if (tourDay) localStorage.setItem("leon_tour_day", JSON.stringify(tourDay)); else localStorage.removeItem("leon_tour_day"); } catch (e) {} }, [tourDay]);
+
+  // ── Tournament day mode ───────────────────────────────
+  const fmtTourDate = iso => { try { return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); } catch (e) { return iso; } };
+  const tourSeasonId = () => tourDay?.season_id || form.season_id || activeSeason?.id;
+  const tourGames = tourDay ? results.filter(r => r.competition === tourDay.name && r.date === fmtTourDate(tourDay.date)) : [];
+  const tourGoals = tourDay ? tourDay.squad.reduce((sum, pid) => sum + (goalCounts[pid] || 0), 0) : 0;
+  const handleStartTour = async () => {
+    const name = await addCompNamed(tourSetup.name, "tournament");
+    if (!name) return;
+    setTourDay({ name, date: tourSetup.date, squad: tourSetup.squad, season_id: form.season_id || activeSeason?.id || viewingSeason?.id });
+    setGoalCounts({}); setMotmPlayerId(null); setTourStage("Group stage"); setTourFinishing(false);
+    setForm(f => ({ ...f, opposition: "", awayScore: "", oppMotm: "" }));
+  };
+  const handleSaveTourGame = async () => {
+    if (!tourDay || !form.opposition || tourBusy) return;
+    setTourBusy(true);
+    const hs = tourGoals, as_ = parseInt(form.awayScore) || 0;
+    const scorerList = Object.entries(goalCounts)
+      .filter(([pid, c]) => c > 0 && tourDay.squad.includes(parseInt(pid)))
+      .map(([pid, c]) => { const pl = players.find(x => x.id === parseInt(pid)); return pl ? (c > 1 ? `${pl.name} ×${c}` : pl.name) : null; }).filter(Boolean);
+    const motmName = motmPlayerId ? (players.find(x => x.id === motmPlayerId)?.name || "") : "";
+    const newMatch = { date: fmtTourDate(tourDay.date), opposition: form.opposition, homeScore: hs, awayScore: as_, scorers: scorerList,
+      result: hs > as_ ? "W" : hs < as_ ? "L" : "D", competition: tourDay.name, motm: motmName, oppMotm: (form.oppMotm || "").trim(), oppLogo: null, round: tourStage, season_id: tourSeasonId() };
+    try {
+      const saved = await insertResult(newMatch);
+      const match = saved || { ...newMatch, id: Date.now() };
+      setResults(prev => [...prev, match]);
+      if (tourDay.squad.length > 0 && match.id) {
+        try { const recs = await insertAppearances(tourDay.squad.map(pid => ({ player_id: pid, result_id: match.id, season_id: match.season_id }))); setAppearances(prev => [...prev, ...recs]); } catch(e) {}
+      }
+      showToast(`✅ ${hs}–${as_} v ${form.opposition} saved`);
+      setGoalCounts({}); setMotmPlayerId(null); setTourMore(false);
+      setForm(f => ({ ...f, opposition: "", awayScore: "", oppMotm: "" }));
+    } catch(e) { showToast("⚠️ Couldn't save that game — try again"); }
+    setTourBusy(false);
+  };
+  const handleFinishTour = async placement => {
+    if (placement && viewingSeason && viewingSeason.id === tourDay?.season_id) await handleSetPlacement(tourDay.name, placement);
+    setTourDay(null); setTourFinishing(false); setGoalCounts({}); setMotmPlayerId(null);
+    showToast(placement ? `🏆 ${placement} saved` : "Tournament finished");
   };
 
   const handleRenameComp = async (idx) => {
@@ -1175,9 +1259,16 @@ export default function App() {
     if (filterComp === oldName) setFilterComp(newName);
     if (viewingSeason) {
       try {
-        await updateSeason({ ...viewingSeason, competitions: updated });
-        setViewingSeason(s => s ? { ...s, competitions: updated } : s);
-        if (isViewingActive) setActiveSeasonState(s => s ? { ...s, competitions: updated } : s);
+        // Carry the game type and any placement across to the new name.
+        const types = { ...(viewingSeason.competition_types || {}) };
+        if (types[oldName]) { types[newName] = types[oldName]; delete types[oldName]; }
+        const placements = { ...(viewingSeason.placements || {}) };
+        if (placements[oldName]) { placements[newName] = placements[oldName]; delete placements[oldName]; }
+        const next = { ...viewingSeason, competitions: updated, competition_types: types, placements };
+        await updateSeason(next);
+        setViewingSeason(next);
+        setSeasons(prev => prev.map(x => x.id === next.id ? next : x));
+        if (isViewingActive) setActiveSeasonState(next);
       } catch(e) {}
     }
     setEditingComp(null);
@@ -1206,6 +1297,161 @@ export default function App() {
   const cardStyle = { background: "#fff", borderRadius: 16, padding: 20, boxShadow: "0 4px 20px rgba(0,0,0,0.08)", maxWidth: 520, margin: "0 auto" };
 
   // ── Loading / Error screens ─────────────────────────────
+  const renderTournamentDay = () => {
+    const chipSt = on => ({ padding: "8px 14px", borderRadius: 20, border: on ? "none" : "1.5px solid #e0e0e0", background: on ? THEME.navy : "#fff", color: on ? THEME.sky : "#888", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" });
+    const squadPlayers = players.filter(p => p.is_active !== false);
+    const sectionLabel = { ...labelStyle, marginTop: 4 };
+
+    // ── Not started yet: pick the tournament, date and squad once ──
+    if (!tourDay) {
+      const s = tourSetup;
+      const existing = compsOfType("tournament");
+      const canStart = s.name.trim() && s.date && (players.length === 0 || s.squad.length > 0);
+      return (
+        <>
+          <div style={{ marginBottom: 16 }}>
+            <label style={labelStyle}>Which tournament?</label>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {existing.map(n => <button key={n} onClick={() => setTourSetup(x => ({ ...x, name: n, creating: false }))} style={chipSt(!s.creating && s.name === n)}>{n}</button>)}
+              <button onClick={() => setTourSetup(x => ({ ...x, creating: true, name: "" }))} style={{ ...chipSt(s.creating), border: s.creating ? "none" : `1.5px dashed ${THEME.sky}`, color: s.creating ? THEME.sky : THEME.skyInk }}>+ New tournament</button>
+            </div>
+            {s.creating && <input autoFocus placeholder="Tournament name…" value={s.name} onChange={e => setTourSetup(x => ({ ...x, name: e.target.value }))} style={{ ...inputStyle, marginTop: 10 }} />}
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <label style={labelStyle}>Date</label>
+            <input type="date" value={s.date} onChange={e => setTourSetup(x => ({ ...x, date: e.target.value }))} style={{ ...inputStyle, colorScheme: "light" }} />
+          </div>
+          {players.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <label style={labelStyle}>Who's playing today? <span style={{ textTransform: "none", letterSpacing: 0, color: "#aaa", fontWeight: 600 }}>(pick once)</span></label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {squadPlayers.map(pl => {
+                  const on = s.squad.includes(pl.id);
+                  return <button key={pl.id} onClick={() => setTourSetup(x => ({ ...x, squad: on ? x.squad.filter(i => i !== pl.id) : [...x.squad, pl.id] }))} style={chipSt(on)}>{pl.name}</button>;
+                })}
+                <button onClick={() => setTourSetup(x => ({ ...x, squad: x.squad.length === squadPlayers.length ? [] : squadPlayers.map(pl => pl.id) }))} style={{ ...chipSt(false), border: `1.5px dashed ${THEME.sky}`, color: THEME.skyInk }}>{s.squad.length === squadPlayers.length ? "Clear" : "Select all"}</button>
+              </div>
+            </div>
+          )}
+          <button onClick={handleStartTour} disabled={!canStart}
+            style={{ width: "100%", padding: 16, background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 12, fontSize: 16, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", opacity: canStart ? 1 : 0.4 }}>Start tournament →</button>
+        </>
+      );
+    }
+
+    const w = tourGames.filter(r => r.result === "W").length, d = tourGames.filter(r => r.result === "D").length, l = tourGames.filter(r => r.result === "L").length;
+    const rc = r => r === "W" ? "#00c853" : r === "L" ? "#d50000" : "#ffab00";
+    const gameRows = tourGames.map(m => (
+      <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", borderRadius: 10, padding: "9px 12px", marginBottom: 6, borderLeft: `4px solid ${rc(m.result)}`, boxShadow: "0 1px 6px rgba(0,0,0,0.05)" }}>
+        <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: THEME.navy }}>v {m.opposition}</span>
+        <span style={{ fontSize: 11, color: THEME.ink60 }}>{m.round}</span>
+        <span style={{ fontWeight: 800, fontSize: 14, color: THEME.navy }}>{m.homeScore}–{m.awayScore}</span>
+        <button onClick={() => setNewResult(m)} style={{ border: "none", background: "#f0f2f6", borderRadius: 8, padding: "4px 8px", fontSize: 11, fontWeight: 700, color: THEME.navy, cursor: "pointer" }}>Card</button>
+      </div>
+    ));
+    const header = (
+      <div style={{ background: THEME.navySoft, color: "#fff", borderRadius: 12, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 18 }}>🎪</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 800, fontSize: 14, lineHeight: 1.2 }}>{tourDay.name}</div>
+          <div style={{ fontSize: 11, color: "#aab0cc" }}>{fmtTourDate(tourDay.date)} · {tourDay.squad.length} players</div>
+        </div>
+        <div style={{ fontFamily: THEME.mono, fontSize: 11, color: THEME.sky, textAlign: "right" }}>{tourGames.length} played<br />W{w} D{d} L{l}</div>
+      </div>
+    );
+
+    // ── Finishing: how did you place? ──
+    if (tourFinishing) {
+      const current = viewingSeason?.placements?.[tourDay.name] || null;
+      return (
+        <>
+          {header}
+          <label style={labelStyle}>How did you finish?</label>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+            {PLACEMENT_OPTIONS.map(opt => <button key={opt} onClick={() => handleFinishTour(opt)} style={chipSt(current === opt)}>{(PLACEMENT_META[opt]?.icon || "") + " " + opt}</button>)}
+          </div>
+          <label style={labelStyle}>Games</label>
+          {tourGames.length === 0 ? <p style={{ color: "#aaa", fontSize: 13 }}>No games logged yet.</p> : gameRows}
+          <button onClick={() => handleFinishTour(null)} style={{ width: "100%", marginTop: 8, padding: 13, background: "#fff", color: THEME.navy, border: "2px solid #e8e8e8", borderRadius: 12, fontWeight: 800, fontSize: 13, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit" }}>Finish without a placement</button>
+          <button onClick={() => setTourFinishing(false)} style={{ width: "100%", marginTop: 8, padding: 10, background: "none", border: "none", color: THEME.ink60, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>← Back to games</button>
+        </>
+      );
+    }
+
+    // ── Logging games ──
+    const sq = tourDay.squad.map(pid => players.find(x => x.id === pid)).filter(Boolean);
+    const awayN = parseInt(form.awayScore) || 0;
+    const stepBtn = (primary, onClick, txt) => <button onClick={onClick} style={{ width: 36, height: 36, borderRadius: "50%", border: primary ? "none" : "1.5px solid #e0e0e0", background: primary ? THEME.navy : "#fff", color: primary ? "#fff" : THEME.navy, fontSize: 20, cursor: "pointer" }}>{txt}</button>;
+    return (
+      <>
+        {header}
+        {tourGames.length > 0 && <div style={{ marginBottom: 12 }}>{gameRows}</div>}
+        <div style={{ marginBottom: 14 }}>
+          <button onClick={() => setTourEditSquad(v => !v)} style={{ background: "none", border: "none", color: THEME.skyInk, fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>{tourEditSquad ? "▲ Done" : "✎ Change today's players"}</button>
+          {tourEditSquad && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+              {squadPlayers.map(pl => {
+                const on = tourDay.squad.includes(pl.id);
+                return <button key={pl.id} onClick={() => setTourDay(t => ({ ...t, squad: on ? t.squad.filter(i => i !== pl.id) : [...t.squad, pl.id] }))} style={chipSt(on)}>{pl.name}</button>;
+              })}
+            </div>
+          )}
+        </div>
+
+        <label style={sectionLabel}>Game {tourGames.length + 1}</label>
+        <div style={{ marginBottom: 12 }}>
+          <TeamPicker teams={teams} value={form.opposition} onChange={v => setForm(f => ({ ...f, opposition: v }))} onAddNew={name => { handleAddTeam(name); setForm(f => ({ ...f, opposition: name })); }} />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+          <div style={{ background: "#f0f2f6", borderRadius: 12, padding: "8px 12px", textAlign: "center" }}>
+            <div style={{ fontSize: 28, fontWeight: 900, color: THEME.navy, lineHeight: 1.1 }}>{tourGoals}</div>
+            <div style={{ fontSize: 10, color: THEME.ink60, fontWeight: 700 }}>{BRAND.short.toUpperCase()} · from scorers</div>
+          </div>
+          <div style={{ background: "#f0f2f6", borderRadius: 12, padding: "8px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            {stepBtn(false, () => setForm(f => ({ ...f, awayScore: String(Math.max(0, awayN - 1)) })), "−")}
+            <div style={{ textAlign: "center" }}><div style={{ fontSize: 28, fontWeight: 900, color: THEME.navy, lineHeight: 1.1 }}>{awayN}</div><div style={{ fontSize: 10, color: THEME.ink60, fontWeight: 700 }}>THEM</div></div>
+            {stepBtn(true, () => setForm(f => ({ ...f, awayScore: String(awayN + 1) })), "+")}
+          </div>
+        </div>
+
+        <label style={sectionLabel}>Stage</label>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+          {STAGES.map(st => <button key={st} onClick={() => setTourStage(st)} style={chipSt(tourStage === st)}>{st}</button>)}
+        </div>
+
+        {sq.length > 0 && (
+          <>
+            <label style={sectionLabel}>Scorers — tap to add a goal</label>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+              {sq.map(pl => {
+                const c = goalCounts[pl.id] || 0;
+                return (
+                  <span key={pl.id} style={{ display: "inline-flex", alignItems: "center" }}>
+                    <button onClick={() => setGoalCounts(g => ({ ...g, [pl.id]: (g[pl.id] || 0) + 1 }))} style={{ ...chipSt(c > 0), borderTopRightRadius: c > 0 ? 0 : 20, borderBottomRightRadius: c > 0 ? 0 : 20 }}>{pl.name}{c > 0 ? ` ⚽${c}` : ""}</button>
+                    {c > 0 && <button onClick={() => setGoalCounts(g => ({ ...g, [pl.id]: Math.max(0, (g[pl.id] || 0) - 1) }))} style={{ padding: "8px 11px", border: "none", background: THEME.navySoft, color: "#fff", borderRadius: "0 20px 20px 0", fontSize: 14, cursor: "pointer", borderLeft: "1px solid rgba(255,255,255,0.2)" }}>−</button>}
+                  </span>
+                );
+              })}
+            </div>
+            <button onClick={() => setTourMore(v => !v)} style={{ background: "none", border: "none", color: THEME.skyInk, fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0, marginBottom: 10, fontFamily: "inherit" }}>{tourMore ? "▲ Less" : "⭐ Man of the match…"}</button>
+            {tourMore && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                  {sq.map(pl => <button key={pl.id} onClick={() => setMotmPlayerId(motmPlayerId === pl.id ? null : pl.id)} style={chipSt(motmPlayerId === pl.id)}>{pl.name}</button>)}
+                </div>
+                <input type="text" placeholder="Opposition MOTM (optional)" value={form.oppMotm} onChange={e => setForm(f => ({ ...f, oppMotm: e.target.value }))} style={inputStyle} />
+              </div>
+            )}
+          </>
+        )}
+
+        <button onClick={handleSaveTourGame} disabled={!form.opposition || tourBusy}
+          style={{ width: "100%", padding: 16, background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 12, fontSize: 16, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", opacity: (!form.opposition || tourBusy) ? 0.4 : 1 }}>{tourBusy ? "Saving…" : "Save & next game"}</button>
+        <button onClick={() => setTourFinishing(true)} style={{ width: "100%", marginTop: 8, padding: 13, background: "#fff", color: THEME.navy, border: "2px solid #e8e8e8", borderRadius: 12, fontWeight: 800, fontSize: 13, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit" }}>Finish tournament</button>
+      </>
+    );
+  };
+
   if (loading) return (
     <div style={{ minHeight: "100vh", background: THEME.navy, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, fontFamily: "inherit" }}>
       <ClubLogo size={80} />
@@ -1391,9 +1637,9 @@ export default function App() {
             </button>
             <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: THEME.ink60, marginBottom: 4 }}>{viewingSeason?.name}</div>
             <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 16, color: THEME.navy, marginBottom: 18 }}>Set tournament placements</div>
-            {competitions.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "24px 20px", color: THEME.ink30 }}>No competitions added to this season yet.</div>
-            ) : competitions.map(comp => {
+            {competitions.filter(c => compTypeOf(c) === "tournament" || viewingSeason?.placements?.[c]).length === 0 ? (
+              <div style={{ textAlign: "center", padding: "24px 20px", color: THEME.ink30 }}>No tournaments in this season yet.</div>
+            ) : competitions.filter(c => compTypeOf(c) === "tournament" || viewingSeason?.placements?.[c]).map(comp => {
               const current = viewingSeason?.placements?.[comp] || null;
               return (
                 <div key={comp} style={{ background: THEME.white, borderRadius: 14, padding: 14, marginBottom: 12, boxShadow: "0 2px 8px rgba(18,23,46,0.05)" }}>
@@ -1912,9 +2158,23 @@ export default function App() {
                 <div style={{ fontSize: 18, fontWeight: 800, color: THEME.navy, marginBottom: 20, letterSpacing: 1 }}>🏆 POST A RESULT</div>
 
                 <div style={{ marginBottom: 16 }}>
-                  <label style={labelStyle}>Competition</label>
+                  <label style={labelStyle}>What kind of game?</label>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", background: "#f0f2f6", borderRadius: 12, padding: 4, gap: 3 }}>
+                    {COMP_TYPES.map(t => (
+                      <button key={t.key} onClick={() => chooseLogType(t.key)}
+                        style={{ border: "none", borderRadius: 9, padding: "9px 2px", background: logType === t.key ? THEME.navy : "none", color: logType === t.key ? "#fff" : "#8a90a3", fontWeight: 800, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit" }}>
+                        <span style={{ display: "block", fontSize: 16, marginBottom: 2 }}>{t.icon}</span>{t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {logType === "tournament" ? renderTournamentDay() : (<>
+                {logType !== "friendly" && (
+                <div style={{ marginBottom: 16 }}>
+                  <label style={labelStyle}>{logType === "cup" ? "Which cup?" : logType === "friendly" ? "Friendly" : "Which league?"}</label>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-                    {competitions.map(comp => (
+                    {compsOfType(logType).map(comp => (
                       <button key={comp} onClick={() => setForm(f => ({ ...f, competition: comp }))}
                         style={{ padding: "7px 14px", borderRadius: 20, border: form.competition === comp ? "none" : "1.5px solid #e0e0e0", background: form.competition === comp ? THEME.navy : "#fff", color: form.competition === comp ? THEME.sky : "#888", fontWeight: 800, fontSize: 12, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                         {comp}
@@ -1932,6 +2192,7 @@ export default function App() {
                     </div>
                   )}
                 </div>
+                )}
 
                 <div style={{ marginBottom: 16 }}>
                   <label style={labelStyle}>Date Played</label>
@@ -1961,10 +2222,17 @@ export default function App() {
                   </div>
                 </div>
 
-                <div style={{ marginBottom: 16 }}>
-                  <label style={labelStyle}>Round (optional)</label>
-                  <input type="text" placeholder="e.g. Group Stage, Semi Final, Final" value={form.round} onChange={e => setForm(f => ({ ...f, round: e.target.value }))} style={inputStyle} />
-                </div>
+                {logType === "cup" && (
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={labelStyle}>Stage (optional)</label>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {STAGES.filter(x => x !== "Group stage").map(st => (
+                        <button key={st} onClick={() => setForm(f => ({ ...f, round: f.round === st ? "" : st }))}
+                          style={{ padding: "7px 14px", borderRadius: 20, border: form.round === st ? "none" : "1.5px solid #e0e0e0", background: form.round === st ? THEME.navy : "#fff", color: form.round === st ? THEME.sky : "#888", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>{st}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div style={{ marginBottom: 16 }}>
                   <label style={labelStyle}>Season</label>
@@ -2093,6 +2361,7 @@ export default function App() {
                   style={{ width: "100%", padding: "16px", background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 12, fontSize: 17, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", opacity: (!form.date || !form.opposition || form.homeScore === "" || form.awayScore === "") ? 0.5 : 1 }}>
                   Generate Result Card
                 </button>
+                </>)}
               </div>
             ) : (
               <div>
