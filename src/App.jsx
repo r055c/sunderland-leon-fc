@@ -747,6 +747,62 @@ function H2HPanel({ results, competitions }) {
   );
 }
 
+// A tournament game that was half-entered when the app was closed.
+const TOUR_DRAFT = (() => { try { return localStorage.getItem("leon_tour_day") ? JSON.parse(localStorage.getItem("leon_tour_draft") || "null") : null; } catch (e) { return null; } })();
+
+// ── Tournament summary card (shareable image) ─────────────
+function TournamentCard({ cardRef, name, date, placement, games, players }) {
+  const w = games.filter(g => g.result === "W").length, d = games.filter(g => g.result === "D").length, l = games.filter(g => g.result === "L").length;
+  const gf = games.reduce((a, g) => a + (g.homeScore || 0), 0), ga = games.reduce((a, g) => a + (g.awayScore || 0), 0);
+  const tally = {};
+  games.forEach(g => (g.scorers || []).forEach(sc => { const { name: n, goals } = parseScorer(sc); tally[n] = (tally[n] || 0) + goals; }));
+  const top = Object.entries(tally).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const meta = PLACEMENT_META[placement] || null;
+  const col = r => r === "W" ? "#00c853" : r === "L" ? "#d50000" : "#ffab00";
+  return (
+    <div ref={cardRef} style={{ background: THEME.white, borderRadius: 18, overflow: "hidden", boxShadow: "0 4px 24px rgba(18,23,46,0.12)", width: "100%", maxWidth: 360, margin: "0 auto" }}>
+      <div style={{ background: THEME.navy, padding: "16px 18px", display: "flex", alignItems: "center", gap: 12 }}>
+        <ClubLogo size={40} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ color: "#fff", fontFamily: THEME.display, fontWeight: 600, fontSize: 16, lineHeight: 1.15 }}>{name}</div>
+          <div style={{ color: THEME.sky, fontFamily: THEME.mono, fontSize: 10, letterSpacing: 1, textTransform: "uppercase", marginTop: 3 }}>{date} · {BRAND.name}</div>
+        </div>
+      </div>
+      <div style={{ textAlign: "center", padding: "18px 16px 8px" }}>
+        {meta ? (<><div style={{ fontSize: 40 }}>{meta.icon}</div><div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 22, color: THEME.navy }}>{placement}</div></>) : <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 20, color: THEME.navy }}>Tournament report</div>}
+      </div>
+      <div style={{ display: "flex", gap: 8, padding: "8px 16px 12px" }}>
+        {[["P", games.length, THEME.navy], ["W", w, "#00c853"], ["D", d, "#ffab00"], ["L", l, "#d50000"], ["GF–GA", `${gf}–${ga}`, THEME.skyInk]].map(([k, v, c]) => (
+          <div key={k} style={{ flex: 1, textAlign: "center", background: THEME.chalk, borderRadius: 10, padding: "7px 2px", borderBottom: `3px solid ${c}` }}>
+            <div style={{ fontWeight: 900, fontSize: 16, color: c }}>{v}</div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: "#999" }}>{k}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ padding: "0 16px 6px" }}>
+        {games.map(g => (
+          <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid #f0f0f0", fontSize: 12.5 }}>
+            <span style={{ width: 18, height: 18, borderRadius: 5, background: col(g.result), color: "#fff", fontWeight: 800, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>{g.result}</span>
+            <span style={{ flex: 1, fontWeight: 600, color: THEME.navy }}>{g.opposition}</span>
+            <span style={{ color: "#999", fontSize: 10.5 }}>{g.round}</span>
+            <span style={{ fontWeight: 800, color: THEME.navy }}>{g.homeScore}–{g.awayScore}</span>
+          </div>
+        ))}
+      </div>
+      {top.length > 0 && (
+        <div style={{ padding: "8px 16px 12px", fontSize: 12, color: THEME.ink60 }}>
+          <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: THEME.skyInk, fontWeight: 700 }}>Top scorers</span><br />
+          {top.map(([n, g]) => `${n} ${g}`).join(" · ")}
+        </div>
+      )}
+      <div style={{ background: THEME.chalk, padding: "9px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ color: THEME.skyInk, fontSize: 10, fontWeight: 700, letterSpacing: 2 }}>{BRAND.short.toUpperCase()}</span>
+        <span style={{ color: "#aaa", fontSize: 9, letterSpacing: 1 }}>{BRAND.slogan.toUpperCase()}</span>
+      </div>
+    </div>
+  );
+}
+
 // ── Main App ──────────────────────────────────────────────
 export default function App() {
   const [branding, setBranding] = useState(() => loadCachedBranding());
@@ -838,7 +894,10 @@ export default function App() {
   const [logType, setLogType] = useState("league");
   const [tourDay, setTourDay] = useState(() => { try { return JSON.parse(localStorage.getItem("leon_tour_day") || "null"); } catch (e) { return null; } });
   const [tourSetup, setTourSetup] = useState({ name: "", date: new Date().toISOString().slice(0, 10), squad: [], creating: false });
-  const [tourStage, setTourStage] = useState("Group stage");
+  const [tourStage, setTourStage] = useState(TOUR_DRAFT?.stage || "Group stage");
+  const tourCardRef = useRef();
+  const [tourPlacement, setTourPlacement] = useState(null);
+  const [lastTourGame, setLastTourGame] = useState(null);
   const [tourFinishing, setTourFinishing] = useState(false);
   const [tourEditSquad, setTourEditSquad] = useState(false);
   const [tourMore, setTourMore] = useState(false);
@@ -857,13 +916,13 @@ export default function App() {
   const [editingPlayer, setEditingPlayer] = useState(null);
   const [playerForm, setPlayerForm] = useState({ name: "", squad_number: "", photo: null });
   const [selectedSquad, setSelectedSquad] = useState([]);
-  const [goalCounts, setGoalCounts] = useState({});
-  const [motmPlayerId, setMotmPlayerId] = useState(null);
+  const [goalCounts, setGoalCounts] = useState(() => TOUR_DRAFT?.goalCounts || {});
+  const [motmPlayerId, setMotmPlayerId] = useState(TOUR_DRAFT?.motmPlayerId || null);
   const [oppMotmPlayerId, setOppMotmPlayerId] = useState(null);
   const playerPhotoRef = useRef();
   const [uploadingPlayerPhoto, setUploadingPlayerPhoto] = useState(false);
 
-  const [form, setForm] = useState({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: "", motm: "", oppMotm: "", round: "", season_id: null });
+  const [form, setForm] = useState({ date: "", opposition: TOUR_DRAFT?.opposition || "", homeScore: "", awayScore: TOUR_DRAFT?.awayScore || "", scorers: "", competition: "", motm: "", oppMotm: TOUR_DRAFT?.oppMotm || "", round: "", season_id: null });
   const fileRef = useRef();
   const editFileRef = useRef();
   const reportRef = useRef();
@@ -1207,7 +1266,12 @@ export default function App() {
       setForm(f => ({ ...f, competition: list.includes(f.competition) ? f.competition : (list[0] || ""), round: t === "cup" ? f.round : "" }));
     }
   };
-  useEffect(() => { try { if (tourDay) localStorage.setItem("leon_tour_day", JSON.stringify(tourDay)); else localStorage.removeItem("leon_tour_day"); } catch (e) {} }, [tourDay]);
+  useEffect(() => { try { if (tourDay) localStorage.setItem("leon_tour_day", JSON.stringify(tourDay)); else { localStorage.removeItem("leon_tour_day"); localStorage.removeItem("leon_tour_draft"); } } catch (e) {} }, [tourDay]);
+  // Keep a half-entered game so it survives leaving the screen or closing the app.
+  useEffect(() => {
+    if (!tourDay) return;
+    try { localStorage.setItem("leon_tour_draft", JSON.stringify({ opposition: form.opposition, awayScore: form.awayScore, oppMotm: form.oppMotm, goalCounts, motmPlayerId, stage: tourStage })); } catch (e) {}
+  }, [tourDay, form.opposition, form.awayScore, form.oppMotm, goalCounts, motmPlayerId, tourStage]);
 
   // ── Tournament day mode ───────────────────────────────
   const fmtTourDate = iso => { try { return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); } catch (e) { return iso; } };
@@ -1239,14 +1303,21 @@ export default function App() {
         try { const recs = await insertAppearances(tourDay.squad.map(pid => ({ player_id: pid, result_id: match.id, season_id: match.season_id }))); setAppearances(prev => [...prev, ...recs]); } catch(e) {}
       }
       showToast(`✅ ${hs}–${as_} v ${form.opposition} saved`);
+      setLastTourGame({ id: match.id, label: `v ${form.opposition} ${hs}–${as_}` });
       setGoalCounts({}); setMotmPlayerId(null); setTourMore(false);
       setForm(f => ({ ...f, opposition: "", awayScore: "", oppMotm: "" }));
     } catch(e) { showToast("⚠️ Couldn't save that game — try again"); }
     setTourBusy(false);
   };
+  const handleUndoTourGame = async () => {
+    if (!lastTourGame) return;
+    await handleDeleteResult(lastTourGame.id);
+    showToast(`↶ Removed ${lastTourGame.label}`);
+    setLastTourGame(null);
+  };
   const handleFinishTour = async placement => {
     if (placement && viewingSeason && viewingSeason.id === tourDay?.season_id) await handleSetPlacement(tourDay.name, placement);
-    setTourDay(null); setTourFinishing(false); setGoalCounts({}); setMotmPlayerId(null);
+    setTourDay(null); setTourFinishing(false); setGoalCounts({}); setMotmPlayerId(null); setLastTourGame(null); setTourPlacement(null);
     showToast(placement ? `🏆 ${placement} saved` : "Tournament finished");
   };
 
@@ -1362,17 +1433,25 @@ export default function App() {
 
     // ── Finishing: how did you place? ──
     if (tourFinishing) {
-      const current = viewingSeason?.placements?.[tourDay.name] || null;
+      const chosen = tourPlacement || viewingSeason?.placements?.[tourDay.name] || null;
       return (
         <>
           {header}
           <label style={labelStyle}>How did you finish?</label>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-            {PLACEMENT_OPTIONS.map(opt => <button key={opt} onClick={() => handleFinishTour(opt)} style={chipSt(current === opt)}>{(PLACEMENT_META[opt]?.icon || "") + " " + opt}</button>)}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+            {PLACEMENT_OPTIONS.map(opt => <button key={opt} onClick={() => setTourPlacement(opt)} style={chipSt(chosen === opt)}>{(PLACEMENT_META[opt]?.icon || "") + " " + opt}</button>)}
           </div>
-          <label style={labelStyle}>Games</label>
-          {tourGames.length === 0 ? <p style={{ color: "#aaa", fontSize: 13 }}>No games logged yet.</p> : gameRows}
-          <button onClick={() => handleFinishTour(null)} style={{ width: "100%", marginTop: 8, padding: 13, background: "#fff", color: THEME.navy, border: "2px solid #e8e8e8", borderRadius: 12, fontWeight: 800, fontSize: 13, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit" }}>Finish without a placement</button>
+          {tourGames.length === 0 ? <p style={{ color: "#aaa", fontSize: 13 }}>No games logged yet.</p> : (
+            <>
+              <label style={labelStyle}>Tournament card</label>
+              <TournamentCard cardRef={tourCardRef} name={tourDay.name} date={fmtTourDate(tourDay.date)} placement={chosen} games={tourGames} players={players} />
+              <div style={{ marginTop: 10, marginBottom: 14 }}>
+                <SaveCardButton cardRef={tourCardRef} filename="tournament-summary.png" onSaved={() => showToast("📸 Card ready")}
+                  shareText={`${chosen ? (PLACEMENT_META[chosen]?.icon || "🏆") + " " + chosen + " — " : ""}${tourDay.name} · P${tourGames.length} W${w} D${d} L${l}`} />
+              </div>
+            </>
+          )}
+          <button onClick={() => handleFinishTour(chosen)} style={{ width: "100%", padding: 16, background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 12, fontSize: 15, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit" }}>{chosen ? "Save placement & finish" : "Finish without a placement"}</button>
           <button onClick={() => setTourFinishing(false)} style={{ width: "100%", marginTop: 8, padding: 10, background: "none", border: "none", color: THEME.ink60, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>← Back to games</button>
         </>
       );
@@ -1386,6 +1465,9 @@ export default function App() {
       <>
         {header}
         {tourGames.length > 0 && <div style={{ marginBottom: 12 }}>{gameRows}</div>}
+        {lastTourGame && tourGames.some(g => g.id === lastTourGame.id) && (
+          <button onClick={handleUndoTourGame} style={{ background: "none", border: "none", color: "#d50000", fontSize: 12, fontWeight: 700, cursor: "pointer", padding: "0 0 12px", fontFamily: "inherit" }}>↶ Undo last game ({lastTourGame.label})</button>
+        )}
         <div style={{ marginBottom: 14 }}>
           <button onClick={() => setTourEditSquad(v => !v)} style={{ background: "none", border: "none", color: THEME.skyInk, fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>{tourEditSquad ? "▲ Done" : "✎ Change today's players"}</button>
           {tourEditSquad && (
@@ -1764,11 +1846,19 @@ export default function App() {
             {filteredResults.length === 0 && <div style={{ textAlign: "center", padding: "40px 20px", color: "#bbb" }}><div style={{ fontSize: 40, marginBottom: 12 }}>🏆</div><div style={{ fontSize: 16, fontWeight: 700, color: "#aaa", marginBottom: 6 }}>No results yet</div><div style={{ fontSize: 13 }}>Tap ➕ New to add your first result</div></div>}
 
             <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 520, margin: "0 auto" }}>
-              {filteredResults.map((m) => {
+              {filteredResults.map((m, idx) => {
                 const cc = getCompColor(competitions, m.competition);
                 const isSelected = selectedMatch === m.id;
+                const showDay = filterComp !== "All" && compTypeOf(filterComp) === "tournament" && (idx === 0 || filteredResults[idx - 1].date !== m.date);
+                const dayGames = showDay ? filteredResults.filter(x => x.date === m.date) : [];
                 return (
                   <div key={m.id}>
+                    {showDay && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, margin: idx === 0 ? "0 0 8px" : "10px 0 8px", fontFamily: THEME.mono, fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: THEME.ink60 }}>
+                        <span>🎪 {m.date}</span><span style={{ flex: 1, height: 1, background: THEME.ink30 }} />
+                        <span>{dayGames.length} {dayGames.length === 1 ? "game" : "games"} · W{dayGames.filter(x => x.result === "W").length} D{dayGames.filter(x => x.result === "D").length} L{dayGames.filter(x => x.result === "L").length}</span>
+                      </div>
+                    )}
                     <ScoreCard match={m} compColor={cc} onClick={() => setSelectedMatch(isSelected ? null : m.id)} photoCount={matchPhotosFor(m.id).length} />
 
                     {isSelected && (
@@ -1894,8 +1984,13 @@ export default function App() {
                     )}
                   </div>
                   <div style={{ marginBottom: 14 }}>
-                    <label style={labelStyle}>Round (optional)</label>
-                    <input type="text" placeholder="e.g. Group Stage, Semi Final, Final" value={editingResult.round || ""} onChange={e => setEditingResult(r => ({ ...r, round: e.target.value }))} style={inputStyle} />
+                    <label style={labelStyle}>Stage (optional)</label>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {[...new Set([...STAGES, editingResult.round].filter(Boolean))].map(st => (
+                        <button key={st} onClick={() => setEditingResult(r => ({ ...r, round: r.round === st ? "" : st }))}
+                          style={{ padding: "6px 12px", borderRadius: 20, border: editingResult.round === st ? "none" : "1.5px solid #e0e0e0", background: editingResult.round === st ? THEME.navy : "#fff", color: editingResult.round === st ? THEME.sky : "#888", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>{st}</button>
+                      ))}
+                    </div>
                   </div>
                   <div style={{ marginBottom: 14 }}>
                     <label style={labelStyle}>Season</label>
