@@ -7,9 +7,9 @@ export const contrast = (a, b) => { const L1 = lum(a), L2 = lum(b); return (Math
 const isHex = v => typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v);
 
 export const FONTS = [
-  { id: "classic", name: "Classic sport", display: "'Oswald', sans-serif", body: "'Work Sans', sans-serif", sample: "Sunderland Leon" },
-  { id: "bold", name: "Bold & modern", display: "'Bebas Neue', sans-serif", body: "'Inter', sans-serif", sample: "SUNDERLAND LEON" },
-  { id: "friendly", name: "Friendly", display: "'Fredoka', sans-serif", body: "'Nunito', sans-serif", sample: "Sunderland Leon" },
+  { id: "classic", name: "Classic sport", display: "'Oswald', sans-serif", body: "'Work Sans', sans-serif", sample: "Riverside United" },
+  { id: "bold", name: "Bold & modern", display: "'Bebas Neue', sans-serif", body: "'Inter', sans-serif", sample: "RIVERSIDE UNITED" },
+  { id: "friendly", name: "Friendly", display: "'Fredoka', sans-serif", body: "'Nunito', sans-serif", sample: "Riverside United" },
 ];
 export const PRESETS = [
   { n: "Navy & Sky", p: "#12172e", a: "#5fb2d9" },
@@ -20,7 +20,7 @@ export const PRESETS = [
   { n: "Red & Sky", p: "#9b111e", a: "#7cc6f2" },
 ];
 export const DEFAULT_BRANDING = {
-  club_name: "Sunderland Leon FC", short_name: "Leon FC", slogan: "Always keep me flying high",
+  club_name: "My Club FC", short_name: "My Club", slogan: "",
   primary_color: "#12172e", accent_color: "#5fb2d9", font_pairing: "classic", badge_url: null,
 };
 

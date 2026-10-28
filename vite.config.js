@@ -1,19 +1,32 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { readFileSync } from 'node:fs'
+
+// Which club is being built: CLUB=norton npm run build (defaults to leon).
+// Club name, short name and colours for the installed app come from clubs/<club>/club.json.
+const club = JSON.parse(readFileSync(`./clubs/${process.env.CLUB || 'leon'}/club.json`, 'utf8'))
+const clubHtml = () => ({
+  name: 'club-html',
+  transformIndexHtml: (html) => html
+    .replaceAll('%CLUB_NAME%', club.name)
+    .replaceAll('%CLUB_SHORT%', club.short)
+    .replaceAll('%CLUB_DESC%', club.description),
+})
 
 export default defineConfig({
   plugins: [
     react(),
+    clubHtml(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon-192.png', 'icon-512.png', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Sunderland Leon FC',
-        short_name: 'Leon FC',
-        description: 'Match results and stats for Sunderland Leon FC',
-        theme_color: '#1a1a2e',
-        background_color: '#1a1a2e',
+        name: club.name,
+        short_name: club.short,
+        description: club.description,
+        theme_color: club.themeColor,
+        background_color: club.themeColor,
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',

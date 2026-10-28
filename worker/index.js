@@ -30,6 +30,7 @@ const json = (data, status = 200) =>
 function readRow(def, row) {
   if (!row) return row;
   const out = { ...row };
+  delete out.admin_pin_hash; // never sent to the browser
   for (const [col, kind] of Object.entries(def.kinds)) {
     const v = out[col];
     if (v === null || v === undefined) { if (kind === "array") out[col] = null; continue; }
@@ -66,13 +67,122 @@ function orderClause(def, requested) {
   return ` ORDER BY ("${col}" IS NULL), "${col}"${text} ASC`;
 }
 
+
+// ── Admin PIN (checked here, so the browser can't skip it) ──────────────
+async function sha256Hex(str) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+function safeEqual(a, b) {
+  if (a.length !== b.length) return false;
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return d === 0;
+}
+async function checkPin(db, pin) {
+  if (!pin) return false;
+  const row = await db.prepare("SELECT admin_pin_hash AS h FROM club_settings WHERE id = 1").first();
+  if (!row || !row.h) return false;
+  const [salt, hash] = row.h.split("$");
+  return safeEqual(await sha256Hex(`${salt}:${pin}`), hash || "");
+}
+async function newPinHash(pin) {
+  const salt = [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `${salt}$${await sha256Hex(`${salt}:${pin}`)}`;
+}
+
+// ── Images (stored in D1 as base64 so no extra service is needed) ───────
+const MAX_IMAGE_BYTES = 1_200_000;
+function toBase64(bytes) {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+function fromBase64(b64) {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+async function serveImage(env, id) {
+  const row = await env.DB.prepare("SELECT content_type AS t, data AS d FROM images WHERE id = ?").bind(id).first();
+  if (!row) return new Response("Not found", { status: 404 });
+  return new Response(fromBase64(row.d), {
+    headers: { "content-type": row.t, "cache-control": "public, max-age=31536000, immutable" },
+  });
+}
+// Columns that can hold an image link: [table, column]
+const IMAGE_COLS = [["teams", "logo"], ["players", "photo"], ["results", "oppLogo"], ["match_photos", "url"], ["club_settings", "badge_url"]];
+
+async function handleSpecial(request, env, url, parts) {
+  const db = env.DB;
+  const [name] = parts;
+  const method = request.method;
+
+  if (name === "auth" && method === "POST") {
+    const { pin } = await request.json().catch(() => ({}));
+    const ok = await checkPin(db, String(pin || ""));
+    if (!ok) { await new Promise((r) => setTimeout(r, 400)); return json({ ok: false }, 401); }
+    return json({ ok: true });
+  }
+
+  // Everything below needs the admin PIN.
+  if (!(await checkPin(db, request.headers.get("x-admin-pin") || ""))) {
+    await new Promise((r) => setTimeout(r, 400));
+    return json({ error: "Admin PIN required" }, 401);
+  }
+
+  if (name === "pin" && method === "POST") {
+    const { next } = await request.json().catch(() => ({}));
+    if (!/^\d{4,8}$/.test(String(next || ""))) return json({ error: "PIN must be 4 to 8 digits" }, 400);
+    await db.prepare("UPDATE club_settings SET admin_pin_hash = ? WHERE id = 1").bind(await newPinHash(String(next))).run();
+    return json({ ok: true });
+  }
+
+  if (name === "upload" && method === "POST") {
+    const bytes = new Uint8Array(await request.arrayBuffer());
+    if (!bytes.length) return json({ error: "Empty file" }, 400);
+    if (bytes.length > MAX_IMAGE_BYTES) return json({ error: "Image too large (max ~1.2 MB)" }, 413);
+    const type = (request.headers.get("content-type") || "").split(";")[0];
+    if (!/^image\/(png|jpeg|webp|gif|svg\+xml)$/.test(type)) return json({ error: "Not an image" }, 415);
+    const id = [...crypto.getRandomValues(new Uint8Array(12))].map((b) => b.toString(16).padStart(2, "0")).join("");
+    await db.prepare("INSERT INTO images (id, content_type, data) VALUES (?, ?, ?)").bind(id, type, toBase64(bytes)).run();
+    return json({ url: `/img/${id}` }, 201);
+  }
+
+  // Image links that still point outside this app (e.g. old Supabase storage).
+  if (name === "external-images" && method === "GET") {
+    const found = new Set();
+    for (const [t, c] of IMAGE_COLS) {
+      const { results } = await db.prepare(`SELECT DISTINCT "${c}" AS u FROM ${t} WHERE "${c}" LIKE 'http%'`).all();
+      results.forEach((r) => found.add(r.u));
+    }
+    return json([...found]);
+  }
+  if (name === "relink-image" && method === "POST") {
+    const { from, to } = await request.json().catch(() => ({}));
+    if (!from || !/^\/img\/[0-9a-f]{24}$/.test(String(to || ""))) return json({ error: "Bad request" }, 400);
+    await db.batch(IMAGE_COLS.map(([t, c]) => db.prepare(`UPDATE ${t} SET "${c}" = ? WHERE "${c}" = ?`).bind(to, from)));
+    return json({ ok: true });
+  }
+  return json({ error: "Not found" }, 404);
+}
+
 async function handleApi(request, env, url) {
   const parts = url.pathname.replace(/^\/api\/?/, "").split("/").filter(Boolean);
   const [table, idPart, action] = parts;
+  if (["auth", "pin", "upload", "external-images", "relink-image"].includes(table)) {
+    return handleSpecial(request, env, url, parts);
+  }
   const def = TABLES[table];
   if (!def) return json({ error: "Unknown table" }, 404);
   const db = env.DB;
   const method = request.method;
+  // Anyone can read; only someone with the admin PIN can change anything.
+  if (method !== "GET" && !(await checkPin(db, request.headers.get("x-admin-pin") || ""))) {
+    await new Promise((r) => setTimeout(r, 400));
+    return json({ error: "Admin PIN required" }, 401);
+  }
   const idNum = idPart !== undefined ? Number(idPart) : undefined;
   if (idPart !== undefined && !Number.isInteger(idNum)) return json({ error: "Bad id" }, 400);
 
@@ -158,6 +268,11 @@ export default {
       } catch (e) {
         return json({ error: String(e && e.message ? e.message : e) }, 500);
       }
+    }
+    if (url.pathname.startsWith("/img/")) {
+      const id = url.pathname.slice(5);
+      if (!/^[0-9a-f]{24}$/.test(id)) return new Response("Not found", { status: 404 });
+      return serveImage(env, id);
     }
     return env.ASSETS.fetch(request);
   },

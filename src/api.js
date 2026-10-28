@@ -3,28 +3,93 @@
 // Same function names and return shapes as the Supabase version in supabase.js.
 // Image uploads still go to Supabase Storage for now (see supabase.js).
 
-export { uploadImage } from "./supabase.js";
-
-const headers = { "Content-Type": "application/json" };
+// ── Admin PIN: kept in memory only; sent with every change so the Worker can check it ──
+let adminPin = "";
+export const setAdminPin = (p) => { adminPin = p || ""; };
+const authHeaders = () => (adminPin ? { "x-admin-pin": adminPin } : {});
+const hdr = () => ({ "Content-Type": "application/json", ...authHeaders() });
 const api = (path) => `/api/${path}`;
 
+export async function verifyAdminPin(pin) {
+  try {
+    const res = await fetch(api("auth"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin }) });
+    if (!res.ok) return false;
+    setAdminPin(pin);
+    return true;
+  } catch (e) { return false; }
+}
+export async function changeAdminPin(next) {
+  const res = await fetch(api("pin"), { method: "POST", headers: hdr(), body: JSON.stringify({ next }) });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Could not change PIN");
+  setAdminPin(next);
+}
+
+// ── Images: shrunk in the browser, then stored by the Worker ──
+async function shrink(blob, bucket) {
+  const keepAlpha = bucket === "logo" || bucket === "branding" || /png|svg|gif/.test(blob.type);
+  const maxDim = keepAlpha ? 512 : 1280;
+  if (/svg/.test(blob.type) && blob.size < 400000) return blob;
+  try {
+    const bmp = await createImageBitmap(blob);
+    const scale = Math.min(1, maxDim / Math.max(bmp.width, bmp.height));
+    const w = Math.max(1, Math.round(bmp.width * scale)), h = Math.max(1, Math.round(bmp.height * scale));
+    const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!keepAlpha) { ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h); }
+    ctx.drawImage(bmp, 0, 0, w, h);
+    const type = keepAlpha ? "image/png" : "image/jpeg";
+    const out = await new Promise((r) => canvas.toBlob(r, type, 0.82));
+    if (out && (out.size < blob.size || blob.size > 1000000)) return out;
+  } catch (e) { /* fall back to the original */ }
+  return blob;
+}
+export async function uploadImage(file, bucket = "logos") {
+  const body = await shrink(file, bucket);
+  const res = await fetch(api("upload"), { method: "POST", headers: { ...authHeaders(), "Content-Type": body.type || "image/png" }, body });
+  if (!res.ok) throw new Error(`Upload failed: ${(await res.json().catch(() => ({}))).error || res.status}`);
+  return (await res.json()).url;
+}
+// One-off: copy images that still live on Supabase into this app, then point the data at the copies.
+export async function moveExternalImages(onProgress) {
+  const listRes = await fetch(api("external-images"), { headers: hdr() });
+  if (!listRes.ok) throw new Error("Could not list images");
+  const urls = await listRes.json();
+  let moved = 0; const failed = [];
+  for (let i = 0; i < urls.length; i++) {
+    onProgress && onProgress(i, urls.length);
+    try {
+      const r = await fetch(urls[i]);
+      if (!r.ok) throw new Error(String(r.status));
+      const blob = await r.blob();
+      const bucket = /\/(logo|branding)\//.test(urls[i]) ? "logo" : "players";
+      const file = new File([blob], "x", { type: blob.type || "image/png" });
+      const local = await uploadImage(file, bucket);
+      const rel = await fetch(api("relink-image"), { method: "POST", headers: hdr(), body: JSON.stringify({ from: urls[i], to: local }) });
+      if (!rel.ok) throw new Error("relink");
+      moved++;
+    } catch (e) { failed.push(urls[i]); }
+  }
+  onProgress && onProgress(urls.length, urls.length);
+  return { total: urls.length, moved, failed };
+}
+
 async function get(table, label, order) {
-  const res = await fetch(api(table) + (order ? `?order=${order}` : ""), { headers });
+  const res = await fetch(api(table) + (order ? `?order=${order}` : ""), { headers: hdr() });
   if (!res.ok) throw new Error(`Failed to fetch ${label}`);
   return res.json();
 }
 async function post(table, body, label) {
-  const res = await fetch(api(table), { method: "POST", headers, body: JSON.stringify(body) });
+  const res = await fetch(api(table), { method: "POST", headers: hdr(), body: JSON.stringify(body) });
   if (!res.ok) throw new Error(`Failed to insert ${label}`);
   return res.json();
 }
 async function patch(path, body, label) {
-  const res = await fetch(api(path), { method: "PATCH", headers, body: JSON.stringify(body) });
+  const res = await fetch(api(path), { method: "PATCH", headers: hdr(), body: JSON.stringify(body) });
   if (!res.ok) throw new Error(`Failed to update ${label}`);
   return res.json();
 }
 async function del(path, label) {
-  const res = await fetch(api(path), { method: "DELETE", headers });
+  const res = await fetch(api(path), { method: "DELETE", headers: hdr() });
   if (!res.ok) throw new Error(`Failed to delete ${label}`);
 }
 const strip = ({ id, ...data }) => data;
@@ -46,7 +111,7 @@ export const fetchSeasons = () => get("seasons", "seasons", "id.desc");
 export async function insertSeason(season) { return (await post("seasons", strip(season), "season"))[0]; }
 export async function updateSeason(season) { return (await patch(`seasons/${season.id}`, strip(season), "season"))[0]; }
 export async function setActiveSeason(id) {
-  const res = await fetch(api(`seasons/${id}/activate`), { method: "POST", headers });
+  const res = await fetch(api(`seasons/${id}/activate`), { method: "POST", headers: hdr() });
   if (!res.ok) throw new Error("Failed to set active season");
 }
 

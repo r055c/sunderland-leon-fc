@@ -1,6 +1,6 @@
-// Sunderland Leon FC — v2.3
+// Club results app — v2.3
 import { useState, useRef, useEffect, useCallback } from "react";
-import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchClubSettings, saveClubSettings } from "./api.js";
+import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, verifyAdminPin, setAdminPin, changeAdminPin, moveExternalImages, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchClubSettings, saveClubSettings } from "./api.js";
 import { DEFAULT_BADGE } from "./defaultBadge.js";
 import { DEFAULT_BRANDING, FONTS, PRESETS, applyBranding, deriveTheme, loadCachedBranding, cacheBranding, contrast } from "./branding.js";
 
@@ -36,8 +36,7 @@ const THEME = {
   mono: "'IBM Plex Mono', monospace",
 };
 
-// Admin PIN — change this to whatever code you want to use to gate the Staff Room.
-const ADMIN_PIN = "1966";
+// The admin PIN is checked by the server (see worker/index.js) and can be changed in the Branding screen.
 
 // Game types and tournament stages (used when logging a result).
 const COMP_TYPES = [
@@ -288,7 +287,7 @@ function loadHtml2Canvas() {
     document.head.appendChild(script);
   });
 }
-function SaveCardButton({ cardRef, filename = "leon-result.png", onSaved, shareText = "" }) {
+function SaveCardButton({ cardRef, filename = "result.png", onSaved, shareText = "" }) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(false);
   const handleSave = async () => {
@@ -399,7 +398,7 @@ function ResultCard({ match, teamName = "Team", compColor = THEME.sky, players =
   const pillBg = isWin ? THEME.pitch : isLoss ? THEME.loss : THEME.amber;
   const resultLabel = isWin ? "WIN" : isLoss ? "LOSS" : "DRAW";
   const cardRef = useRef();
-  const filename = `leon-vs-${(match.opposition || "result").replace(/\s+/g,"-").toLowerCase()}.png`;
+  const filename = `${(BRAND.short || "club").replace(/\s+/g,"-").toLowerCase()}-vs-${(match.opposition || "result").replace(/\s+/g,"-").toLowerCase()}.png`;
   // Prefer the logo saved on the result itself; if it wasn't set at the time (e.g. the
   // logo was added to the team afterwards), fall back to the team's current logo.
   const displayLogo = match.oppLogo || teams.find(t => t.name === match.opposition)?.logo || null;
@@ -587,6 +586,21 @@ function BrandingScreen({ branding, onSave, onBack, showToast }) {
     try { set("badge_url", await uploadImage(file, "branding")); } catch (err) { showToast("Badge upload failed"); }
     setUploading(false);
   };
+  const [newPin, setNewPin] = useState("");
+  const [moving, setMoving] = useState(false);
+  const [moveMsg, setMoveMsg] = useState("");
+  const savePin = async () => {
+    try { await changeAdminPin(newPin); setNewPin(""); showToast("PIN changed ✓"); }
+    catch (err) { showToast(err.message || "Could not change PIN"); }
+  };
+  const moveImages = async () => {
+    setMoving(true); setMoveMsg("");
+    try {
+      const r = await moveExternalImages((i, n) => setMoveMsg(`${i}/${n}`));
+      showToast(r.total === 0 ? "Nothing to move" : `Moved ${r.moved} of ${r.total}${r.failed.length ? " — some failed, run again" : " ✓"}`);
+    } catch (err) { showToast("Could not move images"); }
+    setMoving(false);
+  };
   const save = async () => {
     setBusy(true);
     try { await onSave({ ...d, club_name: name, short_name: short, slogan: (d.slogan || "").trim() }); showToast("Branding saved ✓"); }
@@ -667,9 +681,9 @@ function BrandingScreen({ branding, onSave, onBack, showToast }) {
       </div>
 
       <span style={lab}>Club name</span>
-      <input style={inp} value={d.club_name} onChange={e => set("club_name", e.target.value)} placeholder="e.g. Sunderland Leon FC" />
+      <input style={inp} value={d.club_name} onChange={e => set("club_name", e.target.value)} placeholder="e.g. Riverside United FC" />
       <span style={lab}>Short name</span>
-      <input style={inp} value={d.short_name} onChange={e => set("short_name", e.target.value)} placeholder="e.g. Leon FC" />
+      <input style={inp} value={d.short_name} onChange={e => set("short_name", e.target.value)} placeholder="e.g. Riverside" />
       <span style={lab}>Slogan</span>
       <input style={inp} value={d.slogan} onChange={e => set("slogan", e.target.value)} placeholder="Your club motto" />
 
@@ -682,6 +696,26 @@ function BrandingScreen({ branding, onSave, onBack, showToast }) {
             <span style={{ fontSize: 11, color: THEME.ink60 }}>{f.name}</span>
           </button>
         ))}
+      </div>
+
+
+      <span style={lab}>Admin PIN</span>
+      <div style={{ ...card }}>
+        <div style={{ fontSize: 12, color: THEME.ink60, marginBottom: 8, lineHeight: 1.4 }}>Change the PIN used to unlock the Staff Room (4–8 digits).</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input style={{ ...inp, flex: 1 }} type="password" inputMode="numeric" value={newPin} onChange={e => setNewPin(e.target.value.replace(/\D/g, "").slice(0, 8))} placeholder="New PIN" />
+          <button onClick={savePin} disabled={newPin.length < 4}
+            style={{ background: THEME.navy, color: "#fff", border: "none", borderRadius: 10, padding: "0 16px", fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: newPin.length < 4 ? 0.5 : 1 }}>Change</button>
+        </div>
+      </div>
+
+      <span style={lab}>Images</span>
+      <div style={{ ...card }}>
+        <div style={{ fontSize: 12, color: THEME.ink60, marginBottom: 8, lineHeight: 1.4 }}>Copy any photos or crests still stored on the old system into this app. Safe to run more than once.</div>
+        <button onClick={moveImages} disabled={moving}
+          style={{ background: "none", border: `1.5px solid ${THEME.ink30}`, borderRadius: 10, padding: "10px 14px", fontWeight: 700, fontSize: 13, color: THEME.navy, cursor: "pointer", opacity: moving ? 0.6 : 1 }}>
+          {moving ? `Moving… ${moveMsg}` : "Move images into this app"}
+        </button>
       </div>
 
       <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
@@ -1207,8 +1241,8 @@ export default function App() {
     setEditingTeamName(false);
   };
 
-  const handleUnlockAdmin = () => {
-    if (pinInput === ADMIN_PIN) {
+  const handleUnlockAdmin = async () => {
+    if (await verifyAdminPin(pinInput)) {
       setIsAdmin(true);
       setShowPinGate(false);
       setPinInput("");
@@ -1228,6 +1262,7 @@ export default function App() {
   };
 
   const handleLockAdmin = () => {
+    setAdminPin("");
     setIsAdmin(false);
     setMode("home");
   };
@@ -2764,7 +2799,7 @@ export default function App() {
 
               {/* Save button */}
               <div style={{ marginTop: 12 }}>
-                <SaveCardButton cardRef={reportRef} filename={`leon-${viewingSeason?.name?.replace("/","")}-season-report.png`} />
+                <SaveCardButton cardRef={reportRef} filename={`season-${viewingSeason?.name?.replace("/","")}-report.png`} />
               </div>
             </div>
           );
