@@ -19,7 +19,7 @@ const TABLES = {
   appearances: { cols: ["player_id", "result_id", "season_id"], kinds: {}, order: "id.desc" },
   match_photos: { cols: ["result_id", "url"], kinds: {}, order: "id.desc", extraRead: ["created_at"] },
   club_settings: {
-    cols: ["club_name", "short_name", "slogan", "primary_color", "accent_color", "font_pairing", "badge_url", "updated_at"],
+    cols: ["club_name", "short_name", "slogan", "primary_color", "accent_color", "font_pairing", "badge_url", "icon_url", "updated_at"],
     kinds: {}, order: "id.asc",
   },
 };
@@ -112,7 +112,21 @@ async function serveImage(env, id) {
   });
 }
 // Columns that can hold an image link: [table, column]
-const IMAGE_COLS = [["teams", "logo"], ["players", "photo"], ["results", "oppLogo"], ["match_photos", "url"], ["club_settings", "badge_url"]];
+const IMAGE_COLS = [["teams", "logo"], ["players", "photo"], ["results", "oppLogo"], ["match_photos", "url"], ["club_settings", "badge_url"], ["club_settings", "icon_url"]];
+
+// Home-screen icons: if the club has uploaded its own, serve that; otherwise the built-in icon files.
+const ICON_PATHS = ["/icon-192.png", "/icon-512.png", "/apple-touch-icon.png"];
+async function serveIcon(request, env) {
+  try {
+    const row = await env.DB.prepare("SELECT icon_url AS u FROM club_settings WHERE id = 1").first();
+    const m = row && row.u && /^\/img\/([0-9a-f]{24})$/.exec(row.u);
+    if (m) {
+      const res = await serveImage(env, m[1]);
+      if (res.ok) { const h = new Headers(res.headers); h.set("cache-control", "public, max-age=300"); return new Response(res.body, { headers: h }); }
+    }
+  } catch (e) { /* fall through to the built-in icon */ }
+  return env.ASSETS.fetch(request);
+}
 
 async function handleSpecial(request, env, url, parts) {
   const db = env.DB;
@@ -269,6 +283,7 @@ export default {
         return json({ error: String(e && e.message ? e.message : e) }, 500);
       }
     }
+    if (ICON_PATHS.includes(url.pathname)) return serveIcon(request, env);
     if (url.pathname.startsWith("/img/")) {
       const id = url.pathname.slice(5);
       if (!/^[0-9a-f]{24}$/.test(id)) return new Response("Not found", { status: 404 });

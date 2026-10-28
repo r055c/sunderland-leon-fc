@@ -1,6 +1,6 @@
 // Club results app — v2.3
 import { useState, useRef, useEffect, useCallback } from "react";
-import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, verifyAdminPin, setAdminPin, changeAdminPin, moveExternalImages, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchClubSettings, saveClubSettings } from "./api.js";
+import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, uploadIcon, verifyAdminPin, setAdminPin, changeAdminPin, moveExternalImages, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchClubSettings, saveClubSettings } from "./api.js";
 import { DEFAULT_BADGE } from "./defaultBadge.js";
 import { DEFAULT_BRANDING, FONTS, PRESETS, applyBranding, deriveTheme, loadCachedBranding, cacheBranding, contrast } from "./branding.js";
 
@@ -583,7 +583,10 @@ function BrandingScreen({ branding, onSave, onBack, showToast }) {
     const file = e.target.files?.[0]; e.target.value = "";
     if (!file) return;
     setUploading(true);
-    try { set("badge_url", await uploadImage(file, "branding")); } catch (err) { showToast("Badge upload failed"); }
+    try {
+      set("badge_url", await uploadImage(file, "branding"));
+      try { set("icon_url", await uploadIcon(file)); } catch (err) { /* badge still saved; home-screen icon stays as before */ }
+    } catch (err) { showToast("Badge upload failed"); }
     setUploading(false);
   };
   const [newPin, setNewPin] = useState("");
@@ -722,7 +725,7 @@ function BrandingScreen({ branding, onSave, onBack, showToast }) {
         <button onClick={() => setD({ ...DEFAULT_BRANDING })} style={{ flex: 1, background: "none", border: `1.5px solid ${THEME.ink30}`, borderRadius: 12, padding: 13, fontWeight: 700, fontSize: 13, color: THEME.ink60, cursor: "pointer" }}>Reset to defaults</button>
         <button onClick={save} disabled={busy} style={{ flex: 2, background: THEME.navy, color: "#fff", border: "none", borderRadius: 12, padding: 13, fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: busy ? 0.6 : 1 }}>{busy ? "Saving…" : "Save branding"}</button>
       </div>
-      <div style={{ fontSize: 11, color: THEME.ink60, marginTop: 12, lineHeight: 1.4 }}>Changes apply to everyone who opens the app. The home-screen icon and installed app name are fixed when the app is built.</div>
+      <div style={{ fontSize: 11, color: THEME.ink60, marginTop: 12, lineHeight: 1.4 }}>Changes apply to everyone who opens the app. A new badge also becomes the home-screen icon the next time someone adds the app to their home screen (already-installed copies keep their old icon). The installed app name is fixed when the app is built.</div>
     </div>
   );
 }

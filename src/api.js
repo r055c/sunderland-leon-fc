@@ -49,6 +49,21 @@ export async function uploadImage(file, bucket = "logos") {
   if (!res.ok) throw new Error(`Upload failed: ${(await res.json().catch(() => ({}))).error || res.status}`);
   return (await res.json()).url;
 }
+// Home-screen icon: the badge centred on a light square, 512x512 (iPhones fill transparent areas with black).
+export async function uploadIcon(file) {
+  const bmp = await createImageBitmap(file);
+  const size = 512, pad = 0.14;
+  const canvas = document.createElement("canvas"); canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#f8f8f8"; ctx.fillRect(0, 0, size, size);
+  const box = size * (1 - pad * 2), sc = Math.min(box / bmp.width, box / bmp.height);
+  const w = bmp.width * sc, h = bmp.height * sc;
+  ctx.drawImage(bmp, (size - w) / 2, (size - h) / 2, w, h);
+  const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
+  const res = await fetch(api("upload"), { method: "POST", headers: { ...authHeaders(), "Content-Type": "image/png" }, body: blob });
+  if (!res.ok) throw new Error("Icon upload failed");
+  return (await res.json()).url;
+}
 // One-off: copy images that still live on Supabase into this app, then point the data at the copies.
 export async function moveExternalImages(onProgress) {
   const listRes = await fetch(api("external-images"), { headers: hdr() });
