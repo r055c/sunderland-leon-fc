@@ -1,6 +1,6 @@
 // Sunderland Leon FC — v2.3
 import { useState, useRef, useEffect, useCallback } from "react";
-import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchClubSettings, saveClubSettings } from "./supabase.js";
+import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchClubSettings, saveClubSettings } from "./api.js";
 import { DEFAULT_BADGE } from "./defaultBadge.js";
 import { DEFAULT_BRANDING, FONTS, PRESETS, applyBranding, deriveTheme, loadCachedBranding, cacheBranding, contrast } from "./branding.js";
 

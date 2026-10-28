@@ -1,0 +1,14 @@
+{
+  "name": "leon-trial",
+  "main": "worker/index.js",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "leon-trial", "database_id": "78933dc8-c453-47e7-a3be-6db835984fe9" }
+  ]
+}
