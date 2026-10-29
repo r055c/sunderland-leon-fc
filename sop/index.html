@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Add a Club – SOP</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #14182b; --muted: #5b6275; --line: #e2e5ec;
+    --accent: #1f6fb2; --accent-soft: #e6f1fa; --warn-bg: #fff4e0; --warn-line: #e8b04a;
+    --ok-bg: #e8f6ee; --ok-line: #4aa574; --code-bg: #eef0f5; --red: #e53935;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1220; --card: #181c30; --ink: #eceef6; --muted: #a2a9bf; --line: #2a3050;
+      --accent: #6db6ea; --accent-soft: #1b2a42; --warn-bg: #2d2412; --warn-line: #b88a2e;
+      --ok-bg: #12291f; --ok-line: #3b8a62; --code-bg: #20253d;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.9rem; line-height: 1.2; margin: 8px 0 6px; }
+  h2 { font-size: 1.3rem; margin: 0 0 10px; line-height: 1.25; }
+  h3 { font-size: 1.02rem; margin: 18px 0 6px; }
+  p { margin: 8px 0; }
+  .sub { color: var(--muted); margin: 0 0 18px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 22px; padding: 0; list-style: none; }
+  .meta li { background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 4px 12px; font-size: .85rem; font-weight: 600; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px 18px; margin: 16px 0; }
+  .step { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; font-size: .95rem; margin-right: 10px; flex: none; }
+  .hd { display: flex; align-items: center; margin-bottom: 8px; }
+  .hd h2 { margin: 0; }
+  ol, ul { padding-left: 22px; margin: 8px 0; }
+  li { margin: 5px 0; }
+  code { background: var(--code-bg); padding: 1px 6px; border-radius: 6px; font: .88em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; word-break: break-word; }
+  pre { background: var(--code-bg); border-radius: 10px; padding: 12px 14px; overflow-x: auto; font: .85rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; margin: 10px 0; }
+  pre code { background: none; padding: 0; }
+  .note, .warn, .ok { border-radius: 10px; padding: 10px 14px; margin: 12px 0; border-left: 4px solid; font-size: .96rem; }
+  .note { background: var(--accent-soft); border-color: var(--accent); }
+  .warn { background: var(--warn-bg); border-color: var(--warn-line); }
+  .ok { background: var(--ok-bg); border-color: var(--ok-line); }
+  figure { margin: 14px 0; }
+  figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  figcaption { color: var(--muted); font-size: .86rem; margin-top: 6px; }
+  .phones { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 260px)); gap: 14px; margin: 14px 0; }
+  .phones figure { margin: 0; }
+  .phones img { width: 100%; }
+  .flow { display: grid; gap: 10px; margin: 14px 0; }
+  .box { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--bg); }
+  .box b { display: block; }
+  .box span { color: var(--muted); font-size: .88rem; }
+  .arrow { text-align: center; color: var(--muted); font-size: 1.2rem; line-height: 1; }
+  .clubs { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+  .clubs .box { background: var(--card); }
+  table { width: 100%; border-collapse: collapse; font-size: .94rem; margin: 8px 0; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; }
+  .check li { list-style: none; margin-left: -22px; padding-left: 28px; position: relative; }
+  .check li::before { content: "☐"; position: absolute; left: 0; color: var(--accent); }
+  .handout { border: 2px dashed var(--accent); }
+  .tag { font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+  .foot { color: var(--muted); font-size: .85rem; margin-top: 28px; }
+  @media print {
+    body { background: #fff; color: #000; }
+    section { break-inside: avoid; border-color: #ccc; }
+    .handout { break-before: page; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="tag">Standard operating procedure</div>
+  <h1>Adding a new club to the app</h1>
+  <p class="sub">One app, one Cloudflare project and one database per club. Every club updates when the shared code is updated.</p>
+  <ul class="meta">
+    <li>About 10 minutes per club</li>
+    <li>Free tier</li>
+    <li>No coding needed</li>
+  </ul>
+
+  <section>
+    <h2>How it fits together</h2>
+    <div class="flow">
+      <div class="box"><b>GitHub – one repository, one branch</b><span>Currently <code>cloudflare-trial</code>. Change the code here once.</span></div>
+      <div class="arrow">↓ every push rebuilds every club</div>
+      <div class="clubs">
+        <div class="box"><b>Leon</b><span>project <code>leon</code></span><br><span>own database <code>leon-trial</code></span></div>
+        <div class="box"><b>Norton Ancients</b><span>project <code>norton</code></span><br><span>own database <code>norton-trial</code></span></div>
+        <div class="box"><b>New club</b><span>project <code>&lt;club&gt;</code></span><br><span>own database <code>&lt;club&gt;-trial</code></span></div>
+      </div>
+    </div>
+    <p>Clubs share the code but never see each other's results, players or photos. Each club has its own admin PIN, name, colours and badge, all set inside the app.</p>
+  </section>
+
+  <section>
+    <h2>Before you start</h2>
+    <ul class="check">
+      <li>You can log in to Cloudflare and to GitHub.</li>
+      <li>The club's name and a short name for the home screen (for example "Norton Ancients" and "Ancients").</li>
+      <li>A short lower-case name to use everywhere (for example <code>norton</code>). Use letters only.</li>
+      <li>The club's badge as a PNG or JPEG.</li>
+    </ul>
+    <div class="note"><b>Shortcut:</b> steps 1 and 2 can be done by Claude. Say "Add a club called &lt;name&gt;" and give the short name and club name. You still do step 3 in Cloudflare, because creating the project needs the dashboard.</div>
+  </section>
+
+  <section>
+    <div class="hd"><span class="step">1</span><h2>Create the club's database</h2></div>
+    <ol>
+      <li>In Cloudflare go to <b>Storage &amp; databases → D1 SQLite Database → Create database</b>.</li>
+      <li>Name it <code>&lt;club&gt;-trial</code> and create it. Choose <b>Western Europe</b> if it asks for a location.</li>
+      <li>Open the database and click the <b>Console</b> tab (marked 1 below).</li>
+      <li>Open <code>worker/schema.sql</code> in the GitHub repository, copy the whole file, paste it into the Console and run it.</li>
+      <li>Then run this, with the club's real names:
+<pre><code>UPDATE club_settings SET club_name='Norton Ancients', short_name='Ancients' WHERE id=1;</code></pre></li>
+      <li>Copy the database ID shown on the Overview page (the long code with dashes). You need it in step 2.</li>
+    </ol>
+    <figure>
+      <a href="img/cf-d1-overview.png" target="_blank" rel="noopener"><img src="img/cf-d1-overview.png" alt="Cloudflare D1 database page with the Console tab and Explore Data button marked"></a>
+      <figcaption>1 = Console tab (paste the schema here). 2 = Explore Data, to look at the tables afterwards. The database ID is under the region picker. Tap the picture to enlarge it.</figcaption>
+    </figure>
+    <div class="ok"><b>Check:</b> the Overview shows <b>Number of Tables: 9</b>. If it shows 0, the schema did not run.</div>
+  </section>
+
+  <section>
+    <div class="hd"><span class="step">2</span><h2>Add the club's two small files</h2></div>
+    <p>In the GitHub repository, copy the folder <code>clubs/norton</code> to <code>clubs/&lt;club&gt;</code> and edit the two files inside.</p>
+    <h3>clubs/&lt;club&gt;/club.json</h3>
+    <p>The name shown under the home-screen icon, and the colour of the phone's top bar.</p>
+    <h3>clubs/&lt;club&gt;/wrangler.jsonc</h3>
+    <p>Change these three values and leave the rest alone:</p>
+<pre><code>"name": "&lt;club&gt;",
+"database_name": "&lt;club&gt;-trial",
+"database_id": "paste the ID from step 1"</code></pre>
+    <div class="warn"><b>The <code>name</code> must be exactly the same as the Cloudflare project name in step 3.</b> If they differ, the build fails with a name mismatch error.</div>
+    <p>Commit the change to the same branch the other clubs use (currently <code>cloudflare-trial</code>).</p>
+  </section>
+
+  <section>
+    <div class="hd"><span class="step">3</span><h2>Create the Cloudflare project</h2></div>
+    <ol>
+      <li>Cloudflare → <b>Workers &amp; Pages → Create → Import a repository</b>, and pick the app's repository.</li>
+      <li>Project name: exactly the <code>name</code> from step 2.</li>
+      <li>Build command: <code>CLUB=&lt;club&gt; npm run build</code></li>
+      <li>Deploy command: <code>npx wrangler deploy -c clubs/&lt;club&gt;/wrangler.jsonc</code></li>
+      <li>Leave everything else as it is and save.</li>
+    </ol>
+    <figure>
+      <img src="img/cf-build-settings.png" alt="Cloudflare build settings filled in for the norton club">
+      <figcaption>The Norton project's settings. Swap "norton" for your club's name in all three places.</figcaption>
+    </figure>
+    <div class="warn"><b>Set the production branch.</b> Open the project → <b>Settings → Builds → Branch control</b> and choose the branch every club builds from (currently <code>cloudflare-trial</code>). If you skip this, Cloudflare builds <code>main</code>, which has no club files, and the build fails with a message about a Vite version that "cannot be automatically configured".</div>
+    <div class="note"><b>If a build fails and you fix it:</b> clicking Retry re-runs the old version. Push a new commit instead (an empty one is fine) to start a fresh build.</div>
+  </section>
+
+  <section>
+    <div class="hd"><span class="step">4</span><h2>Check it works</h2></div>
+    <ol>
+      <li>Wait for the build to finish (a couple of minutes, shown as green in Deployments).</li>
+      <li>Open <code>https://&lt;club&gt;.&lt;your-account&gt;.workers.dev</code>.</li>
+      <li>You should see the club's name at the top, a season (2026/27) and "No results logged yet".</li>
+      <li>Tap the padlock, enter the starting PIN and make sure the Staff Room opens.</li>
+    </ol>
+    <div class="ok"><b>Done.</b> Send the club the section below.</div>
+  </section>
+
+  <section class="handout">
+    <div class="tag">Send this part to the club</div>
+    <h2>Getting started – your first 5 minutes</h2>
+    <p>Your app address: <b>________________________</b><br>Your starting admin PIN: <b>__________</b> (change it in step 2 below)</p>
+
+    <h3>1. Open the Staff Room</h3>
+    <p>Tap the padlock at the top right, then enter your PIN.</p>
+    <div class="phones">
+      <figure><img src="img/app-1-lock.jpg" alt="Home screen with the padlock marked"><figcaption>Tap the padlock.</figcaption></figure>
+      <figure><img src="img/app-2-pin.jpg" alt="PIN entry box"><figcaption>Enter the PIN and tap Unlock.</figcaption></figure>
+      <figure><img src="img/app-3-staff.jpg" alt="Staff Room menu with Branding marked"><figcaption>Choose Branding.</figcaption></figure>
+    </div>
+
+    <h3>2. Change your PIN straight away</h3>
+    <p>On the Branding screen, scroll down to <b>Admin PIN</b>. Type a new PIN of 4 to 8 digits, tap <b>Change</b>, and share it only with the people who log results.</p>
+    <div class="phones">
+      <figure><img src="img/app-5-changepin.jpg" alt="Admin PIN section with the new PIN box marked"><figcaption>Type the new PIN and tap Change.</figcaption></figure>
+    </div>
+
+    <h3>3. Upload your club badge</h3>
+    <p>Still on Branding, tap <b>Upload badge</b> and choose your crest (PNG or JPEG), then tap <b>Save branding</b>. You can also change the colours, club name and slogan here.</p>
+    <div class="phones">
+      <figure><img src="img/app-4-badge.jpg" alt="Club badge section with the Upload badge button marked"><figcaption>Tap Upload badge.</figcaption></figure>
+    </div>
+
+    <h3>4. Add the app to your home screen – after the badge</h3>
+    <ul>
+      <li><b>iPhone:</b> open the address in Safari, tap the Share button, then <b>Add to Home Screen</b>.</li>
+      <li><b>Android:</b> open it in Chrome, tap the three dots, then <b>Install app</b> or <b>Add to Home screen</b>.</li>
+    </ul>
+    <div class="warn">Do this <b>after</b> uploading the badge. The home-screen icon is copied when the app is added. If it was added earlier and shows the wrong icon, delete it from the home screen and add it again.</div>
+  </section>
+
+  <section>
+    <h2>Updating every club</h2>
+    <p>Push a change to the shared branch. Each club's Cloudflare project rebuilds and deploys it on its own. You do not touch the clubs one by one.</p>
+    <div class="warn"><b>If a change adds a new database column:</b> add a numbered file in <code>worker/migrations/</code> and run it in the Console of <b>every</b> club's database <b>before</b> you push. Otherwise that club's app breaks until you do.</div>
+  </section>
+
+  <section>
+    <h2>When something goes wrong</h2>
+    <table>
+      <tr><th>You see</th><th>Why, and what to do</th></tr>
+      <tr><td>Build fails: "name mismatch" or the Worker name is wrong</td><td>The <code>name</code> in the club's <code>wrangler.jsonc</code> does not match the Cloudflare project name. Make them identical and push a new commit.</td></tr>
+      <tr><td>Build fails: "Vite … cannot be automatically configured"</td><td>Cloudflare is building a branch with no club files. Set the production branch under Settings → Builds → Branch control.</td></tr>
+      <tr><td>Retry keeps failing the same way</td><td>Retry re-runs the old commit. Push a new commit to start a fresh build.</td></tr>
+      <tr><td>The app says "Connection error" on first open</td><td>The database has no starting season. Run the last line of <code>worker/schema.sql</code> (the <code>INSERT INTO seasons</code> line) in the Console. Databases made from the current schema already have it.</td></tr>
+      <tr><td>Data does not load at all</td><td>The database ID in <code>wrangler.jsonc</code> is wrong or the schema was not run. Check Number of Tables is 9.</td></tr>
+      <tr><td>Home-screen icon shows another club's badge</td><td>The club installed the app before uploading their badge. Upload the badge, then delete and re-add the app on the phone.</td></tr>
+      <tr><td>Forgotten admin PIN</td><td>Ask Claude to reset it, or set it directly in the database. It is stored only as a hash, so it cannot be read back.</td></tr>
+      <tr><td>Image upload says it failed</td><td>Images are limited to about 1.2 MB after shrinking. Use a smaller photo. BMP files are not supported; use PNG or JPEG.</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Free-tier limits to keep an eye on</h2>
+    <ul>
+      <li>The number of D1 databases allowed on a free Cloudflare account (around 10 at the time of writing).</li>
+      <li>Daily Worker requests, shared by every club on the account.</li>
+      <li>Monthly build minutes. Every push rebuilds every club, so many small pushes use them up faster.</li>
+    </ul>
+    <p>Check Cloudflare's current free-plan limits before taking on a lot of clubs. At around five or more clubs it is worth looking at usage.</p>
+  </section>
+
+  <section>
+    <h2>New club checklist</h2>
+    <ul class="check">
+      <li>Database created and schema run (Number of Tables: 9)</li>
+      <li>Club name and short name set in the database</li>
+      <li><code>clubs/&lt;club&gt;/</code> files edited and committed</li>
+      <li>Cloudflare project created with the same name, build and deploy commands</li>
+      <li>Production branch set under Branch control</li>
+      <li>Build green and the app opens with the right club name</li>
+      <li>Club sent the "getting started" section</li>
+      <li>Club has changed the PIN and uploaded their badge, then added the app to their home screen</li>
+    </ul>
+  </section>
+
+  <p class="foot">Source: <code>docs/ADD-A-CLUB.md</code> in the repository. If the steps change, update that file and this page together.</p>
+</div>
+</body>
+</html>

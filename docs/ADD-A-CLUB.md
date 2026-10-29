@@ -1,5 +1,7 @@
 # Adding a club
 
+A step-by-step version with pictures is published with Leon's app at `/sop/` (source: `sop/index.html`). Keep the two in step.
+
 One codebase, one Cloudflare project per club. Every club builds from the same branch, so a push
 updates all of them. Each club has its own database, its own address and its own admin PIN.
 
@@ -11,7 +13,7 @@ updates all of them. Each club has its own database, its own address and its own
 | Branding, colours, crest, admin PIN | stored in the club's own database, edited in the app (Staff Room → Branding) |
 
 ## Steps (about 5 minutes)
-1. **Database** – create a D1 database (`<club>-trial` or similar), run `worker/schema.sql` on it, then set the club name:
+1. **Database** – create a D1 database (`<club>-trial` or similar), run `worker/schema.sql` on it (this also creates the club's first season), then set the club name:
    `UPDATE club_settings SET club_name='…', short_name='…' WHERE id=1;`
    Starting admin PIN is **0000** – the club should change it straight away (Staff Room → Branding → Admin PIN).
 2. **Config files** – copy `clubs/norton/` to `clubs/<club>/`, edit `club.json`, and in `wrangler.jsonc` set the Worker `name`, `database_name` and `database_id`.

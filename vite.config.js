@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
-import { readFileSync } from 'node:fs'
+import { readFileSync, cpSync } from 'node:fs'
 
 // Which club is being built: CLUB=norton npm run build (defaults to leon).
 // Club name, short name and colours for the installed app come from clubs/<club>/club.json.
@@ -14,10 +14,18 @@ const clubHtml = () => ({
     .replaceAll('%CLUB_DESC%', club.description),
 })
 
+// The how-to page for adding clubs (sop/) is published with the Leon build only, at /sop/.
+const sopPage = () => ({
+  name: 'sop-page',
+  apply: 'build',
+  closeBundle() { if ((process.env.CLUB || 'leon') === 'leon') cpSync('sop', 'dist/sop', { recursive: true }) },
+})
+
 export default defineConfig({
   plugins: [
     react(),
     clubHtml(),
+    sopPage(),
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
@@ -39,7 +47,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        globIgnores: ['icon-192.png', 'icon-512.png', 'apple-touch-icon.png'],
+        globIgnores: ['icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'sop/**'],
+        navigateFallbackDenylist: [/^\/sop(\/|$)/, /^\/api\//, /^\/img\//],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/cdnjs\.cloudflare\.com\/.*/i,

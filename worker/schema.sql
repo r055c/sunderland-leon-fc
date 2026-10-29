@@ -14,3 +14,6 @@ CREATE INDEX idx_app_player ON appearances(player_id);
 CREATE INDEX idx_photos_result ON match_photos(result_id);
 -- Starting admin PIN is 0000. Change it in the app (Branding screen) straight away.
 INSERT INTO club_settings (id, admin_pin_hash) VALUES (1, 'd673e4127504bb60$63f677ee8cec8f39c3fd9c78f797b1b5d6da51ff8778e8b4cdba41423014c32b');
+
+-- A new club needs one season to start with (the app can't create it before anyone has unlocked admin).
+INSERT INTO seasons (name, age_group, is_active, competitions, placements, competition_types) VALUES ('2026/27', '', 1, '[]', '{}', '{}');
