@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Club App – How to Use It</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #14182b; --muted: #5b6275; --line: #e2e5ec;
+    --accent: #1f6fb2; --accent-soft: #e6f1fa; --warn-bg: #fff4e0; --warn-line: #e8b04a;
+    --ok-bg: #e8f6ee; --ok-line: #4aa574; --red: #e53935;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1220; --card: #181c30; --ink: #eceef6; --muted: #a2a9bf; --line: #2a3050;
+      --accent: #6db6ea; --accent-soft: #1b2a42; --warn-bg: #2d2412; --warn-line: #b88a2e;
+      --ok-bg: #12291f; --ok-line: #3b8a62;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.9rem; line-height: 1.2; margin: 8px 0 6px; }
+  h2 { font-size: 1.3rem; margin: 0 0 10px; line-height: 1.25; }
+  h3 { font-size: 1.02rem; margin: 18px 0 6px; }
+  p { margin: 8px 0; }
+  .sub { color: var(--muted); margin: 0 0 18px; }
+  .tag { font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px 18px; margin: 16px 0; scroll-margin-top: 12px; }
+  .num { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; font-size: .95rem; margin-right: 10px; flex: none; }
+  .hd { display: flex; align-items: center; margin-bottom: 8px; }
+  .hd h2 { margin: 0; }
+  ol, ul { padding-left: 22px; margin: 8px 0; }
+  li { margin: 5px 0; }
+  .note, .warn, .ok { border-radius: 10px; padding: 10px 14px; margin: 12px 0; border-left: 4px solid; font-size: .96rem; }
+  .note { background: var(--accent-soft); border-color: var(--accent); }
+  .warn { background: var(--warn-bg); border-color: var(--warn-line); }
+  .ok { background: var(--ok-bg); border-color: var(--ok-line); }
+  figure { margin: 0; }
+  figure img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  figcaption { color: var(--muted); font-size: .86rem; margin-top: 6px; }
+  .phones { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 260px)); gap: 14px; margin: 14px 0; }
+  .toc { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; margin: 14px 0 4px; }
+  .toc a { display: block; text-decoration: none; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; font-weight: 600; font-size: .95rem; }
+  .toc a span { display: block; color: var(--muted); font-weight: 400; font-size: .84rem; }
+  .red { color: var(--red); font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: .94rem; margin: 8px 0; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; }
+  code { background: var(--accent-soft); padding: 1px 6px; border-radius: 6px; font: .88em ui-monospace, Menlo, Consolas, monospace; }
+  .foot { color: var(--muted); font-size: .85rem; margin-top: 28px; }
+  @media print { body { background: #fff; color: #000; } section { break-inside: avoid; border-color: #ccc; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="tag">Club app guide</div>
+  <h1>How to use the club app</h1>
+  <p class="sub">Log results, look after your squad and share match cards. No technical knowledge needed.</p>
+  <p class="sub">The pictures show a made-up club called "Sample Town FC". Yours will show your own name, badge and colours. Red numbers on the pictures match the numbered steps.</p>
+
+  <div class="toc">
+    <a href="#look">Looking around<span>What everyone can see</span></a>
+    <a href="#unlock">Unlock the Staff Room<span>Your PIN</span></a>
+    <a href="#log">Log a result<span>The job you'll do most</span></a>
+    <a href="#share">Share the result card<span>Image or WhatsApp</span></a>
+    <a href="#fix">Fix a mistake / add photos<span>Edit or delete a result</span></a>
+    <a href="#squad">Look after the squad<span>Add, retire, remove players</span></a>
+    <a href="#teams">Opposition teams<span>Badges and head-to-head</span></a>
+    <a href="#report">Season report<span>Stats you can share</span></a>
+    <a href="#season">Start a new season<span>Old results are kept</span></a>
+    <a href="#trophy">Trophy cabinet<span>Tournament finishes</span></a>
+    <a href="#brand">Your club's look<span>Badge, colours, PIN</span></a>
+    <a href="#help">Problems?<span>Quick answers</span></a>
+  </div>
+
+  <section id="look">
+    <div class="hd"><span class="num">1</span><h2>Looking around</h2></div>
+    <p>Anyone with the link can look around the app. The tabs at the bottom are:</p>
+    <ul>
+      <li><b>Home</b> – the season record so far and the latest result.</li>
+      <li><b>Results</b> – every match. Use the drop-down at the top to show one competition, or search for an opponent to see your record against them.</li>
+      <li><b>Gallery</b> – match photos.</li>
+      <li><b>Players</b> – top scorers, man of the match awards and each player's record. Tap a tab at the top (marked 1) to switch between them.</li>
+      <li><b>Admin</b> – the padlock. Only people with the PIN can get past it.</li>
+    </ul>
+    <p>The season shown at the top (for example 2026/27) can be changed to look back at earlier seasons.</p>
+    <div class="phones">
+      <figure><img src="img/u-home.jpg" alt="Home screen"><figcaption>Home</figcaption></figure>
+      <figure><img src="img/u-results.jpg" alt="Results screen"><figcaption>Results</figcaption></figure>
+      <figure><img src="img/u-players.jpg" alt="Players screen with the tabs marked"><figcaption>Players</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="unlock">
+    <div class="hd"><span class="num">2</span><h2>Unlock the Staff Room</h2></div>
+    <p>Anything that changes the app (results, players, teams) is in the Staff Room.</p>
+    <ol>
+      <li>Tap the padlock at the top right of any screen.</li>
+      <li>Type your PIN and tap <b>Unlock</b>.</li>
+      <li>You'll see the Staff Room menu. Tap what you want to do.</li>
+      <li>When you've finished, scroll to the bottom of the menu and tap <b>Exit Admin</b>.</li>
+    </ol>
+    <div class="phones">
+      <figure><img src="img/app-1-lock.jpg" alt="Padlock marked"><figcaption>1. Tap the padlock.</figcaption></figure>
+      <figure><img src="img/app-2-pin.jpg" alt="PIN box"><figcaption>2. Enter the PIN.</figcaption></figure>
+      <figure><img src="img/app-3-staff.jpg" alt="Staff Room menu"><figcaption>3. The Staff Room menu.</figcaption></figure>
+    </div>
+    <div class="note">Only give the PIN to people who log results. You can change it any time (see "Your club's look" below). If you forget it, ask the person who set up the app for you.</div>
+  </section>
+
+  <section id="log">
+    <div class="hd"><span class="num">3</span><h2>Log a result</h2></div>
+    <p>Staff Room → <b>Log a Result</b>. Work down the screen from the top.</p>
+
+    <h3>A. The game</h3>
+    <ol>
+      <li><b>What kind of game?</b> League, Cup, Tournament or Friendly. Tournament has its own screen where you also pick the stage (group stage, semi-final, final and so on).</li>
+      <li><b>Which league or cup?</b> Tap the competition. If it isn't listed, tap <b>+ New</b> and type it once. It will be there next time.</li>
+      <li><b>Date played.</b> Pick the date of the match.</li>
+      <li><b>Opposition.</b> Tap the box and choose the team. If they aren't listed, choose <b>Add "new team" to list</b>.</li>
+      <li><b>Opp score.</b> Type the number of goals the other team scored. Your own score is worked out for you in the next steps.</li>
+    </ol>
+    <figure style="max-width:260px"><img src="img/u-log-1.jpg" alt="Top of the Log a Result form with five items marked"></figure>
+
+    <h3>B. Who played</h3>
+    <p>Tap the name of every player who played. They turn dark blue. Tap again to take someone off.</p>
+    <figure style="max-width:260px"><img src="img/u-log-2.jpg" alt="Who played today with the player buttons marked"></figure>
+
+    <h3>C. Goals</h3>
+    <p>Under <b>Goal scorers</b> every player you picked has a counter. Tap <b>+</b> each time they scored (and <b>−</b> to take one off). Your team's score is added up from these, so it is always right.</p>
+    <figure style="max-width:260px"><img src="img/u-log-3.jpg" alt="Goal scorer counters"></figure>
+
+    <h3>D. Awards and finish</h3>
+    <ol>
+      <li><b>Man of the match.</b> Tap the player your team picked.</li>
+      <li><b>Opp. man of match.</b> Tap the player the other team picked from your side, if they chose one. You can skip it.</li>
+      <li>Tap <b>Generate Result Card</b>. The result is saved and your card appears.</li>
+    </ol>
+    <figure style="max-width:260px"><img src="img/u-log-4.jpg" alt="Man of the match choices and the Generate Result Card button"></figure>
+    <div class="warn"><b>If the Generate button looks faded</b>, something is missing: the date, the opposition or the opponent's score.</div>
+    <div class="ok"><b>Tip:</b> set up your players first (see "Look after the squad"). Then logging a result is just a few taps.</div>
+  </section>
+
+  <section id="share">
+    <div class="hd"><span class="num">4</span><h2>Share the result card</h2></div>
+    <p>After you generate the card you can:</p>
+    <ol>
+      <li><b>Save as image</b> – puts the card in your phone's photos so you can post it anywhere.</li>
+      <li><b>Share to WhatsApp</b> – sends the card straight to a chat or group.</li>
+      <li><b>Add another result</b> – back to a blank form, for example for a second match on the same day.</li>
+    </ol>
+    <div class="phones"><figure><img src="img/u-card.jpg" alt="Result card with Save as image and Share to WhatsApp buttons marked"></figure></div>
+    <p>You can get the card again later: go to <b>Results</b> and tap the match.</p>
+  </section>
+
+  <section id="fix">
+    <div class="hd"><span class="num">5</span><h2>Fix a mistake or add photos</h2></div>
+    <p>Staff Room unlocked → <b>Results</b> tab → tap the match you want. Three buttons appear:</p>
+    <ol>
+      <li><b>+ Add</b> (match photos) – choose photos from your phone. They also show in the Gallery.</li>
+      <li><b>Edit</b> – change the score, scorers, awards or opposition, then save.</li>
+      <li><b>Delete</b> – removes the match completely. The app asks you to confirm first.</li>
+    </ol>
+    <div class="phones"><figure><img src="img/u-result-open.jpg" alt="An opened result with Add, Edit and Delete marked"></figure></div>
+    <div class="note">Deleting a result also removes its goals, appearances and photos, and the player stats change to match. If you only got something wrong, use Edit.</div>
+  </section>
+
+  <section id="squad">
+    <div class="hd"><span class="num">6</span><h2>Look after the squad</h2></div>
+    <p>Staff Room → <b>Squad</b>. Each player shows their squad number, appearances, goals and man of the match awards for the season.</p>
+    <ol>
+      <li><b>+ Add Player</b> – type a name and squad number. A photo is optional. Tap <b>Add to squad</b>.</li>
+      <li><b>Active</b> – tap this when a player leaves or stops playing. They move to an "Inactive" list and stop appearing when you log results, but their old stats are kept. Tap <b>Restore</b> to bring them back.</li>
+      <li><b>Pencil</b> – change a name, number or photo.</li>
+      <li><b>Bin</b> – removes the player for good (you'll be asked to confirm). Use Active/Restore instead unless you're sure.</li>
+    </ol>
+    <div class="phones">
+      <figure><img src="img/u-squad.jpg" alt="Squad list with the buttons marked"><figcaption>1 Add, 2 Active/Inactive, 3 Edit, 4 Remove</figcaption></figure>
+      <figure><img src="img/u-addplayer.jpg" alt="Add player form"><figcaption>The Add Player form.</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="teams">
+    <div class="hd"><span class="num">7</span><h2>Opposition teams and badges</h2></div>
+    <p>Staff Room → <b>Teams</b> lists every team you have played or added.</p>
+    <ol>
+      <li><b>Search</b> – find a team quickly.</li>
+      <li><b>Badge icon</b> – tap it to upload that team's badge. It then shows on your result cards.</li>
+      <li><b>H2H</b> – head-to-head: every match you've played against that team and your record.</li>
+      <li><b>+ Add Team Manually</b> – add a team before you have played them.</li>
+    </ol>
+    <div class="phones"><figure><img src="img/u-teams.jpg" alt="Teams list with the controls marked"></figure></div>
+    <p>The pencil changes a team's name and the bin removes it. Use a photo or crest as a PNG or JPEG.</p>
+  </section>
+
+  <section id="report">
+    <div class="hd"><span class="num">8</span><h2>Season report</h2></div>
+    <p>Staff Room → <b>Report</b> builds a one-page summary of the season: record, each competition, top scorers and your biggest win. Tap <b>Save as image</b> at the bottom to post it.</p>
+    <div class="phones"><figure><img src="img/u-report.jpg" alt="Season report"></figure></div>
+  </section>
+
+  <section id="season">
+    <div class="hd"><span class="num">9</span><h2>Start a new season</h2></div>
+    <ol>
+      <li>With the Staff Room unlocked, tap <b>+ New Season</b> at the top of the screen.</li>
+      <li>Type the season name (for example 2027/28) and, if you like, the age group.</li>
+      <li>Tap <b>Start New Season</b>.</li>
+    </ol>
+    <div class="phones"><figure><img src="img/u-newseason.jpg" alt="Start New Season box"></figure></div>
+    <p>The new season starts with no results. <b>Nothing is lost</b>: last season's results, players' records and photos are kept. To look back, open the season drop-down at the top, or go to Staff Room → <b>Season History</b> and tap <b>View →</b> on a season.</p>
+    <div class="phones"><figure><img src="img/u-seasons.jpg" alt="Season history with View marked"></figure></div>
+    <div class="warn">Do this once, at the start of the new season. Don't start a new season in the middle of one, because new results go into the newest season.</div>
+  </section>
+
+  <section id="trophy">
+    <div class="hd"><span class="num">10</span><h2>Trophy cabinet</h2></div>
+    <p>After a tournament, go to Staff Room → <b>Trophy Cabinet</b>, find the tournament and tap how your team finished: Winners, Runners-up, 3rd Place, Semi-Final or Group Stage. Finishes are saved against that season and counted in your trophy tally.</p>
+    <p>You will only see tournaments in this list once you have logged results for them using the <b>Tournament</b> game type.</p>
+  </section>
+
+  <section id="brand">
+    <div class="hd"><span class="num">11</span><h2>Your club's look, badge and PIN</h2></div>
+    <p>Staff Room → <b>Branding</b> is where you set the club name, short name, slogan, colours and badge. Tap <b>Save branding</b> when you've finished and everyone sees the change.</p>
+    <ul>
+      <li><b>Upload badge</b> – choose your crest (PNG or JPEG). It also becomes the icon on people's home screens for anyone who adds the app after that. Anyone who added it earlier needs to delete the icon and add it again to see the new one.</li>
+      <li><b>Admin PIN</b> – scroll down, type a new PIN of 4 to 8 digits and tap <b>Change</b>. Do this when someone who knew the PIN leaves.</li>
+    </ul>
+    <div class="phones">
+      <figure><img src="img/app-4-badge.jpg" alt="Upload badge button marked"><figcaption>Upload badge</figcaption></figure>
+      <figure><img src="img/app-5-changepin.jpg" alt="New PIN box marked"><figcaption>Change the PIN</figcaption></figure>
+    </div>
+    <h3>Putting the app on a phone</h3>
+    <ul>
+      <li><b>iPhone:</b> open the link in Safari, tap the Share button, then <b>Add to Home Screen</b>.</li>
+      <li><b>Android:</b> open the link in Chrome, tap the three dots, then <b>Install app</b> or <b>Add to Home screen</b>.</li>
+    </ul>
+  </section>
+
+  <section id="help">
+    <h2>Problems? Quick answers</h2>
+    <table>
+      <tr><th>What's wrong</th><th>What to do</th></tr>
+      <tr><td>I forgot the PIN</td><td>Ask whoever set up the app for you. It can be reset, but it can't be looked up.</td></tr>
+      <tr><td>Generate Result Card is faded</td><td>The date, opposition or opponent's score is missing.</td></tr>
+      <tr><td>I can't find a player when logging a result</td><td>They may be set to Inactive. Go to Squad and tap Restore. Or they haven't been added yet.</td></tr>
+      <tr><td>I entered the wrong score or scorer</td><td>Results → tap the match → <b>Edit</b>.</td></tr>
+      <tr><td>A team is on the list twice</td><td>Go to Teams and remove the extra one with the bin. Your results are not affected.</td></tr>
+      <tr><td>A photo won't upload</td><td>Try a smaller picture. Use JPEG or PNG, not other file types.</td></tr>
+      <tr><td>My change isn't showing for someone else</td><td>Ask them to close the app completely and open it again.</td></tr>
+      <tr><td>The home-screen icon shows the wrong badge</td><td>Upload your badge in Branding, then delete the icon from the phone and add the app again.</td></tr>
+    </table>
+    <p><b>Who to contact:</b> ____________________________</p>
+  </section>
+
+  <p class="foot">This guide describes the app as it works today. If something looks different on your phone, tell the person who set up the app for you.</p>
+</div>
+</body>
+</html>

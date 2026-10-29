@@ -14,11 +14,16 @@ const clubHtml = () => ({
     .replaceAll('%CLUB_DESC%', club.description),
 })
 
-// The how-to page for adding clubs (sop/) is published with the Leon build only, at /sop/.
+// The how-to pages (sop/ = adding clubs, guide/ = end-user guide) are published with the Leon build only, at /sop/ and /guide/.
 const sopPage = () => ({
   name: 'sop-page',
   apply: 'build',
-  closeBundle() { if ((process.env.CLUB || 'leon') === 'leon') cpSync('sop', 'dist/sop', { recursive: true }) },
+  closeBundle() {
+    if ((process.env.CLUB || 'leon') === 'leon') {
+      cpSync('sop', 'dist/sop', { recursive: true })
+      cpSync('guide', 'dist/guide', { recursive: true })
+    }
+  },
 })
 
 export default defineConfig({
@@ -47,8 +52,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        globIgnores: ['icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'sop/**'],
-        navigateFallbackDenylist: [/^\/sop(\/|$)/, /^\/api\//, /^\/img\//],
+        globIgnores: ['icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'sop/**', 'guide/**'],
+        navigateFallbackDenylist: [/^\/sop(\/|$)/, /^\/guide(\/|$)/, /^\/api\//, /^\/img\//],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/cdnjs\.cloudflare\.com\/.*/i,

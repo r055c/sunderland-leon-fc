@@ -2,6 +2,8 @@
 
 A step-by-step version with pictures is published with Leon's app at `/sop/` (source: `sop/index.html`). Keep the two in step.
 
+The guide for club staff (how to log results, manage the squad, etc.) is published at `/guide/` (source: `guide/index.html`, images in `guide/img/`). Send that link to a club once its app is set up. The screenshots show a sample club, so they stay valid for every club.
+
 One codebase, one Cloudflare project per club. Every club builds from the same branch, so a push
 updates all of them. Each club has its own database, its own address and its own admin PIN.
 
