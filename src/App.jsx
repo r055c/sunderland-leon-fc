@@ -959,6 +959,7 @@ export default function App() {
   const [editingResult, setEditingResult] = useState(null);
   const [editOppLogo, setEditOppLogo] = useState(null);
   const [editGoalCounts, setEditGoalCounts] = useState({});
+  const [editShowAll, setEditShowAll] = useState(false); // Edit screen: show the whole squad instead of just who played
   const [oppLogo, setOppLogo] = useState(null);
   const [newResult, setNewResult] = useState(null);
   const [logType, setLogType] = useState("league");
@@ -1113,6 +1114,25 @@ export default function App() {
     setMotmPlayerId(null);
   };
 
+  // Edit screen: players who played in this match (plus anyone already credited with a goal). Falls back to the
+  // active squad for older results that have no appearances recorded, or when "whole squad" is switched on.
+  const editPlayerList = () => {
+    if (!editingResult) return [];
+    const playedIds = appearances.filter(a => a.result_id === editingResult.id).map(a => a.player_id);
+    const hasGoals = (p) => (editGoalCounts[p.id] || 0) > 0;
+    if (editShowAll || playedIds.length === 0) return players.filter(p => p.is_active !== false || hasGoals(p) || playedIds.includes(p.id));
+    return players.filter(p => playedIds.includes(p.id) || hasGoals(p));
+  };
+
+  // A goal added or removed here moves our score with it (same as the Log a Result screen).
+  const bumpEditGoal = (pid, delta) => {
+    const cur = editGoalCounts[pid] || 0;
+    const next = Math.max(0, cur + delta);
+    if (next === cur) return;
+    setEditGoalCounts(prev => ({ ...prev, [pid]: next }));
+    setEditingResult(r => ({ ...r, homeScore: Math.max(0, (parseInt(r.homeScore) || 0) + (next - cur)) }));
+  };
+
   const handleSaveEdit = async () => {
     if (!editingResult) return;
     const hs = parseInt(editingResult.homeScore), as_ = parseInt(editingResult.awayScore);
@@ -1133,6 +1153,12 @@ export default function App() {
     }
     const updated = { ...editingResult, homeScore: hs, awayScore: as_, result, scorers: scorerList, oppLogo: editOppLogo === "remove" ? null : editOppLogo !== null ? editOppLogo : editingResult.oppLogo };
     try { await updateResult(updated); } catch(e) {}
+    // Anyone credited with a goal here who isn't recorded as playing gets an appearance, so their stats stay right.
+    try {
+      const playedIds = appearances.filter(a => a.result_id === updated.id).map(a => a.player_id);
+      const missing = Object.entries(editGoalCounts).filter(([pid, n]) => n > 0 && !playedIds.includes(parseInt(pid))).map(([pid]) => ({ player_id: parseInt(pid), result_id: updated.id, season_id: updated.season_id }));
+      if (missing.length) { const saved = await insertAppearances(missing); setAppearances(prev => [...prev, ...(saved || missing)]); }
+    } catch(e) {}
     setResults(prev => prev.map(r => r.id === updated.id ? updated : r));
     setEditingResult(null); setEditOppLogo(null); setEditGoalCounts({});
     showToast("✅ Changes saved!");
@@ -2046,6 +2072,7 @@ export default function App() {
                                   if (player) initialGoalCounts[player.id] = count;
                                 });
                                 setEditGoalCounts(initialGoalCounts);
+                                setEditShowAll(false);
                                 setEditingResult({ ...m, scorers: (m.scorers || []).join(", ") });
                               }}
                               style={{ flex: 1, padding: "12px", background: "none", border: "none", borderRight: "1px solid #e8eeff", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 13, color: THEME.navy, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
@@ -2107,7 +2134,7 @@ export default function App() {
                     <label style={labelStyle}>Goal Scorers</label>
                     {players.length > 0 ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        {players.map(p => {
+                        {editPlayerList().map(p => {
                           const count = editGoalCounts[p.id] || 0;
                           return (
                             <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, background: count > 0 ? "#f0f4ff" : "#f7f8fa", borderRadius: 10, padding: "8px 12px", border: count > 0 ? `1.5px solid ${THEME.sky}` : "1.5px solid #e8e8e8" }}>
@@ -2116,15 +2143,21 @@ export default function App() {
                               </div>
                               <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: THEME.navy }}>{p.name}</span>
                               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                <button onClick={() => setEditGoalCounts(prev => ({ ...prev, [p.id]: Math.max(0, (prev[p.id] || 0) - 1) }))}
+                                <button onClick={() => bumpEditGoal(p.id, -1)}
                                   style={{ width: 28, height: 28, borderRadius: "50%", border: "1.5px solid #e0e0e0", background: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#888", fontFamily: "inherit" }}>−</button>
                                 <span style={{ fontSize: 18, fontWeight: 900, color: THEME.navy, minWidth: 18, textAlign: "center" }}>{count}</span>
-                                <button onClick={() => setEditGoalCounts(prev => ({ ...prev, [p.id]: (prev[p.id] || 0) + 1 }))}
+                                <button onClick={() => bumpEditGoal(p.id, 1)}
                                   style={{ width: 28, height: 28, borderRadius: "50%", border: "none", background: THEME.navy, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: THEME.sky, fontFamily: "inherit" }}>+</button>
                               </div>
                             </div>
                           );
                         })}
+                        {players.some(p => p.is_active !== false) && (
+                          <button onClick={() => setEditShowAll(v => !v)}
+                            style={{ background: "none", border: "none", color: THEME.skyInk, fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit", padding: "4px 0", textAlign: "left" }}>
+                            {editShowAll ? "Show only players in this match" : "+ Add someone else from the squad"}
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <input type="text" value={typeof editingResult.scorers === "string" ? editingResult.scorers : (editingResult.scorers || []).join(", ")} onChange={e => setEditingResult(r => ({ ...r, scorers: e.target.value }))} style={inputStyle} />
@@ -2151,7 +2184,7 @@ export default function App() {
                     <input type="text" value={editingResult.motm || ""} onChange={e => setEditingResult(r => ({ ...r, motm: e.target.value }))} style={inputStyle} placeholder="Type or select below" />
                     {players.length > 0 && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
-                        {players.map(p => (
+                        {editPlayerList().map(p => (
                           <button key={p.id} onClick={() => setEditingResult(r => ({ ...r, motm: r.motm === p.name ? "" : p.name }))}
                             style={{ padding: "4px 10px", borderRadius: 16, border: editingResult.motm === p.name ? "none" : "1.5px solid #e0e0e0", background: editingResult.motm === p.name ? "#ffd700" : "#fff", color: editingResult.motm === p.name ? THEME.navy : "#888", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
                             {p.name}
@@ -2165,7 +2198,7 @@ export default function App() {
                     <input type="text" value={editingResult.oppMotm || ""} onChange={e => setEditingResult(r => ({ ...r, oppMotm: e.target.value }))} style={inputStyle} placeholder="Opposition player name" />
                     {players.length > 0 && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
-                        {players.map(p => (
+                        {editPlayerList().map(p => (
                           <button key={p.id} onClick={() => setEditingResult(r => ({ ...r, oppMotm: r.oppMotm === p.name ? "" : p.name }))}
                             style={{ padding: "4px 10px", borderRadius: 16, border: editingResult.oppMotm === p.name ? "none" : "1.5px solid #e0e0e0", background: editingResult.oppMotm === p.name ? "#ff7eb3" : "#fff", color: editingResult.oppMotm === p.name ? "#fff" : "#888", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
                             {p.name}
