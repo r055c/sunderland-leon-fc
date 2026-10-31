@@ -1,6 +1,6 @@
 // Club results app — v2.3
 import { useState, useRef, useEffect, useCallback } from "react";
-import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, uploadIcon, verifyAdminPin, setAdminPin, changeAdminPin, moveExternalImages, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchClubSettings, saveClubSettings } from "./api.js";
+import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, uploadIcon, verifyAdminPin, setAdminPin, changeAdminPin, moveExternalImages, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchMatchVideos, insertMatchVideo, deleteMatchVideo, parseYouTubeId, fetchClubSettings, saveClubSettings } from "./api.js";
 import { DEFAULT_BADGE } from "./defaultBadge.js";
 import { DEFAULT_BRANDING, FONTS, PRESETS, applyBranding, deriveTheme, loadCachedBranding, cacheBranding, contrast } from "./branding.js";
 
@@ -358,7 +358,29 @@ function Leaderboard({ data, label, emptyMsg, filterLabel, accentColor = THEME.s
 
 // ── Result Card ───────────────────────────────────────────
 // ── Scoreboard card (signature element) ────────────────────
-function ScoreCard({ match, compColor = THEME.sky, onClick, showMeta = true, photoCount = 0 }) {
+// A YouTube video attached to a match: thumbnail + title, opens on YouTube. Admins also get a Remove button.
+function VideoCard({ video, onRemove, bg = "#fff" }) {
+  const href = `https://www.youtube.com/watch?v=${video.video_id}`;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, background: bg, borderRadius: 12, padding: 8, marginTop: 8, boxShadow: bg === "#fff" ? "0 2px 8px rgba(0,0,0,0.06)" : "none" }}>
+      <a href={href} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, textDecoration: "none" }}>
+        <div style={{ position: "relative", width: 116, aspectRatio: "16 / 9", borderRadius: 8, overflow: "hidden", background: THEME.navy, flexShrink: 0 }}>
+          <img src={`https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`} alt="" loading="lazy" onError={e => { e.currentTarget.style.display = "none"; }} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          <span style={{ position: "absolute", left: "50%", top: "50%", width: 34, height: 24, margin: "-12px 0 0 -17px", borderRadius: 7, background: "#e53935", color: "#fff", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>▶</span>
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: THEME.navy, lineHeight: 1.25, overflowWrap: "anywhere" }}>{video.title || "Match video"}</div>
+          <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 0.5, color: THEME.ink60, marginTop: 3 }}>▶ YOUTUBE</div>
+        </div>
+      </a>
+      {onRemove && (
+        <button onClick={onRemove} style={{ background: "none", border: "none", color: THEME.loss, fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit", padding: "6px 4px", flexShrink: 0 }}>Remove</button>
+      )}
+    </div>
+  );
+}
+
+function ScoreCard({ match, compColor = THEME.sky, onClick, showMeta = true, photoCount = 0, videoCount = 0 }) {
   const isWin = match.result === "W", isLoss = match.result === "L";
   const resultBg = isWin ? "#4ade80" : isLoss ? "#f3a3ad" : "#e8a93b";
   const resultLabel = isWin ? "WIN" : isLoss ? "LOSS" : "DRAW";
@@ -386,6 +408,7 @@ function ScoreCard({ match, compColor = THEME.sky, onClick, showMeta = true, pho
           {(match.scorers || []).length > 0 && <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#e8a93b" }}>⚽ {match.scorers.join(", ")}</span>}
           {match.round && <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#8b91ad" }}>{match.round}</span>}
           {photoCount > 0 && <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, color: THEME.sky }}>📷 {photoCount}</span>}
+          {videoCount > 0 && <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, color: THEME.sky }}>▶ {videoCount}</span>}
           <span style={{ fontFamily: THEME.mono, fontSize: 9, color: "#6b7191", marginLeft: "auto" }}>{match.date}</span>
         </div>
       )}
@@ -913,6 +936,10 @@ export default function App() {
   const [players, setPlayers] = useState([]);
   const [appearances, setAppearances] = useState([]);
   const [matchPhotos, setMatchPhotos] = useState([]);
+  const [matchVideos, setMatchVideos] = useState([]);
+  const [videoModal, setVideoModal] = useState(null); // { resultId, url, title }
+  const [savingVideo, setSavingVideo] = useState(false);
+  const [galleryFilter, setGalleryFilter] = useState("all"); // all | photos | videos
   const [uploadingPhotosFor, setUploadingPhotosFor] = useState(null);
   const [lightbox, setLightbox] = useState(null); // { photos: [...], index: 0, title }
   const photoUploadRef = useRef();
@@ -980,12 +1007,13 @@ export default function App() {
       try {
         const cs = await fetchClubSettings().catch(() => null);
         if (cs) { const b = { ...DEFAULT_BRANDING, ...cs }; setBranding(b); cacheBranding(b); }
-        const [r, t, s, pl, ap, mp] = await Promise.all([fetchResults(), fetchTeams(), fetchSeasons(), fetchPlayers(), fetchAppearances(), fetchMatchPhotos()]);
+        const [r, t, s, pl, ap, mp, mv] = await Promise.all([fetchResults(), fetchTeams(), fetchSeasons(), fetchPlayers(), fetchAppearances(), fetchMatchPhotos(), fetchMatchVideos()]);
         setResults(r);
         setTeams(t);
         setPlayers(pl);
         setAppearances(ap);
         setMatchPhotos(mp);
+        setMatchVideos(mv || []);
         if (s && s.length > 0) {
           setSeasons(s);
           const active = s.find(x => x.is_active) || s[0];
@@ -1116,11 +1144,37 @@ export default function App() {
     setResults(prev => prev.filter(r => r.id !== id));
     setAppearances(prev => prev.filter(a => a.result_id !== id));
     setMatchPhotos(prev => prev.filter(p => p.result_id !== id)); // DB cascade-deletes these; keep local state in sync
+    setMatchVideos(prev => prev.filter(v => v.result_id !== id));
     setSelectedMatch(null);
   };
 
   // ── Match photos ─────────────────────────────────────────
   const matchPhotosFor = (resultId) => matchPhotos.filter(p => p.result_id === resultId);
+
+  // ── Match videos (YouTube links) ─────────────────────────
+  const matchVideosFor = (resultId) => matchVideos.filter(v => v.result_id === resultId);
+
+  const handleSaveVideo = async () => {
+    if (!videoModal) return;
+    const id = parseYouTubeId(videoModal.url);
+    if (!id) return;
+    setSavingVideo(true);
+    try {
+      const saved = await insertMatchVideo({ result_id: videoModal.resultId, video_id: id, title: videoModal.title.trim() || null });
+      setMatchVideos(prev => [...(saved || []), ...prev]);
+      setVideoModal(null);
+      showToast("✅ Video added!");
+    } catch (e) {
+      showToast("⚠️ Couldn't save that video");
+    }
+    setSavingVideo(false);
+  };
+
+  const handleDeleteVideo = async (video) => {
+    if (!video || !window.confirm("Remove this video link?")) return;
+    try { await deleteMatchVideo(video.id); } catch (e) { showToast("⚠️ Couldn't remove that video"); return; }
+    setMatchVideos(prev => prev.filter(v => v.id !== video.id));
+  };
 
   const handleAddPhotos = async (resultId, fileList) => {
     const files = Array.from(fileList || []);
@@ -1934,7 +1988,7 @@ export default function App() {
                         <span>{dayGames.length} {dayGames.length === 1 ? "game" : "games"} · W{dayGames.filter(x => x.result === "W").length} D{dayGames.filter(x => x.result === "D").length} L{dayGames.filter(x => x.result === "L").length}</span>
                       </div>
                     )}
-                    <ScoreCard match={m} compColor={cc} onClick={() => setSelectedMatch(isSelected ? null : m.id)} photoCount={matchPhotosFor(m.id).length} />
+                    <ScoreCard match={m} compColor={cc} onClick={() => setSelectedMatch(isSelected ? null : m.id)} photoCount={matchPhotosFor(m.id).length} videoCount={matchVideosFor(m.id).length} />
 
                     {isSelected && (
                       <div style={{ background: "#f8faff", borderRadius: 12, marginTop: -8, marginBottom: 4, boxShadow: "0 4px 8px rgba(0,0,0,0.06)", overflow: "hidden" }}>
@@ -1962,6 +2016,24 @@ export default function App() {
                             <div style={{ fontSize: 12, color: THEME.ink30, paddingBottom: 14 }}>No photos yet</div>
                           )}
                         </div>
+                        {(matchVideosFor(m.id).length > 0 || isAdmin) && (
+                          <div style={{ padding: "0 16px 14px" }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
+                              <span style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: THEME.ink60 }}>
+                                ▶ Match Videos{matchVideosFor(m.id).length > 0 ? ` (${matchVideosFor(m.id).length})` : ""}
+                              </span>
+                              {isAdmin && (
+                                <button onClick={() => setVideoModal({ resultId: m.id, url: "", title: "" })}
+                                  style={{ background: "#fdeceb", border: "none", borderRadius: 8, padding: "5px 10px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 11, color: "#c62828" }}>
+                                  + Add video
+                                </button>
+                              )}
+                            </div>
+                            {matchVideosFor(m.id).length > 0
+                              ? matchVideosFor(m.id).map(v => <VideoCard key={v.id} video={v} bg={THEME.chalk} onRemove={isAdmin ? () => handleDeleteVideo(v) : undefined} />)
+                              : <div style={{ fontSize: 12, color: THEME.ink30, paddingTop: 6 }}>No videos yet</div>}
+                          </div>
+                        )}
                         {isAdmin && (
                           <div style={{ display: "flex", borderTop: "1px solid #e8eeff" }}>
                             <button onClick={() => {
@@ -2113,32 +2185,51 @@ export default function App() {
         {mode === "gallery" && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
             {(() => {
+              const showPhotos = galleryFilter !== "videos";
+              const showVideos = galleryFilter !== "photos";
               const groups = seasonResults
-                .map(m => ({ match: m, photos: matchPhotosFor(m.id) }))
-                .filter(g => g.photos.length > 0);
-              if (groups.length === 0) {
-                return (
-                  <div style={{ textAlign: "center", padding: "60px 20px", color: "#bbb" }}>
-                    <div style={{ fontSize: 40, marginBottom: 12 }}>📷</div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: "#aaa", marginBottom: 6 }}>No photos yet</div>
-                    <div style={{ fontSize: 13 }}>{isAdmin ? "Add some from a result in the Results tab." : "Match photos will show up here once they're added."}</div>
-                  </div>
-                );
-              }
-              return groups.map(g => (
-                <div key={g.match.id} style={{ marginBottom: 22 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-                    <span style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 14, color: THEME.navy }}>vs {(g.match.opposition || "").toUpperCase()}</span>
-                    <span style={{ fontFamily: THEME.mono, fontSize: 10, color: THEME.ink60 }}>{g.match.date}</span>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5 }}>
-                    {g.photos.map((p, i) => (
-                      <div key={p.id} onClick={() => setLightbox({ photos: g.photos, index: i, title: `vs ${g.match.opposition}` })}
-                        style={{ aspectRatio: "1", borderRadius: 8, backgroundImage: `url(${p.url})`, backgroundSize: "cover", backgroundPosition: "center", cursor: "pointer" }} />
-                    ))}
-                  </div>
-                </div>
-              ));
+                .map(m => ({ match: m, photos: showPhotos ? matchPhotosFor(m.id) : [], videos: showVideos ? matchVideosFor(m.id) : [] }))
+                .filter(g => g.photos.length > 0 || g.videos.length > 0);
+              const anyMedia = seasonResults.some(m => matchPhotosFor(m.id).length > 0 || matchVideosFor(m.id).length > 0);
+              const chips = [{ key: "all", label: "All" }, { key: "photos", label: "📷 Photos" }, { key: "videos", label: "▶ Videos" }];
+              return (
+                <>
+                  {anyMedia && (
+                    <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+                      {chips.map(c => (
+                        <button key={c.key} onClick={() => setGalleryFilter(c.key)}
+                          style={{ padding: "6px 12px", borderRadius: 99, border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 11, background: galleryFilter === c.key ? THEME.navy : "#fff", color: galleryFilter === c.key ? THEME.sky : "#888", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
+                          {c.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {groups.length === 0 && (
+                    <div style={{ textAlign: "center", padding: "60px 20px", color: "#bbb" }}>
+                      <div style={{ fontSize: 40, marginBottom: 12 }}>{galleryFilter === "videos" ? "▶" : "📷"}</div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: "#aaa", marginBottom: 6 }}>{galleryFilter === "videos" ? "No videos yet" : galleryFilter === "photos" ? "No photos yet" : "No photos or videos yet"}</div>
+                      <div style={{ fontSize: 13 }}>{isAdmin ? "Add some from a result in the Results tab." : "Match photos and videos will show up here once they're added."}</div>
+                    </div>
+                  )}
+                  {groups.map(g => (
+                    <div key={g.match.id} style={{ marginBottom: 22 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+                        <span style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 14, color: THEME.navy }}>vs {(g.match.opposition || "").toUpperCase()}</span>
+                        <span style={{ fontFamily: THEME.mono, fontSize: 10, color: THEME.ink60 }}>{g.match.date}</span>
+                      </div>
+                      {g.photos.length > 0 && (
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5 }}>
+                          {g.photos.map((p, i) => (
+                            <div key={p.id} onClick={() => setLightbox({ photos: g.photos, index: i, title: `vs ${g.match.opposition}` })}
+                              style={{ aspectRatio: "1", borderRadius: 8, backgroundImage: `url(${p.url})`, backgroundSize: "cover", backgroundPosition: "center", cursor: "pointer" }} />
+                          ))}
+                        </div>
+                      )}
+                      {g.videos.map(v => <VideoCard key={v.id} video={v} />)}
+                    </div>
+                  ))}
+                </>
+              );
             })()}
           </div>
         )}
@@ -2935,6 +3026,37 @@ export default function App() {
         onChange={e => { const rid = photoUploadTargetRef.current; handleAddPhotos(rid, e.target.files); e.target.value = ""; }} />
 
       {/* Photo lightbox */}
+      {videoModal && (() => {
+        const vid = parseYouTubeId(videoModal.url);
+        const hasText = videoModal.url.trim().length > 0;
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+            <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 400 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                <span style={{ fontSize: 18, fontWeight: 900, color: THEME.navy }}>▶ ADD A VIDEO</span>
+                <button onClick={() => setVideoModal(null)} style={{ background: "#f0f0f0", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
+              </div>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: THEME.skyInk, letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>YouTube link</label>
+              <input type="url" inputMode="url" autoFocus placeholder="Paste the link here" value={videoModal.url} onChange={e => setVideoModal(v => ({ ...v, url: e.target.value }))}
+                style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", color: THEME.navy, outline: "none", boxSizing: "border-box" }} />
+              {hasText && (
+                <div style={{ fontSize: 12, fontWeight: 700, margin: "6px 0 0", color: vid ? THEME.pitch : THEME.loss }}>
+                  {vid ? "✓ YouTube link recognised" : "That doesn't look like a YouTube link"}
+                </div>
+              )}
+              {vid && <VideoCard video={{ video_id: vid, title: videoModal.title.trim() || "(preview)" }} bg={THEME.chalk} />}
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: THEME.skyInk, letterSpacing: 2, margin: "14px 0 6px", textTransform: "uppercase" }}>Title (optional)</label>
+              <input type="text" placeholder="e.g. Full match highlights" value={videoModal.title} onChange={e => setVideoModal(v => ({ ...v, title: e.target.value }))}
+                style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: THEME.navy, outline: "none", boxSizing: "border-box" }} />
+              <button onClick={handleSaveVideo} disabled={!vid || savingVideo}
+                style={{ width: "100%", marginTop: 18, padding: 14, border: "none", borderRadius: 11, background: THEME.navy, color: THEME.sky, fontWeight: 800, fontSize: 14, letterSpacing: 1, fontFamily: "inherit", cursor: !vid || savingVideo ? "default" : "pointer", opacity: !vid || savingVideo ? 0.45 : 1 }}>
+                {savingVideo ? "SAVING..." : "SAVE VIDEO"}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       {lightbox && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", zIndex: 200, display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px" }}>

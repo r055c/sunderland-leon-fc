@@ -146,6 +146,28 @@ export const fetchMatchPhotos = () => get("match_photos", "match photos", "id.de
 export const insertMatchPhotos = (records) => post("match_photos", records, "match photos");
 export const deleteMatchPhoto = (id) => del(`match_photos/${id}`, "match photo");
 
+// ── Match videos (YouTube links) ──
+// A failure here must never stop the app loading, so reads fall back to "no videos".
+export const fetchMatchVideos = () => get("match_videos", "match videos", "id.desc").catch(() => []);
+export const insertMatchVideo = (record) => post("match_videos", [record], "match video");
+export const deleteMatchVideo = (id) => del(`match_videos/${id}`, "match video");
+
+// Pull the 11-character video id out of any usual YouTube link (watch, youtu.be, shorts, live, embed, mobile).
+export function parseYouTubeId(input) {
+  const raw = String(input || "").trim();
+  if (/^[A-Za-z0-9_-]{11}$/.test(raw)) return raw;
+  let u;
+  try { u = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`); } catch (e) { return null; }
+  const host = u.hostname.replace(/^(www\.|m\.|music\.)/, "");
+  let id = null;
+  if (host === "youtu.be") id = u.pathname.split("/")[1];
+  else if (host === "youtube.com" || host === "youtube-nocookie.com") {
+    if (u.pathname === "/watch") id = u.searchParams.get("v");
+    else { const m = u.pathname.match(/^\/(?:shorts|live|embed|v)\/([^/?#]+)/); id = m && m[1]; }
+  }
+  return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
+}
+
 // ── Club settings (branding) ──
 export async function fetchClubSettings() { return (await get("club_settings", "club settings"))[0] || null; }
 export async function saveClubSettings(s) {

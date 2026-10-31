@@ -18,6 +18,7 @@ const TABLES = {
   players: { cols: ["name", "squad_number", "photo", "is_active"], kinds: { is_active: "bool" }, order: "squad_number.asc" },
   appearances: { cols: ["player_id", "result_id", "season_id"], kinds: {}, order: "id.desc" },
   match_photos: { cols: ["result_id", "url"], kinds: {}, order: "id.desc", extraRead: ["created_at"] },
+  match_videos: { cols: ["result_id", "video_id", "title"], kinds: {}, order: "id.desc", extraRead: ["created_at"] },
   club_settings: {
     cols: ["club_name", "short_name", "slogan", "primary_color", "accent_color", "font_pairing", "badge_url", "icon_url", "updated_at"],
     kinds: {}, order: "id.asc",
@@ -219,6 +220,9 @@ async function handleApi(request, env, url) {
     const body = await request.json();
     const items = Array.isArray(body) ? body : [body];
     if (!items.length) return json([]);
+    if (table === "match_videos" && items.some((i) => !/^[A-Za-z0-9_-]{11}$/.test(String(i.video_id || "")))) {
+      return json({ error: "Not a YouTube video id" }, 400);
+    }
     const stmts = items.map((item) => {
       const { cols, vals } = writeValues(def, item);
       if (!cols.length) return db.prepare(`INSERT INTO ${table} DEFAULT VALUES RETURNING *`);
@@ -254,6 +258,7 @@ async function handleApi(request, env, url) {
         await db.batch([
           db.prepare("DELETE FROM appearances WHERE result_id = ?").bind(idNum),
           db.prepare("DELETE FROM match_photos WHERE result_id = ?").bind(idNum),
+          db.prepare("DELETE FROM match_videos WHERE result_id = ?").bind(idNum),
           db.prepare("DELETE FROM results WHERE id = ?").bind(idNum),
         ]);
       } else {
