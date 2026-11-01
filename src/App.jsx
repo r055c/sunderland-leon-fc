@@ -1,6 +1,6 @@
 // Club results app — v2.3
 import { useState, useRef, useEffect, useCallback } from "react";
-import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, uploadIcon, verifyAdminPin, setAdminPin, changeAdminPin, moveExternalImages, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchMatchVideos, insertMatchVideo, deleteMatchVideo, parseYouTubeId, fetchClubSettings, saveClubSettings } from "./api.js";
+import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, uploadIcon, verifyAdminPin, setAdminPin, changeAdminPin, moveExternalImages, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchMatchVideos, insertMatchVideo, deleteMatchVideo, parseYouTubeId, fetchTournamentTables, insertTournamentTable, updateTournamentTable, deleteTournamentTable, fetchClubSettings, saveClubSettings } from "./api.js";
 import { DEFAULT_BADGE } from "./defaultBadge.js";
 import { DEFAULT_BRANDING, FONTS, PRESETS, applyBranding, deriveTheme, loadCachedBranding, cacheBranding, contrast } from "./branding.js";
 
@@ -123,6 +123,72 @@ const goalsAgainst = r => (Number(r.awayScore) || 0) + (Number(r.awayPens) || 0)
 const hasPens = r => !!r && r.homePens != null && r.awayPens != null;
 const scoreLabel = r => `${r.homeScore}–${r.awayScore}${hasPens(r) ? ` (${r.homePens}–${r.awayPens} pens)` : ""}`;
 const resultFrom = (hs, as_, hp, ap) => hs > as_ ? "W" : hs < as_ ? "L" : (hp != null && ap != null && hp !== ap) ? (hp > ap ? "W" : "L") : "D";
+// ── Tournament league table ──
+// entry.rows = { others: [{ name, w, d, l, f, a }], leon: null }. Our own row is worked out from the games logged for that day.
+function buildTable(entry, games) {
+  const others = (entry?.rows?.others || []).filter(o => (o.name || "").trim());
+  if (!others.length) return [];
+  const n = v => Number(v) || 0;
+  const mine = entry.rows.leon || {
+    w: games.filter(g => g.result === "W").length, d: games.filter(g => g.result === "D").length, l: games.filter(g => g.result === "L").length,
+    f: games.reduce((a, g) => a + n(g.homeScore), 0), a: games.reduce((a, g) => a + n(g.awayScore), 0),
+  };
+  const mk = (name, r, me) => { const w = n(r.w), d = n(r.d), l = n(r.l), f = n(r.f), a = n(r.a); return { name, me, p: w + d + l, w, d, l, f, a, gd: f - a, pts: 3 * w + d }; };
+  return [mk(BRAND.short, mine, true), ...others.map(o => mk(o.name.trim(), o, false))]
+    .sort((x, y) => y.pts - x.pts || y.gd - x.gd || y.f - x.f || x.name.localeCompare(y.name));
+}
+const fmtGd = g => g > 0 ? `+${g}` : g < 0 ? `−${Math.abs(g)}` : "0";
+
+function LeagueTable({ rows, photo, onEdit, onPhoto }) {
+  const played = rows.find(r => r.me)?.p ?? 0;
+  const th = { fontFamily: THEME.mono, fontSize: 9.5, fontWeight: 700, letterSpacing: 0.5, color: THEME.ink60, padding: "7px 3px", textAlign: "center", borderBottom: "1px solid #eceff4", background: "#fafbfd" };
+  const td = { padding: "9px 3px", textAlign: "center", borderBottom: "1px solid #f0f2f6", fontSize: 12.5, fontWeight: 600, color: THEME.navy };
+  return (
+    <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 8px rgba(0,0,0,0.08)", overflow: "hidden", margin: "0 0 12px" }}>
+      <div style={{ background: THEME.navy, color: "#fff", padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 14, letterSpacing: 0.5 }}>🏆 LEAGUE TABLE</span>
+        {rows.length > 0 && <span style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 1, color: THEME.sky }}>AFTER {played} {played === 1 ? "GAME" : "GAMES"}</span>}
+      </div>
+      {rows.length > 0 && (
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead><tr>
+            <th style={{ ...th, width: 26, paddingLeft: 10 }}>#</th><th style={{ ...th, textAlign: "left" }}>TEAM</th>
+            {["P", "W", "D", "L", "GD", "PTS"].map(h => <th key={h} style={th}>{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={r.name + i} style={r.me ? { background: "#eaf5fb" } : undefined}>
+                <td style={{ ...td, paddingLeft: 10, color: THEME.ink60, fontWeight: 800, boxShadow: r.me ? `inset 4px 0 0 ${THEME.sky}` : "none" }}>{i + 1}</td>
+                <td style={{ ...td, textAlign: "left", fontWeight: r.me ? 800 : 700, maxWidth: 120, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}{r.me ? " ★" : ""}</td>
+                <td style={td}>{r.p}</td><td style={td}>{r.w}</td><td style={td}>{r.d}</td><td style={td}>{r.l}</td><td style={td}>{fmtGd(r.gd)}</td>
+                <td style={{ ...td, fontWeight: 800, fontSize: 14 }}>{r.pts}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {photo && (
+        <button onClick={onPhoto} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: rows.length ? "#fafbfd" : "#fff", border: "none", borderTop: rows.length ? "1px solid #eceff4" : "none", padding: rows.length ? "8px 14px" : 0, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+          {rows.length > 0 ? (
+            <>
+              <img src={photo} alt="" style={{ width: 54, height: 36, objectFit: "cover", objectPosition: "top", borderRadius: 6, border: "1px solid #dde2ea" }} />
+              <span style={{ fontWeight: 700, fontSize: 12, color: THEME.navy }}>📷 Organiser's table <span style={{ color: THEME.ink60, fontWeight: 600 }}>· tap to view</span></span>
+            </>
+          ) : (
+            <img src={photo} alt="League table" style={{ width: "100%", maxHeight: 220, objectFit: "cover", objectPosition: "top", display: "block" }} />
+          )}
+        </button>
+      )}
+      {(onEdit || rows.length > 0) && (
+        <div style={{ padding: "8px 14px", fontFamily: THEME.mono, fontSize: 10, color: THEME.ink60, letterSpacing: 0.5, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+          <span>{rows.length > 0 ? `★ ${BRAND.short} · worked out from your games` : ""}</span>
+          {onEdit && <button onClick={onEdit} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 11, color: THEME.skyInk, padding: 0 }}>Edit table</button>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function buildGoalBoard(results) {
   const t = {};
   results.forEach(r => allScorers(r).forEach(s => { const { name, goals } = parseScorer(s); t[name] = (t[name] || 0) + goals; }));
@@ -873,7 +939,7 @@ function H2HPanel({ results, competitions }) {
 const TOUR_DRAFT = (() => { try { return localStorage.getItem("leon_tour_day") ? JSON.parse(localStorage.getItem("leon_tour_draft") || "null") : null; } catch (e) { return null; } })();
 
 // ── Tournament summary card (shareable image) ─────────────
-function TournamentCard({ cardRef, name, date, placement, games, players }) {
+function TournamentCard({ cardRef, name, date, placement, games, players, table = [] }) {
   const w = games.filter(g => g.result === "W").length, d = games.filter(g => g.result === "D").length, l = games.filter(g => g.result === "L").length;
   const gf = games.reduce((a, g) => a + goalsFor(g), 0), ga = games.reduce((a, g) => a + goalsAgainst(g), 0);
   const tally = {};
@@ -911,6 +977,26 @@ function TournamentCard({ cardRef, name, date, placement, games, players }) {
           </div>
         ))}
       </div>
+      {table.length > 0 && (
+        <div style={{ padding: "6px 16px 10px" }}>
+          <div style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: THEME.skyInk, fontWeight: 700, marginBottom: 4 }}>🏆 League table</div>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5 }}>
+            <thead><tr style={{ color: "#999", fontSize: 9, fontWeight: 700 }}>
+              <th style={{ textAlign: "left", padding: "3px 0", width: 16 }}>#</th><th style={{ textAlign: "left", padding: "3px 0" }}>TEAM</th>
+              {["P", "W", "D", "L", "GD", "PTS"].map(h => <th key={h} style={{ padding: "3px 2px" }}>{h}</th>)}
+            </tr></thead>
+            <tbody>
+              {table.map((r, i) => (
+                <tr key={r.name + i} style={{ background: r.me ? "#eaf5fb" : "transparent", fontWeight: r.me ? 800 : 600, color: THEME.navy, textAlign: "center" }}>
+                  <td style={{ textAlign: "left", padding: "4px 0 4px 3px", color: "#999" }}>{i + 1}</td>
+                  <td style={{ textAlign: "left", padding: "4px 0", maxWidth: 110, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}</td>
+                  <td>{r.p}</td><td>{r.w}</td><td>{r.d}</td><td>{r.l}</td><td>{fmtGd(r.gd)}</td><td style={{ fontWeight: 800 }}>{r.pts}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       {top.length > 0 && (
         <div style={{ padding: "8px 16px 12px" }}>
           <div style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: THEME.skyInk, fontWeight: 700, marginBottom: 4 }}>⚽ Top scorers</div>
@@ -1001,6 +1087,12 @@ export default function App() {
   const [matchVideos, setMatchVideos] = useState([]);
   const [videoModal, setVideoModal] = useState(null); // { resultId, url, title }
   const [savingVideo, setSavingVideo] = useState(false);
+  const [tournamentTables, setTournamentTables] = useState([]);
+  const [tableModal, setTableModal] = useState(null); // { id, competition, date, photo, others: [{name,w,d,l,f,a}] }
+  const [savingTable, setSavingTable] = useState(false);
+  const [uploadingTablePhoto, setUploadingTablePhoto] = useState(false);
+  const [tablePhotoView, setTablePhotoView] = useState(null);
+  const tablePhotoRef = useRef();
   const [galleryFilter, setGalleryFilter] = useState("all"); // all | photos | videos
   const [uploadingPhotosFor, setUploadingPhotosFor] = useState(null);
   const [lightbox, setLightbox] = useState(null); // { photos: [...], index: 0, title }
@@ -1072,13 +1164,14 @@ export default function App() {
       try {
         const cs = await fetchClubSettings().catch(() => null);
         if (cs) { const b = { ...DEFAULT_BRANDING, ...cs }; setBranding(b); cacheBranding(b); }
-        const [r, t, s, pl, ap, mp, mv] = await Promise.all([fetchResults(), fetchTeams(), fetchSeasons(), fetchPlayers(), fetchAppearances(), fetchMatchPhotos(), fetchMatchVideos()]);
+        const [r, t, s, pl, ap, mp, mv, tt] = await Promise.all([fetchResults(), fetchTeams(), fetchSeasons(), fetchPlayers(), fetchAppearances(), fetchMatchPhotos(), fetchMatchVideos(), fetchTournamentTables()]);
         setResults(r);
         setTeams(t);
         setPlayers(pl);
         setAppearances(ap);
         setMatchPhotos(mp);
         setMatchVideos(mv || []);
+        setTournamentTables(tt || []);
         if (s && s.length > 0) {
           setSeasons(s);
           const active = s.find(x => x.is_active) || s[0];
@@ -1248,6 +1341,69 @@ export default function App() {
 
   // ── Match videos (YouTube links) ─────────────────────────
   const matchVideosFor = (resultId) => matchVideos.filter(v => v.result_id === resultId);
+
+  // ── Tournament league table ──
+  const tableEntry = (competition, date) => tournamentTables.find(t => t.competition === competition && t.date === date) || null;
+  const tableRowsFor = (competition, games, date) => {
+    const d = date || games[0]?.date;
+    return buildTable(tableEntry(competition, d), games);
+  };
+  const blankOther = () => ({ name: "", w: "", d: "", l: "", f: "", a: "" });
+  const openTableEditor = (competition, date) => {
+    const e = tableEntry(competition, date);
+    const others = (e?.rows?.others || []).map(o => ({ name: o.name, w: String(o.w ?? ""), d: String(o.d ?? ""), l: String(o.l ?? ""), f: String(o.f ?? ""), a: String(o.a ?? "") }));
+    while (others.length < 5) others.push(blankOther());
+    setTableModal({ id: e?.id || null, competition, date, photo: e?.photo || null, others });
+  };
+  const setOther = (i, k, v) => setTableModal(m => ({ ...m, others: m.others.map((o, j) => j === i ? { ...o, [k]: v } : o) }));
+  const handleTablePhoto = async (file) => {
+    if (!file) return;
+    setUploadingTablePhoto(true);
+    try {
+      const url = await uploadImage(file, "table");
+      setTableModal(m => ({ ...m, photo: url }));
+    } catch (e) { showToast("❌ Couldn't upload that photo"); }
+    setUploadingTablePhoto(false);
+  };
+  const handleSaveTable = async () => {
+    const m = tableModal;
+    const others = m.others.filter(o => o.name.trim()).map(o => ({ name: o.name.trim(), w: Number(o.w) || 0, d: Number(o.d) || 0, l: Number(o.l) || 0, f: Number(o.f) || 0, a: Number(o.a) || 0 }));
+    if (!others.length && !m.photo) { showToast("Add a team or a photo first"); return; }
+    setSavingTable(true);
+    try {
+      const rec = { season_id: viewingSeason?.id ?? null, competition: m.competition, date: m.date, rows: { others, leon: null }, photo: m.photo };
+      if (m.id) {
+        await updateTournamentTable({ id: m.id, ...rec });
+        setTournamentTables(ts => ts.map(t => t.id === m.id ? { ...t, ...rec } : t));
+      } else {
+        const created = await insertTournamentTable(rec);
+        setTournamentTables(ts => [created || { id: Date.now(), ...rec }, ...ts]);
+      }
+      setTableModal(null);
+      showToast("🏆 Table saved");
+    } catch (e) { showToast("❌ Couldn't save the table"); }
+    setSavingTable(false);
+  };
+  const handleDeleteTable = async () => {
+    if (!tableModal?.id) { setTableModal(null); return; }
+    if (!window.confirm("Remove this league table?")) return;
+    try {
+      await deleteTournamentTable(tableModal.id);
+      setTournamentTables(ts => ts.filter(t => t.id !== tableModal.id));
+      setTableModal(null);
+    } catch (e) { showToast("❌ Couldn't remove it"); }
+  };
+  const renderDayTable = (competition, date, games) => {
+    const entry = tableEntry(competition, date);
+    const rows = buildTable(entry, games);
+    if (!entry && !isAdmin) return null;
+    if (!entry) {
+      return (
+        <button onClick={() => openTableEditor(competition, date)} style={{ width: "100%", marginBottom: 12, padding: "10px 14px", background: "#fff", border: `1.5px dashed ${THEME.ink30}`, borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13, color: THEME.skyInk }}>🏆 + Add league table</button>
+      );
+    }
+    return <LeagueTable rows={rows} photo={entry.photo} onPhoto={() => setTablePhotoView(entry.photo)} onEdit={isAdmin ? () => openTableEditor(competition, date) : null} />;
+  };
 
   const handleSaveVideo = async () => {
     if (!videoModal) return;
@@ -1657,6 +1813,7 @@ export default function App() {
         <div style={{ fontFamily: THEME.mono, fontSize: 11, color: THEME.sky, textAlign: "right" }}>{tourGames.length} played<br />W{w} D{d} L{l}</div>
       </div>
       {photoBlock}
+      {renderDayTable(tourDay.name, fmtTourDate(tourDay.date), tourGames)}
     </>);
 
     // ── Finishing: how did you place? ──
@@ -1672,7 +1829,7 @@ export default function App() {
           {tourGames.length === 0 ? <p style={{ color: "#aaa", fontSize: 13 }}>No games logged yet.</p> : (
             <>
               <label style={labelStyle}>Tournament card</label>
-              <TournamentCard cardRef={tourCardRef} name={tourDay.name} date={fmtTourDate(tourDay.date)} placement={chosen} games={tourGames} players={players} />
+              <TournamentCard cardRef={tourCardRef} name={tourDay.name} date={fmtTourDate(tourDay.date)} placement={chosen} games={tourGames} players={players} table={tableRowsFor(tourDay.name, tourGames, fmtTourDate(tourDay.date))} />
               <div style={{ marginTop: 10, marginBottom: 14 }}>
                 <SaveCardButton cardRef={tourCardRef} filename="tournament-summary.png" onSaved={() => showToast("📸 Card ready")}
                   shareText={`${chosen ? (PLACEMENT_META[chosen]?.icon || "🏆") + " " + chosen + " — " : ""}${tourDay.name} · P${tourGames.length} W${w} D${d} L${l}`} />
@@ -2079,7 +2236,7 @@ export default function App() {
                     </button>
                     {showTourShare && (
                       <div style={{ marginTop: 12 }}>
-                        <TournamentCard cardRef={tourShareRef} name={filterComp} date={dateLabel} placement={tp} games={tGames.slice().sort((a, b) => new Date(a.date) - new Date(b.date) || a.id - b.id)} players={players} />
+                        <TournamentCard cardRef={tourShareRef} name={filterComp} date={dateLabel} placement={tp} games={tGames.slice().sort((a, b) => new Date(a.date) - new Date(b.date) || a.id - b.id)} players={players} table={tableRowsFor(filterComp, tGames)} />
                         <div style={{ marginTop: 10 }}>
                           <SaveCardButton cardRef={tourShareRef} filename="tournament-summary.png" onSaved={() => showToast("📸 Card ready")}
                             shareText={`${tp ? (PLACEMENT_META[tp]?.icon || "🏆") + " " + tp + " — " : ""}${filterComp} · P${tGames.length} W${wN} D${dN} L${lN}`} />
@@ -2124,6 +2281,7 @@ export default function App() {
                         <span>{dayGames.length} {dayGames.length === 1 ? "game" : "games"} · W{dayGames.filter(x => x.result === "W").length} D{dayGames.filter(x => x.result === "D").length} L{dayGames.filter(x => x.result === "L").length}</span>
                       </div>
                     )}
+                    {showDay && renderDayTable(filterComp, m.date, dayGames)}
                     <ScoreCard match={m} compColor={cc} onClick={() => setSelectedMatch(isSelected ? null : m.id)} photoCount={matchPhotosFor(m.id).length} videoCount={matchVideosFor(m.id).length} />
 
                     {isSelected && (
@@ -3188,6 +3346,71 @@ export default function App() {
         onChange={e => { const rid = photoUploadTargetRef.current; handleAddPhotos(rid, e.target.files); e.target.value = ""; }} />
 
       {/* Photo lightbox */}
+      {tableModal && (() => {
+        const m = tableModal;
+        const inp = { padding: "9px 2px", border: "2px solid #e8e8e8", borderRadius: 8, fontSize: 15, fontFamily: "inherit", fontWeight: 700, color: THEME.navy, outline: "none", boxSizing: "border-box", textAlign: "center", width: "100%", minWidth: 0 };
+        const mine = (() => {
+          const gs = results.filter(r => r.competition === m.competition && r.date === m.date);
+          return { w: gs.filter(g => g.result === "W").length, d: gs.filter(g => g.result === "D").length, l: gs.filter(g => g.result === "L").length, f: gs.reduce((a, g) => a + (Number(g.homeScore) || 0), 0), a: gs.reduce((a, g) => a + (Number(g.awayScore) || 0), 0) };
+        })();
+        const names = [...new Set(tournamentTables.flatMap(t => (t.rows?.others || []).map(o => o.name)).concat(teams.map(t => t.name)))].filter(Boolean);
+        const nextOnDigit = (e) => { if (e.target.value.length >= 1) { const inputs = Array.from(e.currentTarget.closest("[data-trow]").querySelectorAll("input")); const i = inputs.indexOf(e.currentTarget); inputs[i + 1]?.focus(); inputs[i + 1]?.select?.(); } };
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
+            <div style={{ background: "#fff", borderRadius: 16, padding: 18, width: "100%", maxWidth: 440, maxHeight: "92vh", overflowY: "auto" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <span style={{ fontSize: 17, fontWeight: 900, color: THEME.navy }}>🏆 LEAGUE TABLE</span>
+                <button onClick={() => setTableModal(null)} style={{ background: "#f0f0f0", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
+              </div>
+              <div style={{ fontSize: 12, color: THEME.ink60, marginBottom: 12 }}>{m.competition} · {m.date}</div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, padding: 10, background: THEME.chalk, borderRadius: 10 }}>
+                {m.photo && <img src={m.photo} alt="" style={{ width: 54, height: 38, objectFit: "cover", objectPosition: "top", borderRadius: 6 }} />}
+                <button onClick={() => tablePhotoRef.current?.click()} disabled={uploadingTablePhoto} style={{ flex: 1, padding: "9px 10px", border: "none", borderRadius: 8, background: THEME.navy, color: THEME.sky, fontWeight: 800, fontSize: 12, fontFamily: "inherit", cursor: "pointer" }}>
+                  {uploadingTablePhoto ? "UPLOADING..." : m.photo ? "📷 CHANGE PHOTO" : "📷 ADD PHOTO OF THE TABLE"}
+                </button>
+                {m.photo && <button onClick={() => setTableModal(x => ({ ...x, photo: null }))} style={{ background: "none", border: "none", color: THEME.loss, fontWeight: 800, cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>Remove</button>}
+              </div>
+              <input ref={tablePhotoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { handleTablePhoto(e.target.files?.[0]); e.target.value = ""; }} />
+
+              <div style={{ fontSize: 11, fontWeight: 700, color: THEME.skyInk, letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>Or type it in <span style={{ color: THEME.ink60, letterSpacing: 0, textTransform: "none", fontWeight: 600 }}>(other teams only)</span></div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr repeat(5, 32px) 16px", gap: 4, alignItems: "center", fontFamily: THEME.mono, fontSize: 9.5, fontWeight: 700, color: THEME.ink60, textAlign: "center", marginBottom: 4 }}>
+                <span style={{ textAlign: "left" }}>TEAM</span><span>W</span><span>D</span><span>L</span><span>F</span><span>A</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr repeat(5, 32px) 16px", gap: 4, alignItems: "center", marginBottom: 6, padding: "6px 8px", background: "#eaf5fb", borderRadius: 8, fontSize: 13, fontWeight: 800, color: THEME.navy, textAlign: "center" }}>
+                <span style={{ textAlign: "left" }}>★ {BRAND.short}</span><span>{mine.w}</span><span>{mine.d}</span><span>{mine.l}</span><span>{mine.f}</span><span>{mine.a}</span>
+              </div>
+              <div style={{ fontSize: 10.5, color: THEME.ink60, margin: "0 0 8px 2px" }}>Worked out from your games — nothing to type.</div>
+              <datalist id="tt-names">{names.map(n => <option key={n} value={n} />)}</datalist>
+              {m.others.map((o, i) => (
+                <div key={i} data-trow style={{ display: "grid", gridTemplateColumns: "1fr repeat(5, 32px) 16px", gap: 4, alignItems: "center", marginBottom: 5 }}>
+                  <input list="tt-names" placeholder="Team name" value={o.name} onChange={e => setOther(i, "name", e.target.value)} style={{ ...inp, textAlign: "left", padding: "9px 8px", fontWeight: 600, fontSize: 14 }} />
+                  {["w", "d", "l"].map(k => <input key={k} type="text" inputMode="numeric" maxLength={2} value={o[k]} onFocus={e => e.target.select()} onChange={e => { const v = e.target.value.replace(/\D/g, ""); setOther(i, k, v); if (v.length >= 1) nextOnDigit(e); }} style={inp} />)}
+                  {["f", "a"].map(k => <input key={k} type="text" inputMode="numeric" maxLength={3} value={o[k]} onFocus={e => e.target.select()} onChange={e => setOther(i, k, e.target.value.replace(/\D/g, ""))} style={inp} />)}
+                  <button onClick={() => setTableModal(x => ({ ...x, others: x.others.filter((_, j) => j !== i) }))} aria-label="Remove team" style={{ background: "none", border: "none", color: THEME.ink30, cursor: "pointer", fontSize: 14, padding: 0 }}>✕</button>
+                </div>
+              ))}
+              <button onClick={() => setTableModal(x => ({ ...x, others: [...x.others, blankOther()] }))} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13, color: THEME.skyInk, padding: "4px 0 2px" }}>+ Add team</button>
+
+              <button onClick={handleSaveTable} disabled={savingTable} style={{ width: "100%", marginTop: 14, padding: 14, border: "none", borderRadius: 11, background: THEME.navy, color: THEME.sky, fontWeight: 800, fontSize: 14, letterSpacing: 1, fontFamily: "inherit", cursor: "pointer", opacity: savingTable ? 0.5 : 1 }}>{savingTable ? "SAVING..." : "SAVE TABLE"}</button>
+              {m.id && <button onClick={handleDeleteTable} style={{ width: "100%", marginTop: 8, padding: 10, border: "none", background: "none", color: THEME.loss, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer" }}>Remove this table</button>}
+            </div>
+          </div>
+        );
+      })()}
+
+      {tablePhotoView && (
+        <div onClick={() => setTablePhotoView(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", zIndex: 200, display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 18px", color: "#fff", fontFamily: THEME.display, fontWeight: 600, fontSize: 14 }}>
+            <span>Organiser's table</span>
+            <button onClick={() => setTablePhotoView(null)} style={{ background: "rgba(255,255,255,0.12)", border: "none", borderRadius: 8, color: "#fff", fontSize: 16, padding: "6px 12px", cursor: "pointer" }}>✕</button>
+          </div>
+          <div style={{ flex: 1, overflow: "auto", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 12px 20px" }}>
+            <img src={tablePhotoView} alt="League table" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", borderRadius: 8 }} />
+          </div>
+        </div>
+      )}
+
       {videoModal && (() => {
         const vid = parseYouTubeId(videoModal.url);
         const hasText = videoModal.url.trim().length > 0;

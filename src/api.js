@@ -26,8 +26,10 @@ export async function changeAdminPin(next) {
 
 // ── Images: shrunk in the browser, then stored by the Worker ──
 async function shrink(blob, bucket) {
-  const keepAlpha = bucket === "logo" || bucket === "branding" || /png|svg|gif/.test(blob.type);
-  const maxDim = keepAlpha ? 512 : 1280;
+  // Screenshots of a tournament table need to stay readable: keep them large and as a white-background JPEG.
+  const isTable = bucket === "table";
+  const keepAlpha = !isTable && (bucket === "logo" || bucket === "branding" || /png|svg|gif/.test(blob.type));
+  const maxDim = isTable ? 1600 : keepAlpha ? 512 : 1280;
   if (/svg/.test(blob.type) && blob.size < 400000) return blob;
   try {
     const bmp = await createImageBitmap(blob);
@@ -167,6 +169,13 @@ export function parseYouTubeId(input) {
   }
   return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
 }
+
+// ── Tournament league tables ──
+// Failing here must never stop the app loading, so a read falls back to "no tables".
+export const fetchTournamentTables = () => get("tournament_tables", "tournament tables", "id.desc").catch(() => []);
+export async function insertTournamentTable(rec) { return (await post("tournament_tables", [strip(rec)], "league table"))[0]; }
+export async function updateTournamentTable(rec) { return (await patch(`tournament_tables/${rec.id}`, strip(rec), "league table"))[0]; }
+export const deleteTournamentTable = (id) => del(`tournament_tables/${id}`, "league table");
 
 // ── Club settings (branding) ──
 export async function fetchClubSettings() { return (await get("club_settings", "club settings"))[0] || null; }

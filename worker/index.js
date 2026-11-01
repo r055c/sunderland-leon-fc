@@ -18,6 +18,7 @@ const TABLES = {
   players: { cols: ["name", "squad_number", "photo", "is_active"], kinds: { is_active: "bool" }, order: "squad_number.asc" },
   appearances: { cols: ["player_id", "result_id", "season_id"], kinds: {}, order: "id.desc" },
   match_photos: { cols: ["result_id", "url"], kinds: {}, order: "id.desc", extraRead: ["created_at"] },
+  tournament_tables: { cols: ["season_id", "competition", "date", "rows", "photo"], kinds: { rows: "object" }, order: "id.desc" },
   match_videos: { cols: ["result_id", "video_id", "title"], kinds: {}, order: "id.desc", extraRead: ["created_at"] },
   club_settings: {
     cols: ["club_name", "short_name", "slogan", "primary_color", "accent_color", "font_pairing", "badge_url", "icon_url", "updated_at"],
@@ -113,7 +114,7 @@ async function serveImage(env, id) {
   });
 }
 // Columns that can hold an image link: [table, column]
-const IMAGE_COLS = [["teams", "logo"], ["players", "photo"], ["results", "oppLogo"], ["match_photos", "url"], ["club_settings", "badge_url"], ["club_settings", "icon_url"]];
+const IMAGE_COLS = [["teams", "logo"], ["players", "photo"], ["results", "oppLogo"], ["match_photos", "url"], ["club_settings", "badge_url"], ["club_settings", "icon_url"], ["tournament_tables", "photo"]];
 
 // Home-screen icons: if the club has uploaded its own, serve that; otherwise the built-in icon files.
 const ICON_PATHS = ["/icon-192.png", "/icon-512.png", "/apple-touch-icon.png"];
