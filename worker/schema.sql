@@ -1,6 +1,6 @@
 -- D1 (SQLite) schema for the club app. Run once on a new database.
 CREATE TABLE seasons (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, age_group TEXT, is_active INTEGER DEFAULT 0, competitions TEXT DEFAULT '["Spring Cup"]', placements TEXT NOT NULL DEFAULT '{}', competition_types TEXT NOT NULL DEFAULT '{}');
-CREATE TABLE results (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, opposition TEXT, homeScore INTEGER, awayScore INTEGER, scorers TEXT, result TEXT, competition TEXT, motm TEXT, oppMotm TEXT, oppLogo TEXT, season_id INTEGER REFERENCES seasons(id), round TEXT);
+CREATE TABLE results (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, opposition TEXT, homeScore INTEGER, awayScore INTEGER, scorers TEXT, result TEXT, competition TEXT, motm TEXT, oppMotm TEXT, oppLogo TEXT, season_id INTEGER REFERENCES seasons(id), round TEXT, homePens INTEGER, awayPens INTEGER, penScorers TEXT);
 CREATE TABLE teams (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, logo TEXT);
 CREATE TABLE fixtures (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, rawDate TEXT, opposition TEXT, competition TEXT, venue TEXT, notes TEXT, season_id INTEGER REFERENCES seasons(id));
 CREATE TABLE players (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, squad_number INTEGER, photo TEXT, is_active INTEGER DEFAULT 1);

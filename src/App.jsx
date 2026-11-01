@@ -90,7 +90,7 @@ async function shareImage(canvas, filename, text = "") {
 // Short caption for sharing a result — used as the native-share text and the WhatsApp message.
 function buildResultCaption(match) {
   if (!match) return "";
-  const scoreLine = `${BRAND.name.replace(/ FC$/i, "")} ${match.homeScore}-${match.awayScore} ${match.opposition || ""}`.trim();
+  const scoreLine = `${BRAND.name.replace(/ FC$/i, "")} ${match.homeScore}-${match.awayScore}${hasPens(match) ? ` (${match.homePens}-${match.awayPens} pens)` : ""} ${match.opposition || ""}`.trim();
   const scorers = (match.scorers || []).length ? ` ⚽ ${match.scorers.join(", ")}` : "";
   return `${scoreLine}${scorers}`;
 }
@@ -116,9 +116,16 @@ function parseScorer(str) {
   if (m) return { name: m[1].trim(), goals: parseInt(m[2]) };
   return { name: str.trim(), goals: 1 };
 }
+// Penalty shoot-outs: the normal score stays the 90 minutes; shoot-out goals are stored separately but count in the goal stats.
+const allScorers = r => [...(r.scorers || []), ...(r.penScorers || [])];
+const goalsFor = r => (Number(r.homeScore) || 0) + (Number(r.homePens) || 0);
+const goalsAgainst = r => (Number(r.awayScore) || 0) + (Number(r.awayPens) || 0);
+const hasPens = r => !!r && r.homePens != null && r.awayPens != null;
+const scoreLabel = r => `${r.homeScore}–${r.awayScore}${hasPens(r) ? ` (${r.homePens}–${r.awayPens} pens)` : ""}`;
+const resultFrom = (hs, as_, hp, ap) => hs > as_ ? "W" : hs < as_ ? "L" : (hp != null && ap != null && hp !== ap) ? (hp > ap ? "W" : "L") : "D";
 function buildGoalBoard(results) {
   const t = {};
-  results.forEach(r => (r.scorers || []).forEach(s => { const { name, goals } = parseScorer(s); t[name] = (t[name] || 0) + goals; }));
+  results.forEach(r => allScorers(r).forEach(s => { const { name, goals } = parseScorer(s); t[name] = (t[name] || 0) + goals; }));
   return Object.entries(t).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
 }
 function buildAwardBoard(results, field) {
@@ -246,7 +253,7 @@ function getPlayerStats(name, { players, appearances, results, seasons }) {
   let totalGoals = 0;
   const moments = [];
   results.forEach(r => {
-    (r.scorers || []).forEach(s => {
+    allScorers(r).forEach(s => {
       const { name: sName, goals } = parseScorer(s);
       if (sName === name) { totalGoals += goals; moments.push({ result: r, type: "goal", goals }); }
     });
@@ -256,7 +263,7 @@ function getPlayerStats(name, { players, appearances, results, seasons }) {
 
   const seasonBreakdown = seasons.map(s => {
     let goals = 0;
-    results.filter(r => r.season_id === s.id).forEach(r => (r.scorers || []).forEach(sc => {
+    results.filter(r => r.season_id === s.id).forEach(r => allScorers(r).forEach(sc => {
       const { name: n, goals: g } = parseScorer(sc);
       if (n === name) goals += g;
     }));
@@ -380,6 +387,59 @@ function VideoCard({ video, onRemove, bg = "#fff" }) {
   );
 }
 
+const PENS_OFF = { on: false, home: 0, away: 0, scorers: [] };
+
+// Shown when a cup/tournament game is level at full time: record the penalty shoot-out.
+function PensBox({ pens, setPens, squad = [], oppName }) {
+  const step = (key, delta) => setPens(p => ({ ...p, [key]: Math.max(0, p[key] + delta) }));
+  const row = (label, key) => (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
+      <span style={{ fontWeight: 700, fontSize: 14, color: THEME.navy }}>{label}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <button onClick={() => step(key, -1)} style={{ width: 32, height: 32, borderRadius: "50%", border: "1.5px solid #e0e0e0", background: "#fff", fontSize: 16, color: "#888", cursor: "pointer", fontFamily: "inherit" }}>−</button>
+        <span style={{ fontFamily: THEME.mono, fontWeight: 800, fontSize: 20, minWidth: 22, textAlign: "center", color: THEME.navy }}>{pens[key]}</span>
+        <button onClick={() => step(key, 1)} style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: THEME.navy, fontSize: 16, color: THEME.sky, cursor: "pointer", fontFamily: "inherit" }}>+</button>
+      </div>
+    </div>
+  );
+  const level = pens.home === pens.away;
+  const toggleScorer = (name) => setPens(p => {
+    const scorers = p.scorers.includes(name) ? p.scorers.filter(n => n !== name) : [...p.scorers, name];
+    return { ...p, scorers, home: Math.max(p.home, scorers.length) };
+  });
+  return (
+    <div style={{ background: "#fff8e8", border: `1.5px solid ${THEME.amber}`, borderRadius: 12, padding: "12px 14px", margin: "14px 0" }}>
+      <div style={{ fontWeight: 800, fontSize: 13, color: THEME.navy }}>🥅 Level at full time. Went to penalties?</div>
+      <button onClick={() => setPens(p => ({ ...p, on: !p.on }))} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", padding: "10px 0 0", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13, color: THEME.navy }}>
+        <span style={{ width: 42, height: 24, borderRadius: 99, background: pens.on ? THEME.amber : "#d8dbe3", position: "relative", display: "inline-block", transition: "background .15s" }}>
+          <span style={{ position: "absolute", top: 3, left: pens.on ? 21 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left .15s" }} />
+        </span>
+        Yes, penalty shoot-out
+      </button>
+      {pens.on && (
+        <>
+          {row(BRAND.short, "home")}
+          {row(oppName || "Opposition", "away")}
+          {squad.length > 0 && (
+            <>
+              <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: THEME.ink60, margin: "14px 0 6px" }}>Who scored? (optional)</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {squad.map(pl => {
+                  const on = pens.scorers.includes(pl.name);
+                  return <button key={pl.id} onClick={() => toggleScorer(pl.name)} style={{ padding: "5px 12px", borderRadius: 16, border: on ? "none" : "1.5px solid #e0e0e0", background: on ? THEME.navy : "#fff", color: on ? THEME.sky : "#666", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>{pl.name}</button>;
+                })}
+              </div>
+            </>
+          )}
+          <div style={{ marginTop: 12, fontSize: 13, fontWeight: 700, color: level ? THEME.loss : THEME.pitch }}>
+            {level ? "Penalties can't finish level" : `✓ ${pens.home > pens.away ? BRAND.short : (oppName || "Opposition")} win ${Math.max(pens.home, pens.away)}–${Math.min(pens.home, pens.away)} on penalties`}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function ScoreCard({ match, compColor = THEME.sky, onClick, showMeta = true, photoCount = 0, videoCount = 0 }) {
   const isWin = match.result === "W", isLoss = match.result === "L";
   const resultBg = isWin ? "#4ade80" : isLoss ? "#f3a3ad" : "#e8a93b";
@@ -407,6 +467,7 @@ function ScoreCard({ match, compColor = THEME.sky, onClick, showMeta = true, pho
           {match.motm && <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#e8a93b" }}>⭐ {match.motm}</span>}
           {(match.scorers || []).length > 0 && <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#e8a93b" }}>⚽ {match.scorers.join(", ")}</span>}
           {match.round && <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#8b91ad" }}>{match.round}</span>}
+          {hasPens(match) && <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: "#e8a93b" }}>🥅 {match.result === "W" ? "Won" : "Lost"} {match.homePens}–{match.awayPens} on pens</span>}
           {photoCount > 0 && <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, color: THEME.sky }}>📷 {photoCount}</span>}
           {videoCount > 0 && <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, color: THEME.sky }}>▶ {videoCount}</span>}
           <span style={{ fontFamily: THEME.mono, fontSize: 9, color: "#6b7191", marginLeft: "auto" }}>{match.date}</span>
@@ -449,6 +510,7 @@ function ResultCard({ match, teamName = "Team", compColor = THEME.sky, players =
               <span style={{ fontFamily: THEME.mono, fontSize: "clamp(16px,4.5vw,22px)", color: THEME.ink30 }}>–</span>
               <span style={{ fontFamily: THEME.mono, fontSize: "clamp(26px,8vw,40px)", fontWeight: 700, color: THEME.navy, lineHeight: 1 }}>{match.awayScore}</span>
             </div>
+            {hasPens(match) && <div style={{ fontFamily: THEME.mono, fontSize: 11, fontWeight: 700, color: "#b7791f", letterSpacing: 0.5, textAlign: "center" }}>({match.homePens}–{match.awayPens} pens){(match.penScorers || []).length > 0 ? ` · ${match.penScorers.join(", ")}` : ""}</div>}
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "1 1 0", minWidth: 0, gap: 8 }}>
             <div style={{ background: THEME.chalk, border: "2px solid #eef0f4", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", width: "clamp(48px,17vw,64px)", height: "clamp(48px,17vw,64px)", flexShrink: 0 }}>
@@ -762,7 +824,7 @@ function H2HPanel({ results, competitions }) {
   const games = team ? results.filter(r => (r.opposition || "").trim().toLowerCase() === team.toLowerCase())
     .sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
   const count = k => games.filter(r => r.result === k).length;
-  const gf = games.reduce((a, r) => a + (r.homeScore || 0), 0), ga = games.reduce((a, r) => a + (r.awayScore || 0), 0);
+  const gf = games.reduce((a, r) => a + goalsFor(r), 0), ga = games.reduce((a, r) => a + goalsAgainst(r), 0);
   const col = r => r === "W" ? "#00c853" : r === "L" ? "#d50000" : "#ffab00";
   return (
     <div style={{ marginBottom: 20 }}>
@@ -794,7 +856,7 @@ function H2HPanel({ results, competitions }) {
             {games.map(m => (
               <div key={m.id} style={{ background: "#fff", borderRadius: 12, padding: "11px 14px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)", borderLeft: `4px solid ${col(m.result)}` }}>
                 <span style={{ background: col(m.result), color: "#fff", fontWeight: 800, fontSize: 13, borderRadius: 8, padding: "3px 8px" }}>{m.result}</span>
-                <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: THEME.navy }}>{m.homeScore}–{m.awayScore}</span>
+                <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: THEME.navy }}>{scoreLabel(m)}</span>
                 <span style={{ fontSize: 12, color: "#aaa" }}>{m.date}</span>
                 <span style={{ fontSize: 11, color: getCompColor(competitions, m.competition), fontWeight: 700, background: "#f5f5f5", borderRadius: 8, padding: "2px 8px" }}>{m.competition}</span>
               </div>
@@ -813,9 +875,9 @@ const TOUR_DRAFT = (() => { try { return localStorage.getItem("leon_tour_day") ?
 // ── Tournament summary card (shareable image) ─────────────
 function TournamentCard({ cardRef, name, date, placement, games, players }) {
   const w = games.filter(g => g.result === "W").length, d = games.filter(g => g.result === "D").length, l = games.filter(g => g.result === "L").length;
-  const gf = games.reduce((a, g) => a + (g.homeScore || 0), 0), ga = games.reduce((a, g) => a + (g.awayScore || 0), 0);
+  const gf = games.reduce((a, g) => a + goalsFor(g), 0), ga = games.reduce((a, g) => a + goalsAgainst(g), 0);
   const tally = {};
-  games.forEach(g => (g.scorers || []).forEach(sc => { const { name: n, goals } = parseScorer(sc); tally[n] = (tally[n] || 0) + goals; }));
+  games.forEach(g => allScorers(g).forEach(sc => { const { name: n, goals } = parseScorer(sc); tally[n] = (tally[n] || 0) + goals; }));
   const top = Object.entries(tally).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 5);
   const meta = PLACEMENT_META[placement] || null;
   const col = r => r === "W" ? "#00c853" : r === "L" ? "#d50000" : "#ffab00";
@@ -845,7 +907,7 @@ function TournamentCard({ cardRef, name, date, placement, games, players }) {
             <span style={{ width: 18, height: 18, borderRadius: 5, background: col(g.result), color: "#fff", fontWeight: 800, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>{g.result}</span>
             <span style={{ flex: 1, fontWeight: 600, color: THEME.navy }}>{g.opposition}</span>
             <span style={{ color: "#999", fontSize: 10.5 }}>{g.round}</span>
-            <span style={{ fontWeight: 800, color: THEME.navy }}>{g.homeScore}–{g.awayScore}</span>
+            <span style={{ fontWeight: 800, color: THEME.navy }}>{scoreLabel(g)}</span>
           </div>
         ))}
       </div>
@@ -959,6 +1021,8 @@ export default function App() {
   const [editingResult, setEditingResult] = useState(null);
   const [editOppLogo, setEditOppLogo] = useState(null);
   const [editGoalCounts, setEditGoalCounts] = useState({});
+  const [pens, setPens] = useState(PENS_OFF); // penalty shoot-out for the game being logged
+  const [editPens, setEditPens] = useState(PENS_OFF);
   const [editShowAll, setEditShowAll] = useState(false); // Edit screen: show the whole squad instead of just who played
   const [oppLogo, setOppLogo] = useState(null);
   const [newResult, setNewResult] = useState(null);
@@ -1078,7 +1142,9 @@ export default function App() {
   const leonGoals = selectedSquad.reduce((sum, pid) => sum + (goalCounts[pid] || 0), 0);
   const handleCreate = async () => {
     const hs = scoreFromScorers ? leonGoals : parseInt(form.homeScore), as_ = parseInt(form.awayScore);
-    const result = hs > as_ ? "W" : hs < as_ ? "L" : "D";
+    const penOn = pens.on && hs === as_ && logType === "cup";
+    if (penOn && pens.home === pens.away) { showToast("⚠️ Penalties can't finish level"); return; }
+    const result = resultFrom(hs, as_, penOn ? pens.home : null, penOn ? pens.away : null);
     // Build scorers list from goalCounts
     const scorerList = Object.entries(goalCounts)
       .filter(([pid, count]) => count > 0 && (!scoreFromScorers || selectedSquad.includes(parseInt(pid))))
@@ -1091,7 +1157,7 @@ export default function App() {
     const oppMotmName = oppMotmPlayerId ? (players.find(p => p.id === oppMotmPlayerId)?.name || "") : form.oppMotm.trim();
     let displayDate = form.date;
     try { displayDate = new Date(form.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); } catch(e) {}
-    const newMatch = { date: displayDate, opposition: form.opposition, homeScore: hs, awayScore: as_, scorers: scorerList, result, competition: form.competition, motm: motmName, oppMotm: oppMotmName, oppLogo: oppLogo || null, round: (form.round || "").trim(), season_id: form.season_id || activeSeason?.id };
+    const newMatch = { date: displayDate, opposition: form.opposition, homeScore: hs, awayScore: as_, scorers: scorerList, result, competition: form.competition, motm: motmName, oppMotm: oppMotmName, oppLogo: oppLogo || null, round: (form.round || "").trim(), season_id: form.season_id || activeSeason?.id, homePens: penOn ? pens.home : null, awayPens: penOn ? pens.away : null, penScorers: penOn ? pens.scorers : null };
     try {
       const saved = await insertResult(newMatch);
       const match = saved || { ...newMatch, id: Date.now() };
@@ -1136,7 +1202,10 @@ export default function App() {
   const handleSaveEdit = async () => {
     if (!editingResult) return;
     const hs = parseInt(editingResult.homeScore), as_ = parseInt(editingResult.awayScore);
-    const result = hs > as_ ? "W" : hs < as_ ? "L" : "D";
+    const ct = compTypeOf(editingResult.competition);
+    const penOn = editPens.on && hs === as_ && ct !== "league" && ct !== "friendly";
+    if (penOn && editPens.home === editPens.away) { showToast("⚠️ Penalties can't finish level"); return; }
+    const result = resultFrom(hs, as_, penOn ? editPens.home : null, penOn ? editPens.away : null);
     // If we have editGoalCounts use those, otherwise fall back to text field
     let scorerList;
     if (players.length > 0 && Object.keys(editGoalCounts).length > 0) {
@@ -1151,7 +1220,7 @@ export default function App() {
         ? editingResult.scorers.split(",").map(s => s.trim()).filter(Boolean)
         : editingResult.scorers;
     }
-    const updated = { ...editingResult, homeScore: hs, awayScore: as_, result, scorers: scorerList, oppLogo: editOppLogo === "remove" ? null : editOppLogo !== null ? editOppLogo : editingResult.oppLogo };
+    const updated = { ...editingResult, homeScore: hs, awayScore: as_, result, homePens: penOn ? editPens.home : null, awayPens: penOn ? editPens.away : null, penScorers: penOn ? editPens.scorers : null, scorers: scorerList, oppLogo: editOppLogo === "remove" ? null : editOppLogo !== null ? editOppLogo : editingResult.oppLogo };
     try { await updateResult(updated); } catch(e) {}
     // Anyone credited with a goal here who isn't recorded as playing gets an appearance, so their stats stay right.
     try {
@@ -1416,14 +1485,17 @@ export default function App() {
   };
   const handleSaveTourGame = async () => {
     if (!tourDay || !form.opposition || tourBusy) return;
-    setTourBusy(true);
     const hs = tourGoals, as_ = parseInt(form.awayScore) || 0;
+    const penOn = pens.on && hs === as_;
+    if (penOn && pens.home === pens.away) { showToast("⚠️ Penalties can't finish level"); return; }
+    setTourBusy(true);
     const scorerList = Object.entries(goalCounts)
       .filter(([pid, c]) => c > 0 && tourDay.squad.includes(parseInt(pid)))
       .map(([pid, c]) => { const pl = players.find(x => x.id === parseInt(pid)); return pl ? (c > 1 ? `${pl.name} ×${c}` : pl.name) : null; }).filter(Boolean);
     const motmName = motmPlayerId ? (players.find(x => x.id === motmPlayerId)?.name || "") : "";
     const newMatch = { date: fmtTourDate(tourDay.date), opposition: form.opposition, homeScore: hs, awayScore: as_, scorers: scorerList,
-      result: hs > as_ ? "W" : hs < as_ ? "L" : "D", competition: tourDay.name, motm: motmName, oppMotm: (form.oppMotm || "").trim(), oppLogo: null, round: tourStage, season_id: tourSeasonId() };
+      result: resultFrom(hs, as_, penOn ? pens.home : null, penOn ? pens.away : null), competition: tourDay.name, motm: motmName, oppMotm: (form.oppMotm || "").trim(), oppLogo: null, round: tourStage, season_id: tourSeasonId(),
+      homePens: penOn ? pens.home : null, awayPens: penOn ? pens.away : null, penScorers: penOn ? pens.scorers : null };
     try {
       const saved = await insertResult(newMatch);
       const match = saved || { ...newMatch, id: Date.now() };
@@ -1432,8 +1504,8 @@ export default function App() {
         try { const recs = await insertAppearances(tourDay.squad.map(pid => ({ player_id: pid, result_id: match.id, season_id: match.season_id }))); setAppearances(prev => [...prev, ...recs]); } catch(e) {}
       }
       showToast(`✅ ${hs}–${as_} v ${form.opposition} saved`);
-      setLastTourGame({ id: match.id, label: `v ${form.opposition} ${hs}–${as_}` });
-      setGoalCounts({}); setMotmPlayerId(null); setTourMore(false);
+      setLastTourGame({ id: match.id, label: `v ${form.opposition} ${hs}–${as_}${penOn ? ` (${pens.home}–${pens.away} pens)` : ""}` });
+      setGoalCounts({}); setMotmPlayerId(null); setTourMore(false); setPens(PENS_OFF);
       setForm(f => ({ ...f, opposition: "", awayScore: "", oppMotm: "" }));
     } catch(e) { showToast("⚠️ Couldn't save that game — try again"); }
     setTourBusy(false);
@@ -1545,7 +1617,7 @@ export default function App() {
       <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", borderRadius: 10, padding: "9px 12px", marginBottom: 6, borderLeft: `4px solid ${rc(m.result)}`, boxShadow: "0 1px 6px rgba(0,0,0,0.05)" }}>
         <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: THEME.navy }}>v {m.opposition}</span>
         <span style={{ fontSize: 11, color: THEME.ink60 }}>{m.round}</span>
-        <span style={{ fontWeight: 800, fontSize: 14, color: THEME.navy }}>{m.homeScore}–{m.awayScore}</span>
+        <span style={{ fontWeight: 800, fontSize: 14, color: THEME.navy }}>{scoreLabel(m)}</span>
         <button onClick={() => setNewResult(m)} style={{ border: "none", background: "#f0f2f6", borderRadius: 8, padding: "4px 8px", fontSize: 11, fontWeight: 700, color: THEME.navy, cursor: "pointer" }}>Card</button>
       </div>
     ));
@@ -1683,6 +1755,7 @@ export default function App() {
           </>
         )}
 
+        {form.opposition && tourGoals === awayN && (tourGoals > 0 || form.awayScore !== "" || pens.on) && <PensBox pens={pens} setPens={setPens} squad={sq} oppName={form.opposition} />}
         <button onClick={handleSaveTourGame} disabled={!form.opposition || tourBusy}
           style={{ width: "100%", padding: 16, background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 12, fontSize: 16, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", opacity: (!form.opposition || tourBusy) ? 0.4 : 1 }}>{tourBusy ? "Saving…" : "Save & next game"}</button>
         <button onClick={() => setTourFinishing(true)} style={{ width: "100%", marginTop: 8, padding: 13, background: "#fff", color: THEME.navy, border: "2px solid #e8e8e8", borderRadius: 12, fontWeight: 800, fontSize: 13, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit" }}>Finish tournament</button>
@@ -1970,7 +2043,7 @@ export default function App() {
                   { label: "Won", val: filteredResults.filter(r => r.result === "W").length, color: "#00c853" },
                   { label: "Drawn", val: filteredResults.filter(r => r.result === "D").length, color: "#ffab00" },
                   { label: "Lost", val: filteredResults.filter(r => r.result === "L").length, color: "#d50000" },
-                  { label: "Goals", val: filteredResults.reduce((a, r) => a + (r.homeScore || 0), 0), color: THEME.sky },
+                  { label: "Goals", val: filteredResults.reduce((a, r) => a + goalsFor(r), 0), color: THEME.sky },
                 ].map(s => (
                   <div key={s.label} style={{ background: "#fff", borderRadius: 12, padding: "10px 18px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.07)", minWidth: 70, borderBottom: `3px solid ${s.color}` }}>
                     <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.val}</div>
@@ -2110,6 +2183,7 @@ export default function App() {
                                 });
                                 setEditGoalCounts(initialGoalCounts);
                                 setEditShowAll(false);
+                                setEditPens(hasPens(m) ? { on: true, home: m.homePens, away: m.awayPens, scorers: m.penScorers || [] } : PENS_OFF);
                                 setEditingResult({ ...m, scorers: (m.scorers || []).join(", ") });
                               }}
                               style={{ flex: 1, padding: "12px", background: "none", border: "none", borderRight: "1px solid #e8eeff", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 13, color: THEME.navy, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
@@ -2244,6 +2318,13 @@ export default function App() {
                       </div>
                     )}
                   </div>
+                  {(() => {
+                    const lvl = parseInt(editingResult.homeScore) === parseInt(editingResult.awayScore);
+                    const ct = compTypeOf(editingResult.competition);
+                    return lvl && ct !== "league" && ct !== "friendly"
+                      ? <PensBox pens={editPens} setPens={setEditPens} squad={editPlayerList()} oppName={editingResult.opposition} />
+                      : null;
+                  })()}
                   <button onClick={handleSaveEdit} style={{ width: "100%", padding: "15px", background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 12, fontSize: 16, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit" }}>Save Changes</button>
                 </div>
               </div>
@@ -2357,7 +2438,7 @@ export default function App() {
               <>
                 <div style={{ background: THEME.navy, borderRadius: 14, padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}>
                   {[
-                    { label: "Total Goals", val: filteredResults.reduce((a, r) => a + (r.homeScore || 0), 0) },
+                    { label: "Total Goals", val: filteredResults.reduce((a, r) => a + goalsFor(r), 0) },
                     { label: "Scorers", val: buildGoalBoard(filteredResults).length },
                     { label: "Win Rate", val: `${filteredResults.filter(r => r.result === "W").length}/${filteredResults.length}` },
                   ].map(s => (
@@ -2411,7 +2492,7 @@ export default function App() {
                         {h2hResults.map(m => (
                           <div key={m.id} style={{ background: "#fff", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)", borderLeft: `4px solid ${m.result === "W" ? "#00c853" : m.result === "L" ? "#d50000" : "#ffab00"}` }}>
                             <span style={{ background: m.result === "W" ? "#00c853" : m.result === "L" ? "#d50000" : "#ffab00", color: "#fff", fontWeight: 800, fontSize: 13, borderRadius: 8, padding: "3px 8px" }}>{m.result}</span>
-                            <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: THEME.navy }}>{m.homeScore}–{m.awayScore}</span>
+                            <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: THEME.navy }}>{scoreLabel(m)}</span>
                             <span style={{ fontSize: 12, color: "#aaa" }}>{m.date}</span>
                             <span style={{ fontSize: 11, color: getCompColor(competitions, m.competition), fontWeight: 700, background: "#f5f5f5", borderRadius: 8, padding: "2px 8px" }}>{m.competition}</span>
                           </div>
@@ -2696,6 +2777,9 @@ export default function App() {
                   </>
                 )}
 
+                {logType === "cup" && form.opposition && form.awayScore !== "" && (scoreFromScorers ? leonGoals : parseInt(form.homeScore)) === parseInt(form.awayScore) && (
+                  <PensBox pens={pens} setPens={setPens} squad={players.filter(pl => selectedSquad.includes(pl.id))} oppName={form.opposition} />
+                )}
                 <button onClick={handleCreate} disabled={!form.date || !form.opposition || (!scoreFromScorers && form.homeScore === "") || form.awayScore === ""}
                   style={{ width: "100%", padding: "16px", background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 12, fontSize: 17, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", opacity: (!form.date || !form.opposition || form.homeScore === "" || form.awayScore === "") ? 0.5 : 1 }}>
                   Generate Result Card
@@ -2705,7 +2789,7 @@ export default function App() {
             ) : (
               <div>
                 <ResultCard match={newResult} teamName={viewingSeason?.age_group} compColor={getCompColor(competitions, newResult.competition)} players={players} teams={teams} />
-                <button onClick={() => { setNewResult(null); setOppLogo(null); setSelectedSquad([]); setGoalCounts({}); setMotmPlayerId(null); setOppMotmPlayerId(null); setForm({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: form.competition, motm: "", oppMotm: "", round: "", season_id: activeSeason?.id || null }); }}
+                <button onClick={() => { setNewResult(null); setPens(PENS_OFF); setOppLogo(null); setSelectedSquad([]); setGoalCounts({}); setMotmPlayerId(null); setOppMotmPlayerId(null); setForm({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: form.competition, motm: "", oppMotm: "", round: "", season_id: activeSeason?.id || null }); }}
                   style={{ marginTop: 16, width: "100%", padding: "14px", background: "#fff", color: THEME.navy, border: "2px solid #e8e8e8", borderRadius: 12, fontSize: 15, fontWeight: 800, letterSpacing: 2, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                   ← Add Another Result
                 </button>
@@ -2855,9 +2939,9 @@ export default function App() {
           const wins = sResults.filter(r => r.result === "W").length;
           const draws = sResults.filter(r => r.result === "D").length;
           const losses = sResults.filter(r => r.result === "L").length;
-          const totalGoals = sResults.reduce((a, r) => a + (r.homeScore || 0), 0);
+          const totalGoals = sResults.reduce((a, r) => a + goalsFor(r), 0);
           const goalBoard = buildGoalBoard(sResults).slice(0, 5);
-          const biggestWin = sResults.filter(r => r.result === "W").sort((a, b) => (b.homeScore - b.awayScore) - (a.homeScore - a.awayScore))[0];
+          const biggestWin = sResults.filter(r => r.result === "W" && !hasPens(r)).sort((a, b) => (b.homeScore - b.awayScore) - (a.homeScore - a.awayScore))[0];
           const compBreakdown = [...new Set(sResults.map(r => r.competition).filter(Boolean))].map(comp => {
             const cr = sResults.filter(r => r.competition === comp);
             return { comp, p: cr.length, w: cr.filter(r => r.result === "W").length, d: cr.filter(r => r.result === "D").length, l: cr.filter(r => r.result === "L").length, gf: cr.reduce((a, r) => a + (r.homeScore || 0), 0) };
@@ -2986,7 +3070,7 @@ export default function App() {
               const wins = sResults.filter(r => r.result === "W").length;
               const drawn = sResults.filter(r => r.result === "D").length;
               const lost = sResults.filter(r => r.result === "L").length;
-              const goals = sResults.reduce((a, r) => a + (r.homeScore || 0), 0);
+              const goals = sResults.reduce((a, r) => a + goalsFor(r), 0);
               const comps = [...new Set(sResults.map(r => r.competition))].filter(Boolean);
               return (
                 <div key={s.id} style={{ background: "#fff", borderRadius: 16, padding: 20, marginBottom: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.08)", borderLeft: `4px solid ${s.is_active ? THEME.sky : "#e0e0e0"}` }}>

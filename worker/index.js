@@ -4,8 +4,8 @@
 // Column definitions. kind: "array" | "object" (stored as JSON text), "bool" (stored 0/1).
 const TABLES = {
   results: {
-    cols: ["date", "opposition", "homeScore", "awayScore", "scorers", "result", "competition", "motm", "oppMotm", "oppLogo", "season_id", "round"],
-    kinds: { scorers: "array" },
+    cols: ["date", "opposition", "homeScore", "awayScore", "scorers", "result", "competition", "motm", "oppMotm", "oppLogo", "season_id", "round", "homePens", "awayPens", "penScorers"],
+    kinds: { scorers: "array", penScorers: "array" },
     order: "date.desc",
   },
   teams: { cols: ["name", "logo"], kinds: {}, order: "name.asc" },
