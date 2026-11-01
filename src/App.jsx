@@ -1549,7 +1549,33 @@ export default function App() {
         <button onClick={() => setNewResult(m)} style={{ border: "none", background: "#f0f2f6", borderRadius: 8, padding: "4px 8px", fontSize: 11, fontWeight: 700, color: THEME.navy, cursor: "pointer" }}>Card</button>
       </div>
     ));
-    const header = (
+    // Photos for the whole tournament day. They're stored against the latest game of the day (photos belong to a
+    // result), and the Gallery shows every game's photos together under the tournament's name.
+    const dayPhotos = tourGames.flatMap(g => matchPhotosFor(g.id));
+    const photoTarget = tourGames.length ? tourGames.reduce((a, b) => (b.id > a.id ? b : a)) : null;
+    const photoBlock = (
+      <div style={{ background: "#fff", borderRadius: 12, padding: "10px 12px", marginBottom: 14, boxShadow: "0 1px 6px rgba(0,0,0,0.06)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: THEME.ink60 }}>📷 Tournament photos{dayPhotos.length > 0 ? ` (${dayPhotos.length})` : ""}</span>
+          <button disabled={!photoTarget || uploadingPhotosFor === photoTarget?.id}
+            onClick={() => { photoUploadTargetRef.current = photoTarget.id; photoUploadRef.current?.click(); }}
+            style={{ background: THEME.pitchSoft, border: "none", borderRadius: 8, padding: "5px 10px", cursor: !photoTarget ? "default" : uploadingPhotosFor === photoTarget?.id ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 11, color: THEME.pitch, opacity: photoTarget ? 1 : 0.45 }}>
+            {photoTarget && uploadingPhotosFor === photoTarget.id ? "Uploading..." : "+ Add photos"}
+          </button>
+        </div>
+        {dayPhotos.length > 0 ? (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+            {dayPhotos.map((ph, i) => (
+              <div key={ph.id} onClick={() => setLightbox({ photos: dayPhotos, index: i, title: tourDay.name })}
+                style={{ width: 52, height: 52, borderRadius: 8, backgroundImage: `url(${ph.url})`, backgroundSize: "cover", backgroundPosition: "center", cursor: "pointer", flexShrink: 0 }} />
+            ))}
+          </div>
+        ) : (
+          <div style={{ fontSize: 12, color: THEME.ink30, marginTop: 6 }}>{photoTarget ? "No photos yet" : "Save your first game and you can add photos for the day."}</div>
+        )}
+      </div>
+    );
+    const header = (<>
       <div style={{ background: THEME.navySoft, color: "#fff", borderRadius: 12, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ fontSize: 18 }}>🎪</span>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -1558,7 +1584,8 @@ export default function App() {
         </div>
         <div style={{ fontFamily: THEME.mono, fontSize: 11, color: THEME.sky, textAlign: "right" }}>{tourGames.length} played<br />W{w} D{d} L{l}</div>
       </div>
-    );
+      {photoBlock}
+    </>);
 
     // ── Finishing: how did you place? ──
     if (tourFinishing) {
@@ -2011,6 +2038,16 @@ export default function App() {
                     {showDay && (
                       <div style={{ display: "flex", alignItems: "center", gap: 8, margin: idx === 0 ? "0 0 8px" : "10px 0 8px", fontFamily: THEME.mono, fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: THEME.ink60 }}>
                         <span>🎪 {m.date}</span><span style={{ flex: 1, height: 1, background: THEME.ink30 }} />
+                        {(() => {
+                          const dp = dayGames.flatMap(g => matchPhotosFor(g.id));
+                          const tgt = dayGames.length ? dayGames.reduce((a, b) => (b.id > a.id ? b : a)) : null;
+                          return (
+                            <>
+                              {dp.length > 0 && <button onClick={() => setLightbox({ photos: dp, index: 0, title: filterComp })} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 10, color: THEME.sky, padding: 0 }}>📷 {dp.length}</button>}
+                              {isAdmin && tgt && <button onClick={() => { photoUploadTargetRef.current = tgt.id; photoUploadRef.current?.click(); }} style={{ background: THEME.pitchSoft, border: "none", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 10, color: THEME.pitch }}>+ Add photos</button>}
+                            </>
+                          );
+                        })()}
                         <span>{dayGames.length} {dayGames.length === 1 ? "game" : "games"} · W{dayGames.filter(x => x.result === "W").length} D{dayGames.filter(x => x.result === "D").length} L{dayGames.filter(x => x.result === "L").length}</span>
                       </div>
                     )}
@@ -2220,9 +2257,17 @@ export default function App() {
             {(() => {
               const showPhotos = galleryFilter !== "videos";
               const showVideos = galleryFilter !== "photos";
-              const groups = seasonResults
-                .map(m => ({ match: m, photos: showPhotos ? matchPhotosFor(m.id) : [], videos: showVideos ? matchVideosFor(m.id) : [] }))
-                .filter(g => g.photos.length > 0 || g.videos.length > 0);
+              // One section per match, except tournament games, which are combined into one section per tournament day.
+              const groupMap = new Map();
+              seasonResults.forEach(m => {
+                const isTour = compTypeOf(m.competition) === "tournament";
+                const key = isTour ? `t|${m.competition}|${m.date}` : `m|${m.id}`;
+                if (!groupMap.has(key)) groupMap.set(key, { key, match: m, title: isTour ? `🎪 ${m.competition}` : `vs ${m.opposition || ""}`, photos: [], videos: [] });
+                const g = groupMap.get(key);
+                if (showPhotos) g.photos.push(...matchPhotosFor(m.id));
+                if (showVideos) g.videos.push(...matchVideosFor(m.id));
+              });
+              const groups = [...groupMap.values()].filter(g => g.photos.length > 0 || g.videos.length > 0);
               const anyMedia = seasonResults.some(m => matchPhotosFor(m.id).length > 0 || matchVideosFor(m.id).length > 0);
               const chips = [{ key: "all", label: "All" }, { key: "photos", label: "📷 Photos" }, { key: "videos", label: "▶ Videos" }];
               return (
@@ -2245,15 +2290,15 @@ export default function App() {
                     </div>
                   )}
                   {groups.map(g => (
-                    <div key={g.match.id} style={{ marginBottom: 22 }}>
+                    <div key={g.key} style={{ marginBottom: 22 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-                        <span style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 14, color: THEME.navy }}>vs {(g.match.opposition || "").toUpperCase()}</span>
+                        <span style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 14, color: THEME.navy }}>{g.title.toUpperCase()}</span>
                         <span style={{ fontFamily: THEME.mono, fontSize: 10, color: THEME.ink60 }}>{g.match.date}</span>
                       </div>
                       {g.photos.length > 0 && (
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5 }}>
                           {g.photos.map((p, i) => (
-                            <div key={p.id} onClick={() => setLightbox({ photos: g.photos, index: i, title: `vs ${g.match.opposition}` })}
+                            <div key={p.id} onClick={() => setLightbox({ photos: g.photos, index: i, title: g.title })}
                               style={{ aspectRatio: "1", borderRadius: 8, backgroundImage: `url(${p.url})`, backgroundSize: "cover", backgroundPosition: "center", cursor: "pointer" }} />
                           ))}
                         </div>
