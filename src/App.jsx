@@ -1460,7 +1460,26 @@ export default function App() {
     }));
     if (m.layout === "next") { const i = list.findIndex(f => f.date >= todayStart()); list = list.slice(i < 0 ? 0 : i); }
     const comps = [...new Set(list.map(f => f.compLabel).filter(Boolean))];
+    // Stats for the Match pill: recent form, top scorer and the last meeting with this opponent.
+    let stats = null;
+    if (list[0]) {
+      const byDate = (a, b) => new Date(b.date) - new Date(a.date);
+      const sr = seasonResults.slice().sort(byDate);
+      const tally = {};
+      sr.forEach(r => allScorers(r).forEach(s => { const { name, goals } = parseScorer(s); tally[name] = (tally[name] || 0) + goals; }));
+      const top = Object.entries(tally).sort((a, b) => b[1] - a[1])[0];
+      const key = String(list[0].opp || "").trim().toLowerCase();
+      const meets = results.filter(r => String(r.opposition || "").trim().toLowerCase() === key).sort(byDate);
+      const last = meets[0];
+      stats = {
+        form: sr.slice(0, 5).map(r => r.result).reverse(),
+        topScorer: top ? { name: top[0], goals: top[1] } : null,
+        last: last ? { date: new Date(last.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }), score: `${last.homeScore}–${last.awayScore}`, result: last.result } : null,
+        record: { w: meets.filter(r => r.result === "W").length, d: meets.filter(r => r.result === "D").length, l: meets.filter(r => r.result === "L").length, n: meets.length },
+      };
+    }
     return {
+      stats,
       comp: comps.length === 1 ? comps[0] : "",
       club: m.club, label: m.label, crest: BRAND.badge || DEFAULT_BADGE, motto: branding.slogan || "", leagueLogo: branding.league_logo || null, leagueName: branding.league_name || "",
       monthLabel: `${mDate.toLocaleDateString("en-GB", { month: "long" })} ${y}`, monthName: mDate.toLocaleDateString("en-GB", { month: "long" }), year: y,

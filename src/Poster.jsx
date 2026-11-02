@@ -415,16 +415,49 @@ function PillPoster({ d }) {
   const onOpp = contrast(oc, "#ffffff") >= 3 ? "#ffffff" : "#0b1320";
   const away = f.ha === "A";
   const panel = (left) => ({ position: "absolute", top: 0, [left ? "left" : "right"]: 0, width: 560, height: POSTER_H });
+  const st = d.stats;
+  const lab = { fontFamily: COND, fontWeight: 700, fontSize: 20, letterSpacing: 5, opacity: 0.7 };
+  const RC = { W: "#1f8f55", D: "#c58a1a", L: "#b03030" };
+  const tile = (r, i) => <div key={i} style={{ width: 40, height: 40, borderRadius: 8, background: RC[r] || "#5b6b82", color: "#fff", fontFamily: COND, fontWeight: 800, fontSize: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>{r}</div>;
+  const rec = st && st.record;
+  const lastRes = st && st.last;
   const ours = (
     <>
       <div style={{ ...panel(true), background: `linear-gradient(160deg, ${mix(c.accent, c.bg, 0.7)}, ${mix(c.bg, "#000000", 0.35)})` }} />
-      <div style={{ position: "absolute", left: 50, bottom: 60, fontFamily: COND, fontWeight: 800, fontSize: nameSize(us.name, 46), lineHeight: 1, maxWidth: 380 }}>{us.name}{us.sub ? <div style={{ fontWeight: 700, fontSize: 24, letterSpacing: 5, color: c.accent, marginTop: 4 }}>{us.sub}</div> : null}</div>
+      {d.crest && !svgSrc(d.crest) ? <img src={d.crest} alt="" style={{ position: "absolute", left: -330, top: 330, width: 660, height: 660, objectFit: "contain", opacity: 0.22 }} /> : null}
+      {st ? (
+        <div style={{ position: "absolute", left: 30, top: 130, width: 235 }}>
+          {st.form.length ? <>
+            <div style={lab}>FORM</div>
+            <div style={{ display: "flex", gap: 6, marginTop: 12 }}>{st.form.map(tile)}</div>
+          </> : null}
+          {st.topScorer ? <div style={{ marginTop: 56 }}>
+            <div style={lab}>TOP SCORER</div>
+            <div style={{ fontFamily: COND, fontWeight: 800, fontSize: 40, lineHeight: 1.05, marginTop: 10 }}>{upper(st.topScorer.name)}</div>
+            <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 26, letterSpacing: 3, color: c.accent, marginTop: 4 }}>{st.topScorer.goals} GOAL{st.topScorer.goals === 1 ? "" : "S"}</div>
+          </div> : null}
+        </div>
+      ) : null}
+      <div style={{ position: "absolute", left: 30, bottom: 60, fontFamily: COND, fontWeight: 800, fontSize: nameSize(us.name, 46), lineHeight: 1, maxWidth: 380 }}>{us.name}{us.sub ? <div style={{ fontWeight: 700, fontSize: 24, letterSpacing: 5, color: c.accent, marginTop: 4 }}>{us.sub}</div> : null}</div>
     </>
   );
   const theirs = (
     <>
       <div style={{ ...panel(false), background: `linear-gradient(200deg, ${mix(oc, "#ffffff", 0.12)}, ${mix(oc, "#000000", 0.35)})` }} />
-      <div style={{ position: "absolute", right: 50, bottom: 60, textAlign: "right", color: onOpp, fontFamily: COND, fontWeight: 800, fontSize: nameSize(them.name, 46), lineHeight: 1, maxWidth: 380 }}>{them.name}{them.sub ? <div style={{ fontWeight: 700, fontSize: 24, letterSpacing: 5, marginTop: 4, opacity: 0.85 }}>{them.sub}</div> : null}</div>
+      {them.logo && !svgSrc(them.logo) ? <img src={them.logo} alt="" style={{ position: "absolute", right: -330, top: 330, width: 660, height: 660, objectFit: "contain", opacity: 0.3 }} /> : null}
+      {st ? (
+        <div style={{ position: "absolute", right: 30, top: 130, width: 235, textAlign: "right", color: onOpp }}>
+          <div style={lab}>LAST MEETING</div>
+          {lastRes ? <>
+            <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 26, letterSpacing: 2, marginTop: 10 }}>{upper(lastRes.date)}</div>
+            <div style={{ fontFamily: COND, fontWeight: 800, fontSize: 76, lineHeight: 1, marginTop: 4 }}>{lastRes.score}</div>
+            <div style={{ display: "inline-block", marginTop: 8, padding: "2px 14px", borderRadius: 8, background: RC[lastRes.result] || "#5b6b82", color: "#fff", fontFamily: COND, fontWeight: 800, fontSize: 24, letterSpacing: 3 }}>{lastRes.result === "W" ? "WIN" : lastRes.result === "L" ? "LOSS" : "DRAW"}</div>
+            <div style={{ ...lab, marginTop: 56 }}>PLAYED {rec.n}</div>
+            <div style={{ fontFamily: COND, fontWeight: 800, fontSize: 40, letterSpacing: 2, marginTop: 10 }}>W{rec.w} D{rec.d} L{rec.l}</div>
+          </> : <div style={{ fontFamily: COND, fontWeight: 800, fontSize: 36, lineHeight: 1.1, marginTop: 12 }}>FIRST TIME FACING THIS SEASON</div>}
+        </div>
+      ) : null}
+      <div style={{ position: "absolute", right: 30, bottom: 60, textAlign: "right", color: onOpp, fontFamily: COND, fontWeight: 800, fontSize: nameSize(them.name, 46), lineHeight: 1, maxWidth: 380 }}>{them.name}{them.sub ? <div style={{ fontWeight: 700, fontSize: 24, letterSpacing: 5, marginTop: 4, opacity: 0.85 }}>{them.sub}</div> : null}</div>
     </>
   );
   return (
