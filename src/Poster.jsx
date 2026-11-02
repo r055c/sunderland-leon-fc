@@ -428,13 +428,17 @@ function PillPoster({ d }) {
       {st ? (
         <div style={{ position: "absolute", left: 30, top: 130, width: 235 }}>
           {st.form.length ? <>
-            <div style={lab}>FORM</div>
+            <div style={lab}>LEAGUE FORM</div>
             <div style={{ display: "flex", gap: 6, marginTop: 12 }}>{st.form.map(tile)}</div>
           </> : null}
-          {st.topScorer ? <div style={{ marginTop: 56 }}>
-            <div style={lab}>TOP SCORER</div>
-            <div style={{ fontFamily: COND, fontWeight: 800, fontSize: 40, lineHeight: 1.05, marginTop: 10 }}>{upper(st.topScorer.name)}</div>
-            <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 26, letterSpacing: 3, color: c.accent, marginTop: 4 }}>{st.topScorer.goals} GOAL{st.topScorer.goals === 1 ? "" : "S"}</div>
+          {st.scorers && st.scorers.length ? <div style={{ marginTop: 56 }}>
+            <div style={lab}>TOP SCORERS</div>
+            {st.scorers.map((p, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginTop: i ? 10 : 12, fontFamily: COND, fontWeight: 800, fontSize: 32, lineHeight: 1.05 }}>
+                <span style={{ minWidth: 0 }}>{upper(p.name)}</span>
+                <span style={{ color: c.accent, fontSize: 34 }}>{p.goals}</span>
+              </div>
+            ))}
           </div> : null}
         </div>
       ) : null}

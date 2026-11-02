@@ -1464,16 +1464,16 @@ export default function App() {
     let stats = null;
     if (list[0]) {
       const byDate = (a, b) => new Date(b.date) - new Date(a.date);
-      const sr = seasonResults.slice().sort(byDate);
+      const sr = seasonResults.filter(r => compTypeOf(r.competition || "") === "league").slice().sort(byDate);
       const tally = {};
       sr.forEach(r => allScorers(r).forEach(s => { const { name, goals } = parseScorer(s); tally[name] = (tally[name] || 0) + goals; }));
-      const top = Object.entries(tally).sort((a, b) => b[1] - a[1])[0];
+      const top = Object.entries(tally).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 3);
       const key = String(list[0].opp || "").trim().toLowerCase();
       const meets = results.filter(r => String(r.opposition || "").trim().toLowerCase() === key).sort(byDate);
       const last = meets[0];
       stats = {
         form: sr.slice(0, 5).map(r => r.result).reverse(),
-        topScorer: top ? { name: top[0], goals: top[1] } : null,
+        scorers: top.map(([name, goals]) => ({ name, goals })),
         last: last ? { date: new Date(last.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }), score: `${last.homeScore}–${last.awayScore}`, result: last.result } : null,
         record: { w: meets.filter(r => r.result === "W").length, d: meets.filter(r => r.result === "D").length, l: meets.filter(r => r.result === "L").length, n: meets.length },
       };
