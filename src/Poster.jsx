@@ -432,7 +432,8 @@ function PillPoster({ d }) {
             <div style={{ display: "flex", gap: 6, marginTop: 12 }}>{st.form.map(tile)}</div>
           </> : null}
           {st.scorers && st.scorers.length ? <div style={{ marginTop: 56 }}>
-            <div style={lab}>TOP SCORERS</div>
+            <div style={lab}>LEAGUE TOP SCORERS</div>
+            {st.season ? <div style={{ ...lab, fontSize: 18, letterSpacing: 3, color: c.accent, opacity: 1, marginTop: 6 }}>{upper(st.season)} SEASON</div> : null}
             {st.scorers.map((p, i) => (
               <div key={i} style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginTop: i ? 10 : 12, fontFamily: COND, fontWeight: 800, fontSize: 32, lineHeight: 1.05 }}>
                 <span style={{ minWidth: 0 }}>{upper(p.name)}</span>

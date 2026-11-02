@@ -1472,6 +1472,7 @@ export default function App() {
       const meets = results.filter(r => String(r.opposition || "").trim().toLowerCase() === key).sort(byDate);
       const last = meets[0];
       stats = {
+        season: (viewingSeason || activeSeason)?.name || "",
         form: sr.slice(0, 5).map(r => r.result).reverse(),
         scorers: top.map(([name, goals]) => ({ name, goals })),
         last: last ? { date: new Date(last.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }), score: `${last.homeScore}–${last.awayScore}`, result: last.result } : null,
