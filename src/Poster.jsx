@@ -79,6 +79,51 @@ function cornerColour(src) {
     img.src = src;
   });
 }
+// Clears a plain white (or near-white) background that touches the edge of a badge, keeping any white inside it.
+// Resolves to a transparent PNG data URL, or null when there's nothing to clear (or the result would be mostly empty).
+export function cutWhite(src, max = 512) {
+  return new Promise((resolve) => {
+    if (!src || /^data:image\/svg|\.svg(\?|$)/i.test(src)) return resolve(null);
+    const img = new Image(); img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const k = Math.min(1, max / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+        const w = Math.max(1, Math.round((img.naturalWidth || 1) * k)), h = Math.max(1, Math.round((img.naturalHeight || 1) * k));
+        const c = document.createElement("canvas"); c.width = w; c.height = h;
+        const x = c.getContext("2d"); x.drawImage(img, 0, 0, w, h);
+        const im = x.getImageData(0, 0, w, h), px = im.data;
+        const bg = (i) => px[i + 3] < 20 || (px[i] > 232 && px[i + 1] > 232 && px[i + 2] > 232);
+        const seen = new Uint8Array(w * h), stack = [];
+        const push = (X, Y) => { const n = Y * w + X; if (X < 0 || Y < 0 || X >= w || Y >= h || seen[n] || !bg(n * 4)) return; seen[n] = 1; stack.push(n); };
+        for (let X = 0; X < w; X++) { push(X, 0); push(X, h - 1); }
+        for (let Y = 0; Y < h; Y++) { push(0, Y); push(w - 1, Y); }
+        let cleared = 0;
+        while (stack.length) {
+          const n = stack.pop(), X = n % w, Y = (n - X) / w;
+          if (px[n * 4 + 3] > 0) { px[n * 4 + 3] = 0; cleared++; }
+          push(X + 1, Y); push(X - 1, Y); push(X, Y + 1); push(X, Y - 1);
+        }
+        if (cleared < w * h * 0.005 || cleared > w * h * 0.92) return resolve(null);
+        x.putImageData(im, 0, 0);
+        resolve(c.toDataURL("image/png"));
+      } catch (e) { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+// A badge's source with any white background removed (falls back to the original while working or on failure).
+function useCutout(src) {
+  const [out, setOut] = useState(null);
+  useEffect(() => { let on = true; setOut(null); cutWhite(src).then((v) => { if (on) setOut(v); }); return () => { on = false; }; }, [src]);
+  return out || src;
+}
+// Big faded badge behind the Match pill's side strips.
+function Ghost({ src, side, opacity }) {
+  const u = useCutout(src);
+  if (!u || svgSrc(u)) return null;
+  return <img src={u} alt="" style={{ position: "absolute", [side]: -330, top: 330, width: 660, height: 660, objectFit: "contain", opacity }} />;
+}
 function Badge({ src, name, size, c, ring }) {
   const [bg, setBg] = useState(null);
   useEffect(() => { let on = true; setBg(null); cornerColour(src).then((v) => { if (on) setBg(v); }); return () => { on = false; }; }, [src]);
@@ -93,8 +138,9 @@ function Crest({ d, size }) {
   const c = d.colors;
   // SVG crests can't be drawn into the exported image, so those fall back to initials.
   const ok = d.crest && !/^data:image\/svg|\.svg(\?|$)/i.test(d.crest);
+  const cs = useCutout(d.crest);
   return ok
-    ? <img src={d.crest} alt="" style={{ width: size, height: size, objectFit: "contain", flexShrink: 0 }} />
+    ? <img src={cs} alt="" style={{ width: size, height: size, objectFit: "contain", flexShrink: 0 }} />
     : <div style={{ width: size, height: size, borderRadius: size / 2, background: c.accent, color: c.accentInk, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: COND, fontWeight: 800, fontSize: size * 0.4, flexShrink: 0 }}>{initials(d.club)}</div>;
 }
 
@@ -424,7 +470,7 @@ function PillPoster({ d }) {
   const ours = (
     <>
       <div style={{ ...panel(true), background: `linear-gradient(160deg, ${mix(c.accent, c.bg, 0.7)}, ${mix(c.bg, "#000000", 0.35)})` }} />
-      {d.crest && !svgSrc(d.crest) ? <img src={d.crest} alt="" style={{ position: "absolute", left: -330, top: 330, width: 660, height: 660, objectFit: "contain", opacity: 0.22 }} /> : null}
+      <Ghost src={d.crest} side="left" opacity={0.22} />
       {st ? (
         <div style={{ position: "absolute", left: 30, top: 130, width: 235 }}>
           {st.form.length ? <>
@@ -449,7 +495,7 @@ function PillPoster({ d }) {
   const theirs = (
     <>
       <div style={{ ...panel(false), background: `linear-gradient(200deg, ${mix(oc, "#ffffff", 0.12)}, ${mix(oc, "#000000", 0.35)})` }} />
-      {them.logo && !svgSrc(them.logo) ? <img src={them.logo} alt="" style={{ position: "absolute", right: -330, top: 330, width: 660, height: 660, objectFit: "contain", opacity: 0.3 }} /> : null}
+      <Ghost src={them.logo} side="right" opacity={0.3} />
       {st ? (
         <div style={{ position: "absolute", right: 30, top: 130, width: 235, textAlign: "right", color: onOpp }}>
           <div style={lab}>LAST MEETING</div>

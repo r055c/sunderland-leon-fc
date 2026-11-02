@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, uploadIcon, verifyAdminPin, setAdminPin, changeAdminPin, moveExternalImages, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchMatchVideos, insertMatchVideo, deleteMatchVideo, parseYouTubeId, fetchFixtures, insertFixture, updateFixture, deleteFixture, fetchTournamentTables, insertTournamentTable, updateTournamentTable, deleteTournamentTable, fetchClubSettings, saveClubSettings } from "./api.js";
 import { DEFAULT_BADGE } from "./defaultBadge.js";
-import { PosterCanvas, POSTER_LAYOUTS, POSTER_W, POSTER_H, posterColors, findTeamLogo, ensurePosterFonts } from "./Poster.jsx";
+import { PosterCanvas, POSTER_LAYOUTS, POSTER_W, POSTER_H, posterColors, findTeamLogo, ensurePosterFonts, cutWhite } from "./Poster.jsx";
 import { DEFAULT_BRANDING, FONTS, PRESETS, applyBranding, deriveTheme, loadCachedBranding, cacheBranding, contrast } from "./branding.js";
 
 // ── Logo ─────────────────────────────────────────────────
@@ -2917,6 +2917,13 @@ export default function App() {
                       ) : (
                         <>
                           <span style={{ flex: 1, fontSize: 16, fontWeight: 800, color: THEME.navy }}>{t.name}</span>
+                          {t.logo ? <button title="Remove white background from badge" onClick={async () => {
+                            const cut = await cutWhite(t.logo);
+                            if (!cut) { showToast("No white background found to remove"); return; }
+                            const updated = { ...t, logo: cut };
+                            try { await updateTeam(updated); setTeams(prev => prev.map(x => x.id === t.id ? updated : x)); showToast("✅ Background removed"); }
+                            catch (e) { showToast("❌ Couldn't save the badge"); }
+                          }} style={{ background: "#f0f4ff", border: "none", borderRadius: 8, padding: "6px 9px", cursor: "pointer", fontSize: 13 }}>✂️</button> : null}
                           <button onClick={() => { setH2hTeam(t.name); setTeamSearch(t.name); }}
                             style={{ background: "#f0f4ff", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: THEME.sky }}>H2H</button>
                           <button onClick={() => { setEditingTeam(t); setEditingTeamNameVal(t.name); }}
@@ -2929,7 +2936,7 @@ export default function App() {
                   ))}
                   {teams.length === 0 && <p style={{ textAlign: "center", color: "#bbb", fontSize: 14 }}>No teams added yet. Teams are added automatically when you enter results.</p>}
                 </div>
-                <p style={{ textAlign: "center", color: "#bbb", fontSize: 12, marginBottom: 12 }}>Tap the badge icon on any team to upload their logo</p>
+                <p style={{ textAlign: "center", color: "#bbb", fontSize: 12, marginBottom: 12 }}>Tap the badge icon to upload a logo · tap ✂️ to remove a white background</p>
                 <button onClick={() => handleAddTeam(teamSearch || "New Team")}
                   style={{ width: "100%", padding: "13px", background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                   + Add Team Manually
