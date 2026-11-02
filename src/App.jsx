@@ -8,7 +8,9 @@ import { DEFAULT_BRANDING, FONTS, PRESETS, applyBranding, deriveTheme, loadCache
 // ── Logo ─────────────────────────────────────────────────
 
 // Club identity — mutable, filled from the club's branding settings at startup.
-const BRAND = { name: DEFAULT_BRANDING.club_name, short: DEFAULT_BRANDING.short_name, slogan: DEFAULT_BRANDING.slogan, badge: null };
+const BRAND = { name: DEFAULT_BRANDING.club_name, short: DEFAULT_BRANDING.short_name, slogan: DEFAULT_BRANDING.slogan, badge: null, league: null };
+// Poster styles a club has switched on (all of them until it chooses).
+const enabledPosterIds = (b) => (Array.isArray(b.poster_styles) && b.poster_styles.length ? b.poster_styles : POSTER_LAYOUTS.map(l => l.id));
 
 function ClubLogo({ size = 68 }) {
   const [err, setErr] = useState(false);
@@ -561,7 +563,10 @@ function ResultCard({ match, teamName = "Team", compColor = THEME.sky, players =
             <div style={{ color: THEME.white, fontFamily: THEME.display, fontWeight: 600, fontSize: "clamp(12px,3.4vw,14px)", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{match.competition}</div>
             {match.round && <div style={{ color: THEME.sky, fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", marginTop: 2 }}>{match.round}</div>}
           </div>
-          <span style={{ fontFamily: THEME.mono, fontSize: 10, fontWeight: 700, letterSpacing: 1, padding: "5px 12px", borderRadius: 20, background: pillBg, color: THEME.white, flexShrink: 0, whiteSpace: "nowrap" }}>{resultLabel}</span>
+<div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            {BRAND.league && <div style={{ background: "#fff", borderRadius: 6, padding: 3, display: "flex" }}><img src={BRAND.league} alt="" crossOrigin="anonymous" style={{ height: 26, width: "auto", display: "block" }} /></div>}
+                      <span style={{ fontFamily: THEME.mono, fontSize: 10, fontWeight: 700, letterSpacing: 1, padding: "5px 12px", borderRadius: 20, background: pillBg, color: THEME.white, whiteSpace: "nowrap" }}>{resultLabel}</span>
+          </div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 12px 16px", gap: 6 }}>
@@ -741,6 +746,26 @@ function BrandingScreen({ branding, onSave, onBack, showToast }) {
     } catch (err) { showToast("Badge upload failed"); }
     setUploading(false);
   };
+  const leagueInput = useRef();
+  const [uploadingLeague, setUploadingLeague] = useState(false);
+  const pickLeague = async e => {
+    const file = e.target.files?.[0]; e.target.value = "";
+    if (!file) return;
+    setUploadingLeague(true);
+    try { set("league_logo", await uploadImage(file, "branding")); }
+    catch (err) { showToast("Logo upload failed"); }
+    setUploadingLeague(false);
+  };
+  const styleIds = enabledPosterIds(d);
+  const toggleStyle = (l) => {
+    const on = styleIds.includes(l.id);
+    const next = on ? styleIds.filter(x => x !== l.id) : [...styleIds, l.id];
+    if (!POSTER_LAYOUTS.some(x => x.kind === l.kind && next.includes(x.id))) { showToast("Keep at least one style of each type"); return; }
+    set("poster_styles", next);
+  };
+  const sampleFx = [["2026-11-07", "09:25", "A", "Hebburn Town U10 Gold"], ["2026-11-14", "08:30", "H", "New Durham AFC U10"], ["2026-11-21", "08:30", "A", "New Durham AFC U10"], ["2026-11-28", "08:30", "H", "Peterlee Town U10 Gold"]]
+    .map(([dt, time, ha, opp]) => ({ date: new Date(dt + "T00:00:00"), time, ha, opp, logo: null, compLabel: "league", venue: "" }));
+  const sampleD = { club: short, label: (d.poster_label || "").trim(), comp: "league", crest: d.badge_url || DEFAULT_BADGE, motto: d.slogan || "", leagueLogo: d.league_logo || null, monthLabel: "November 2026", monthName: "November", year: 2026, colors: posterColors(t.navy, t.sky), fixtures: sampleFx };
   const [newPin, setNewPin] = useState("");
   const [moving, setMoving] = useState(false);
   const [moveMsg, setMoveMsg] = useState("");
@@ -835,6 +860,19 @@ function BrandingScreen({ branding, onSave, onBack, showToast }) {
         <input ref={fileInput} type="file" accept="image/*" onChange={pickBadge} style={{ display: "none" }} />
       </div>
 
+      <span style={lab}>League logo</span>
+      <div style={{ ...card, display: "flex", alignItems: "center", gap: 12 }}>
+        {d.league_logo
+          ? <img src={d.league_logo} alt="" style={{ width: 52, height: 52, objectFit: "contain", background: "#fff", borderRadius: 8 }} />
+          : <div style={{ width: 52, height: 52, borderRadius: 8, background: THEME.chalk, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>🏆</div>}
+        <div style={{ flex: 1, display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={() => leagueInput.current?.click()} disabled={uploadingLeague} style={{ background: THEME.navy, color: "#fff", border: "none", borderRadius: 10, padding: "9px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>{uploadingLeague ? "Uploading..." : d.league_logo ? "Change" : "Add league logo"}</button>
+          {d.league_logo && <button onClick={() => set("league_logo", null)} style={{ background: "none", border: `1.5px solid ${THEME.ink30}`, borderRadius: 10, padding: "9px 14px", fontSize: 12, color: THEME.ink60, cursor: "pointer", fontFamily: "inherit" }}>Remove</button>}
+        </div>
+        <input ref={leagueInput} type="file" accept="image/*" onChange={pickLeague} style={{ display: "none" }} />
+      </div>
+      <div style={{ fontSize: 11, color: THEME.ink60, marginTop: 6, lineHeight: 1.4 }}>Shown on fixture posters and shared result cards.</div>
+
       <span style={lab}>Club name</span>
       <input style={inp} value={d.club_name} onChange={e => set("club_name", e.target.value)} placeholder="e.g. Riverside United FC" />
       <span style={lab}>Short name</span>
@@ -853,6 +891,27 @@ function BrandingScreen({ branding, onSave, onBack, showToast }) {
         ))}
       </div>
 
+
+      <span style={lab}>Poster styles</span>
+      <div style={{ fontSize: 11, color: THEME.ink60, marginBottom: 8, lineHeight: 1.4 }}>Tick the poster styles your club uses. The poster screen only offers these.</div>
+      <input style={{ ...inp, marginBottom: 10 }} value={d.poster_label || ""} onChange={e => set("poster_label", e.target.value)} placeholder="Team name on posters, e.g. U10 Blue" />
+      <div style={{ display: "grid", gap: 8 }}>
+        {POSTER_LAYOUTS.map(l => {
+          const on = styleIds.includes(l.id);
+          return (
+            <button key={l.id} onClick={() => toggleStyle(l)} style={{ ...card, display: "flex", alignItems: "center", gap: 12, padding: 10, textAlign: "left", cursor: "pointer", fontFamily: "inherit", border: on ? `2px solid ${THEME.skyInk}` : "2px solid transparent" }}>
+              <div style={{ width: 70, height: 88, borderRadius: 6, overflow: "hidden", flexShrink: 0, boxShadow: "0 1px 5px rgba(0,0,0,0.25)" }}>
+                <div style={{ width: POSTER_W, height: POSTER_H, transform: "scale(0.0648)", transformOrigin: "top left", pointerEvents: "none" }}><PosterCanvas layout={l.id} d={sampleD} /></div>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: THEME.navy }}>{l.name}</div>
+                <div style={{ fontSize: 11, color: THEME.ink60, marginTop: 2 }}>{l.kind === "single" ? "Next fixture" : "Month"} · {l.desc}</div>
+              </div>
+              <span style={{ width: 26, height: 26, borderRadius: 7, border: `2px solid ${on ? THEME.skyInk : THEME.ink30}`, background: on ? THEME.skyInk : "transparent", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, flexShrink: 0 }}>{on ? "✓" : ""}</span>
+            </button>
+          );
+        })}
+      </div>
 
       <span style={lab}>Admin PIN</span>
       <div style={{ ...card }}>
@@ -1026,6 +1085,7 @@ export default function App() {
   BRAND.short = branding.short_name || DEFAULT_BRANDING.short_name;
   BRAND.slogan = branding.slogan ?? "";
   BRAND.badge = branding.badge_url || null;
+  BRAND.league = branding.league_logo || null;
   useEffect(() => {
     document.title = BRAND.name;
     const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute("content", THEME.navy);
@@ -1377,17 +1437,20 @@ export default function App() {
   };
   const posterMonths = [...new Set(seasonFixtures.map(f => f.rawDate.slice(0, 7)))];
   const upcomingFixtures = seasonFixtures.filter(f => isoToDate(f.rawDate) >= todayStart());
-  const openPoster = (forceLayout) => {
+  const openPoster = (kind) => {
     if (!seasonFixtures.length) { showToast("Add some fixtures first"); return; }
-    if (forceLayout === "single" && !upcomingFixtures.length) { showToast("No upcoming fixtures"); return; }
+    if (kind === "single" && !upcomingFixtures.length) { showToast("No upcoming fixtures"); return; }
+    const mode = kind === "single" ? "single" : "month";
+    const on = enabledPosterIds(branding);
+    const opts = POSTER_LAYOUTS.filter(l => l.kind === mode && on.includes(l.id));
     let saved = {}; try { saved = JSON.parse(localStorage.getItem("poster_opts") || "{}"); } catch (e) {}
     const nowKey = todayStart().toISOString().slice(0, 7);
     const month = posterMonths.find(k => k >= nowKey) || posterMonths[posterMonths.length - 1];
-    const savedLayout = ["next", "tickets"].includes(saved.layout) ? saved.layout : "next";
-    setPosterModal({ layout: forceLayout === "single" ? "single" : savedLayout, month, club: saved.club || BRAND.short || BRAND.name, label: saved.label ?? (viewingSeason?.age_group || "") });
+    const layout = (opts.find(l => l.id === saved[mode]) || opts[0] || POSTER_LAYOUTS.find(l => l.kind === mode)).id;
+    setPosterModal({ mode, layout, month, club: BRAND.short || BRAND.name, label: (branding.poster_label ?? viewingSeason?.age_group ?? "") });
   };
   const posterData = (m) => {
-    const single = m.layout === "single";
+    const single = m.mode === "single";
     const nextOne = upcomingFixtures[0];
     const [y, mo] = (single && nextOne ? nextOne.rawDate.slice(0, 7) : m.month).split("-").map(Number);
     const mDate = new Date(y, mo - 1, 1);
@@ -1399,7 +1462,7 @@ export default function App() {
     const comps = [...new Set(list.map(f => f.compLabel).filter(Boolean))];
     return {
       comp: comps.length === 1 ? comps[0] : "",
-      club: m.club, label: m.label, crest: BRAND.badge || DEFAULT_BADGE, motto: branding.slogan || "",
+      club: m.club, label: m.label, crest: BRAND.badge || DEFAULT_BADGE, motto: branding.slogan || "", leagueLogo: branding.league_logo || null, leagueName: branding.league_name || "",
       monthLabel: `${mDate.toLocaleDateString("en-GB", { month: "long" })} ${y}`, monthName: mDate.toLocaleDateString("en-GB", { month: "long" }), year: y,
       colors: posterColors(THEME.navy, THEME.sky), fixtures: list.slice(0, 8), total: list.length,
     };
@@ -1408,19 +1471,19 @@ export default function App() {
     if (!posterRef.current || !posterModal) return;
     setPosterBusy(true);
     try {
-      try { localStorage.setItem("poster_opts", JSON.stringify({ layout: posterModal.layout === "single" ? (JSON.parse(localStorage.getItem("poster_opts") || "{}").layout || "next") : posterModal.layout, club: posterModal.club, label: posterModal.label })); } catch (e) {}
+      try { const o = JSON.parse(localStorage.getItem("poster_opts") || "{}"); o[posterModal.mode] = posterModal.layout; localStorage.setItem("poster_opts", JSON.stringify(o)); } catch (e) {}
       await ensurePosterFonts();
       const h2c = await loadHtml2Canvas();
       const canvas = await h2c(posterRef.current, { scale: 2, width: POSTER_W, height: POSTER_H, backgroundColor: null, useCORS: true, logging: false });
       const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.92));
-      const name = posterModal.layout === "single" ? `next-fixture-${(upcomingFixtures[0]?.rawDate || posterModal.month)}.jpg` : `fixtures-${posterModal.month}.jpg`;
+      const name = posterModal.mode === "single" ? `next-fixture-${(upcomingFixtures[0]?.rawDate || posterModal.month)}.jpg` : `fixtures-${posterModal.month}.jpg`;
       const file = new File([blob], name, { type: "image/jpeg" });
       if (share && navigator.canShare && navigator.canShare({ files: [file] })) {
         try { await navigator.share({ files: [file], title: posterModal.club }); setPosterBusy(false); return; } catch (e) { if (e && e.name === "AbortError") { setPosterBusy(false); return; } }
       }
       const a = document.createElement("a"); a.download = name; a.href = URL.createObjectURL(blob); a.click();
       showToast("📸 Poster saved");
-    } catch (e) { showToast("❌ Couldn't make the poster"); }
+    } catch (e) { console.error("poster export failed", e); showToast("❌ Couldn't make the poster"); }
     setPosterBusy(false);
   };
 
@@ -3527,7 +3590,7 @@ export default function App() {
                 <button onClick={() => setPosterModal(null)} style={{ background: "#f0f0f0", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
               </div>
               <div style={{ display: "flex", gap: 10 }}>
-                {m.layout !== "single" && <div style={{ flex: 1 }}>
+                {m.mode !== "single" && <div style={{ flex: 1 }}>
                   <label style={lab}>Month</label>
                   <select value={m.month} onChange={e => set("month", e.target.value)} style={inp}>
                     {posterMonths.map(k => { const [y, mo] = k.split("-").map(Number); return <option key={k} value={k}>{new Date(y, mo - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</option>; })}
@@ -3536,7 +3599,7 @@ export default function App() {
                 <div style={{ flex: 1 }}>
                   <label style={lab}>Layout</label>
                   <select value={m.layout} onChange={e => set("layout", e.target.value)} style={inp}>
-                    {POSTER_LAYOUTS.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    {POSTER_LAYOUTS.filter(l => l.kind === m.mode && enabledPosterIds(branding).includes(l.id)).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                   </select>
                 </div>
               </div>

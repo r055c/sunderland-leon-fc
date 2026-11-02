@@ -1,12 +1,17 @@
 // Fixtures poster: four 1080x1350 (4:5) layouts, drawn with plain inline styles so html2canvas can export them.
 // Nothing club-specific is hard-coded: names, crest, colours, label and motto all arrive through `d`.
+import React, { useState, useEffect } from "react";
 import { mix, contrast } from "./branding.js";
 
 export const POSTER_W = 1080, POSTER_H = 1350;
+// kind "month" = a whole month of games; "single" = just the next fixture.
 export const POSTER_LAYOUTS = [
-  { id: "next", name: "Next up + coming up" },
-  { id: "tickets", name: "Matchday tickets" },
-  { id: "single", name: "Next fixture only" },
+  { id: "grid", kind: "month", name: "Weekend grid", desc: "Opposition badges across the top, centred list" },
+  { id: "table", kind: "month", name: "Fixtures table", desc: "Date headers and striped rows" },
+  { id: "next", kind: "month", name: "Next up + coming up", desc: "Next game in a big card, the rest below" },
+  { id: "tickets", kind: "month", name: "Matchday tickets", desc: "One ticket per game" },
+  { id: "pill", kind: "single", name: "Match pill", desc: "Next fixture, white panel between the two sides" },
+  { id: "single", kind: "single", name: "Next fixture card", desc: "Next fixture, big date and badges" },
 ];
 const COND = "'Barlow Condensed', 'Arial Narrow', sans-serif";
 const BODY = "'Barlow', system-ui, sans-serif";
@@ -81,6 +86,49 @@ function sides(f, d) {
   return f.ha === "A" ? [them, us] : [us, them];
 }
 
+// The league's logo on a white chip (logo files usually have a white background).
+const svgSrc = (u) => /^data:image\/svg|\.svg(\?|$)/i.test(u || "");
+function LeagueChip({ d, h }) {
+  if (!d.leagueLogo || svgSrc(d.leagueLogo)) return null;
+  return <div style={{ background: "#ffffff", borderRadius: 16, padding: 8, display: "flex", flexShrink: 0 }}><img src={d.leagueLogo} alt="" style={{ height: h, width: "auto", display: "block" }} /></div>;
+}
+
+// Rough "main colour" of a badge, used to tint the opposition's side of the pill poster.
+function dominantColour(src) {
+  return new Promise((resolve) => {
+    if (!src) return resolve(null);
+    const img = new Image(); img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const c = document.createElement("canvas"); c.width = c.height = 32;
+        const x = c.getContext("2d"); x.drawImage(img, 0, 0, 32, 32);
+        const px = x.getImageData(0, 0, 32, 32).data, buckets = {};
+        for (let i = 0; i < px.length; i += 4) {
+          const [r, g, b, a] = [px[i], px[i + 1], px[i + 2], px[i + 3]];
+          if (a < 200) continue;
+          const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+          if (mx > 235 && mn > 215) continue; // white
+          if (mx < 40) continue;              // black outline
+          if (mx - mn < 28) continue;         // grey
+          const k = [r, g, b].map((v) => Math.round(v / 48) * 48).join(",");
+          (buckets[k] = buckets[k] || { n: 0, r: 0, g: 0, b: 0 }); const o = buckets[k]; o.n++; o.r += r; o.g += g; o.b += b;
+        }
+        const best = Object.values(buckets).sort((p, q) => q.n - p.n)[0];
+        if (!best || best.n < 12) return resolve(null);
+        const h = (v) => Math.round(v / best.n).toString(16).padStart(2, "0");
+        resolve("#" + h(best.r) + h(best.g) + h(best.b));
+      } catch (e) { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+function useColour(src) {
+  const [c, setC] = useState(null);
+  useEffect(() => { let on = true; dominantColour(src).then((v) => { if (on) setC(v); }); return () => { on = false; }; }, [src]);
+  return c;
+}
+
 // Crest + club name/team on the left, month and year on the right (shared by the "next" posters).
 function Head({ d, comp }) {
   const c = d.colors;
@@ -93,9 +141,12 @@ function Head({ d, comp }) {
           {(d.label || comp) ? <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 26, letterSpacing: 4, color: c.accent }}>{[upper(d.label), upper(comp)].filter(Boolean).join(" · ")}</div> : null}
         </div>
       </div>
-      <div style={{ textAlign: "right" }}>
-        <div style={{ fontFamily: COND, fontWeight: 800, fontSize: 64, lineHeight: 1 }}>{upper(d.monthName)}</div>
-        <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 26, letterSpacing: 4, color: c.accent }}>{d.year}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+        <LeagueChip d={d} h={84} />
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontFamily: COND, fontWeight: 800, fontSize: 64, lineHeight: 1 }}>{upper(d.monthName)}</div>
+          <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 26, letterSpacing: 4, color: c.accent }}>{d.year}</div>
+        </div>
       </div>
     </div>
   );
@@ -118,7 +169,7 @@ function TicketPoster({ d }) {
           <h1 style={{ margin: 0, fontFamily: COND, fontWeight: 800, fontSize: 170, lineHeight: 0.88, letterSpacing: 1 }}>MATCHDAY</h1>
           <div style={{ marginTop: 10 }}><Sub d={d} /></div>
         </div>
-        <Crest d={d} size={130} />
+        <div style={{ display: "flex", alignItems: "center", gap: 22 }}><LeagueChip d={d} h={90} /><Crest d={d} size={130} /></div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 18, flexGrow: 1, minHeight: 0 }}>
         {d.fixtures.map((f, i) => {
@@ -255,9 +306,126 @@ function SinglePoster({ d }) {
   );
 }
 
+// ── grid: opposition badges across the top, centred "Home v Away" list ──
+function GridPoster({ d }) {
+  const c = d.colors, n = d.fixtures.length, k = kFor(n);
+  const seen = new Set(), badges = [];
+  d.fixtures.forEach((f) => { const key = f.opp; if (!seen.has(key)) { seen.add(key); badges.push(f); } });
+  const bs = badges.length + 1 > 5 ? 150 : 190;
+  return (
+    <div style={{ width: POSTER_W, height: POSTER_H, boxSizing: "border-box", background: `linear-gradient(170deg, ${mix(c.accent, c.bg, 0.78)} 0%, ${c.bg} 78%)`, color: "#fff", fontFamily: BODY, padding: "64px 60px 44px", display: "flex", flexDirection: "column", textAlign: "center", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", left: -60, top: 380, fontFamily: COND, fontWeight: 800, fontSize: 290, lineHeight: 0.9, color: "transparent", WebkitTextStroke: `3px ${c.accent}2e`, whiteSpace: "nowrap" }}>{upper(d.monthName)}<br />FIXTURES</div>
+      <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 36, position: "relative" }}>
+        <Crest d={d} size={bs} />
+        {badges.slice(0, 9).map((f, i) => <Badge key={i} src={f.logo} name={f.opp} size={bs} c={c} />)}
+      </div>
+      <div style={{ position: "relative", fontFamily: COND, fontWeight: 800, fontSize: 112, lineHeight: 1, marginTop: 56 }}>{upper(d.monthName)} FIXTURES</div>
+      <div style={{ position: "relative", fontFamily: COND, fontWeight: 700, fontSize: 32, letterSpacing: 5, color: c.accent, marginTop: 12 }}>{[upper(d.club), upper(d.label), upper(d.comp)].filter(Boolean).join(" · ")}</div>
+      <div style={{ position: "relative", flexGrow: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 34 * k }}>
+        {d.fixtures.map((f, i) => {
+          const [L, R] = sides(f, d);
+          const nm = (s) => (s.ours ? s.name : s.name + (s.sub ? "" : ""));
+          const line = `${nm(L)} v ${nm(R)}`;
+          return (
+            <div key={i}>
+              <div style={{ fontFamily: COND, fontWeight: 600, fontSize: nameSize(line, 58 * k), lineHeight: 1, whiteSpace: "nowrap" }}>{L.name} <span style={{ color: c.accent, fontSize: "0.7em" }}>v</span> {R.name}</div>
+              <div style={{ fontFamily: COND, fontWeight: 600, fontSize: 24 * k + 2, letterSpacing: 4, marginTop: 8, color: mix("#ffffff", c.accent, 0.25) }}>{dayName(f.date)} {f.date.getDate()} {monthName(f.date)}, {f.time || "TBC"}{f.ha ? ` · ${f.ha === "A" ? "AWAY" : "HOME"}` : ""}</div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: d.leagueLogo ? "space-between" : "center", minHeight: 70 }}>
+        <LeagueChip d={d} h={64} />
+        {d.motto ? <div style={{ fontFamily: COND, fontWeight: 600, fontSize: 24, letterSpacing: 5, color: c.accent }}>{upper(d.motto)}</div> : null}
+      </div>
+    </div>
+  );
+}
+
+// ── table: date headers and striped rows, like a broadcaster's fixture list ──
+function TablePoster({ d }) {
+  const c = d.colors, n = d.fixtures.length, k = kFor(n);
+  const ink = c.bg;
+  return (
+    <div style={{ width: POSTER_W, height: POSTER_H, boxSizing: "border-box", background: `linear-gradient(170deg, ${mix(c.accent, c.bg, 0.78)} 0%, ${c.bg} 78%)`, color: "#fff", fontFamily: BODY, padding: "58px 50px 40px", display: "flex", flexDirection: "column", gap: 34 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 26, padding: "0 10px" }}>
+        <Crest d={d} size={120} />
+        <div style={{ flexGrow: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: COND, fontWeight: 800, fontSize: 88, lineHeight: 0.95 }}>FIXTURES</div>
+          <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 26, letterSpacing: 4, color: c.accent }}>{[upper(d.club), upper(d.label), upper(d.monthLabel)].filter(Boolean).join(" · ")}</div>
+        </div>
+        <LeagueChip d={d} h={110} />
+      </div>
+      <div style={{ background: "#fff", borderRadius: 26, overflow: "hidden", color: ink, display: "flex", flexDirection: "column", flexGrow: 1, minHeight: 0, maxHeight: 1000 }}>
+        {d.fixtures.map((f, i) => {
+          const [L, R] = sides(f, d);
+          const piece = (s) => (s.ours ? <Crest d={d} size={80 * k} /> : <Badge src={s.logo} name={f.opp} size={80 * k} c={c} />);
+          return (
+            <div key={i} style={{ display: "flex", flexDirection: "column", flex: "1 1 0", minHeight: 0, background: i % 2 ? "#ffffff" : "#eef1f7" }}>
+              <div style={{ textAlign: "center", fontFamily: COND, fontWeight: 700, fontSize: 30 * k + 2, letterSpacing: 1, padding: "14px 0 0" }}>{dayName(f.date)[0] + dayName(f.date).slice(1).toLowerCase()} {f.date.getDate()} {monthName(f.date)[0] + monthName(f.date).slice(1).toLowerCase()}</div>
+              <div style={{ display: "flex", alignItems: "center", flexGrow: 1, padding: "0 22px" }}>
+                <div style={{ flex: 1, minWidth: 0, textAlign: "right", paddingRight: 8, fontFamily: COND, fontWeight: 800, fontSize: nameSize(L.name, 46 * k), lineHeight: 1 }}>{L.name}</div>
+                <div style={{ width: 100, display: "flex", justifyContent: "center" }}>{piece(L)}</div>
+                <div style={{ width: 150, textAlign: "center", fontFamily: COND, fontWeight: 800, fontSize: 56 * k }}>{f.time || "TBC"}</div>
+                <div style={{ width: 100, display: "flex", justifyContent: "center" }}>{piece(R)}</div>
+                <div style={{ flex: 1, minWidth: 0, paddingLeft: 8, fontFamily: COND, fontWeight: 800, fontSize: nameSize(R.name, 46 * k), lineHeight: 1 }}>{R.name}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <Footer d={d} />
+    </div>
+  );
+}
+
+// ── pill: next fixture, white panel between the two sides ──
+function PillPoster({ d }) {
+  const c = d.colors, f = d.fixtures[0];
+  const oppCol = useColour(f && f.logo);
+  if (!f) return <div style={{ width: POSTER_W, height: POSTER_H, background: c.bg }} />;
+  const [L, R] = sides(f, d);
+  const us = L.ours ? L : R, them = L.ours ? R : L;
+  const oc = oppCol || c.accent;
+  const onOpp = contrast(oc, "#ffffff") >= 3 ? "#ffffff" : "#0b1320";
+  const away = f.ha === "A";
+  const panel = (left) => ({ position: "absolute", top: 0, [left ? "left" : "right"]: 0, width: 560, height: POSTER_H });
+  const ours = (
+    <>
+      <div style={{ ...panel(true), background: `linear-gradient(160deg, ${mix(c.accent, c.bg, 0.7)}, ${mix(c.bg, "#000000", 0.35)})` }} />
+      <div style={{ position: "absolute", left: 50, bottom: 60, fontFamily: COND, fontWeight: 800, fontSize: nameSize(us.name, 46), lineHeight: 1, maxWidth: 380 }}>{us.name}{us.sub ? <div style={{ fontWeight: 700, fontSize: 24, letterSpacing: 5, color: c.accent, marginTop: 4 }}>{us.sub}</div> : null}</div>
+    </>
+  );
+  const theirs = (
+    <>
+      <div style={{ ...panel(false), background: `linear-gradient(200deg, ${mix(oc, "#ffffff", 0.12)}, ${mix(oc, "#000000", 0.35)})` }} />
+      <div style={{ position: "absolute", right: 50, bottom: 60, textAlign: "right", color: onOpp, fontFamily: COND, fontWeight: 800, fontSize: nameSize(them.name, 46), lineHeight: 1, maxWidth: 380 }}>{them.name}{them.sub ? <div style={{ fontWeight: 700, fontSize: 24, letterSpacing: 5, marginTop: 4, opacity: 0.85 }}>{them.sub}</div> : null}</div>
+    </>
+  );
+  return (
+    <div style={{ width: POSTER_W, height: POSTER_H, boxSizing: "border-box", background: c.bg, color: "#fff", fontFamily: BODY, position: "relative", overflow: "hidden" }}>
+      {ours}{theirs}
+      <div style={{ position: "absolute", left: 290, top: 70, width: 500, height: 1110, background: "#ffffff", borderRadius: 90, color: c.bg, textAlign: "center", padding: "50px 0", boxSizing: "border-box", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-evenly" }}>
+        {d.leagueLogo && !svgSrc(d.leagueLogo)
+          ? <img src={d.leagueLogo} alt="" style={{ height: 130, width: "auto" }} />
+          : <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 32, letterSpacing: 6, color: c.bg, opacity: 0.7 }}>{upper(f.compLabel)}</div>}
+        <Crest d={d} size={210} />
+        <div style={{ fontFamily: COND, fontWeight: 800, fontSize: 70, lineHeight: 1 }}>V</div>
+        <div style={{ width: 210, height: 210, borderRadius: 105, border: "6px solid #e8edf4", boxSizing: "border-box" }}><Badge src={them.logo} name={f.opp} size={198} c={c} /></div>
+        <div style={{ fontFamily: COND, fontWeight: 800, fontSize: 62, lineHeight: 1 }}>{dayName(f.date)}</div>
+        <div style={{ fontFamily: COND, fontWeight: 800, fontSize: 84, lineHeight: 1, color: mix(c.bg, c.accent, 0.35) }}>{f.time || "TBC"}</div>
+        <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 26, letterSpacing: 5 }}>{f.date.getDate()} {upper(monthName(f.date))}{f.ha ? ` · ${away ? "AWAY" : "HOME"}` : ""}</div>
+      </div>
+    </div>
+  );
+}
+
 export function PosterCanvas({ layout, d }) {
   if (layout === "tickets") return <TicketPoster d={d} />;
   if (layout === "single") return <SinglePoster d={d} />;
+  if (layout === "grid") return <GridPoster d={d} />;
+  if (layout === "table") return <TablePoster d={d} />;
+  if (layout === "pill") return <PillPoster d={d} />;
   return <NextPoster d={d} />;
 }
 

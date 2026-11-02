@@ -21,7 +21,7 @@ export const PRESETS = [
 ];
 export const DEFAULT_BRANDING = {
   club_name: "My Club FC", short_name: "My Club", slogan: "",
-  primary_color: "#12172e", accent_color: "#5fb2d9", font_pairing: "classic", badge_url: null,
+  primary_color: "#12172e", accent_color: "#5fb2d9", font_pairing: "classic", badge_url: null, league_logo: null, league_name: "", poster_styles: null, poster_label: null,
 };
 
 // Returns the theme tokens derived from the chosen colours.
