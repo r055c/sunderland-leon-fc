@@ -4,10 +4,9 @@ import { mix, contrast } from "./branding.js";
 
 export const POSTER_W = 1080, POSTER_H = 1350;
 export const POSTER_LAYOUTS = [
-  { id: "list", name: "Fixtures list" },
+  { id: "next", name: "Next up + coming up" },
   { id: "tickets", name: "Matchday tickets" },
-  { id: "next", name: "Next up" },
-  { id: "clean", name: "List, centred title" },
+  { id: "single", name: "Next fixture only" },
 ];
 const COND = "'Barlow Condensed', 'Arial Narrow', sans-serif";
 const BODY = "'Barlow', system-ui, sans-serif";
@@ -41,6 +40,14 @@ export function findTeamLogo(teams, name) {
 
 const initials = (name) => words(name).slice(0, 2).map((x) => x[0]).join("").toUpperCase() || "?";
 const upper = (s) => String(s || "").toUpperCase();
+// Split "Hebburn Town (Juniors) U10 Gold" into the club name and its age/team ("U10 GOLD").
+export function oppParts(name) {
+  const s = String(name || "").replace(/\([^)]*\)/g, " ").replace(/\s+/g, " ").trim();
+  const m = /\b(u\d{1,2})\b(?:\s+([a-z]+))?\s*$/i.exec(s);
+  if (!m) return { name: s || String(name || ""), sub: "" };
+  const base = s.slice(0, m.index).replace(/\b(juniors?|youth|jfc)\s*$/i, "").trim();
+  return { name: base || s, sub: [m[1], m[2]].filter(Boolean).join(" ").toUpperCase() };
+}
 const dayName = (d) => d.toLocaleDateString("en-GB", { weekday: "long" }).toUpperCase();
 const monthName = (d) => d.toLocaleDateString("en-GB", { month: "long" }).toUpperCase();
 
@@ -69,8 +76,29 @@ const nameSize = (txt, base) => (txt.length <= 15 ? base : txt.length <= 22 ? ba
 // The two sides of a fixture, home team first.
 function sides(f, d) {
   const us = { name: upper(d.club), sub: upper(d.label), logo: d.crest, ours: true };
-  const them = { name: upper(f.opp), sub: upper(f.venue || ""), logo: f.logo, ours: false };
+  const p = oppParts(f.opp);
+  const them = { name: upper(p.name), sub: p.sub, logo: f.logo, ours: false };
   return f.ha === "A" ? [them, us] : [us, them];
+}
+
+// Crest + club name/team on the left, month and year on the right (shared by the "next" posters).
+function Head({ d, comp }) {
+  const c = d.colors;
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
+        <Crest d={d} size={110} />
+        <div>
+          <div style={{ fontFamily: COND, fontWeight: 800, fontSize: 64, lineHeight: 1 }}>{upper(d.club)}</div>
+          {(d.label || comp) ? <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 26, letterSpacing: 4, color: c.accent }}>{[upper(d.label), upper(comp)].filter(Boolean).join(" · ")}</div> : null}
+        </div>
+      </div>
+      <div style={{ textAlign: "right" }}>
+        <div style={{ fontFamily: COND, fontWeight: 800, fontSize: 64, lineHeight: 1 }}>{upper(d.monthName)}</div>
+        <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 26, letterSpacing: 4, color: c.accent }}>{d.year}</div>
+      </div>
+    </div>
+  );
 }
 
 const Footer = ({ d, color }) => (
@@ -79,58 +107,6 @@ const Footer = ({ d, color }) => (
 const Sub = ({ d }) => (
   <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 30, letterSpacing: 5, color: d.colors.accent, whiteSpace: "nowrap" }}>{upper(d.monthLabel)}{d.label ? ` · ${upper(d.club)} ${upper(d.label)}` : ` · ${upper(d.club)}`}</div>
 );
-
-// ── 1 & 4: list ──
-function ListPoster({ d, centred }) {
-  const c = d.colors, k = kFor(d.fixtures.length);
-  return (
-    <div style={{ width: POSTER_W, height: POSTER_H, boxSizing: "border-box", background: c.bg, color: "#fff", fontFamily: BODY, padding: "60px 64px 48px", display: "flex", flexDirection: "column", gap: 26, position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "absolute", right: -140, top: 150, width: 520, height: 130, background: `${c.accent}29`, transform: "rotate(-35deg)" }} />
-      <div style={{ position: "absolute", right: -140, top: 190, width: 520, height: 60, background: `${c.accent}52`, transform: "rotate(-35deg)" }} />
-      {centred ? (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, position: "relative" }}>
-          <h1 style={{ margin: 0, fontFamily: COND, fontWeight: 800, fontSize: 150, lineHeight: 0.9, letterSpacing: 2 }}>FIXTURES</h1>
-          <Sub d={d} />
-        </div>
-      ) : (
-        <div style={{ display: "flex", alignItems: "center", gap: 30, position: "relative" }}>
-          <Crest d={d} size={140} />
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <h1 style={{ margin: 0, fontFamily: COND, fontWeight: 800, fontSize: 150, lineHeight: 0.9, letterSpacing: 1 }}>FIXTURES</h1>
-            <Sub d={d} />
-          </div>
-        </div>
-      )}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, flexGrow: 1, position: "relative", minHeight: 0 }}>
-        {d.fixtures.map((f, i) => {
-          const [L, R] = sides(f, d);
-          return (
-            <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8, flex: "1 1 0", minHeight: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-                <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 28 * k + 2, letterSpacing: 4, color: c.accent, whiteSpace: "nowrap" }}>{dayName(f.date)} {f.date.getDate()} {monthName(f.date)}</div>
-                <div style={{ height: 2, background: c.rule, flexGrow: 1 }} />
-              </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, background: c.card, borderRadius: 22, flex: "1 1 0", minHeight: 0, padding: "0 24px", maxHeight: 250 }}>
-                <div style={{ width: 270, textAlign: "right" }}>
-                  <div style={{ fontFamily: COND, fontWeight: 700, fontSize: nameSize(L.name, 40 * k), lineHeight: 1 }}>{L.name}</div>
-                  {L.sub ? <div style={{ fontSize: 20 * k, letterSpacing: 3, color: c.muted, marginTop: 4 }}>{L.sub}</div> : null}
-                </div>
-                {L.ours ? <Crest d={d} size={92 * k} /> : <Badge src={L.logo} name={f.opp} size={92 * k} c={c} />}
-                <div style={{ width: 170, height: 84 * k, background: c.accent, color: c.accentInk, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: COND, fontWeight: 800, fontSize: 62 * k, flexShrink: 0 }}>{f.time || "TBC"}</div>
-                {R.ours ? <Crest d={d} size={92 * k} /> : <Badge src={R.logo} name={f.opp} size={92 * k} c={c} />}
-                <div style={{ width: 270 }}>
-                  <div style={{ fontFamily: COND, fontWeight: 700, fontSize: nameSize(R.name, 40 * k), lineHeight: 1 }}>{R.name}</div>
-                  {R.sub ? <div style={{ fontSize: 20 * k, letterSpacing: 3, color: c.muted, marginTop: 4 }}>{R.sub}</div> : null}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <Footer d={d} />
-    </div>
-  );
-}
 
 // ── 3: matchday tickets ──
 function TicketPoster({ d }) {
@@ -191,19 +167,7 @@ function NextPoster({ d }) {
   );
   return (
     <div style={{ width: POSTER_W, height: POSTER_H, boxSizing: "border-box", background: c.bg, color: "#fff", fontFamily: BODY, padding: "64px 64px 48px", display: "flex", flexDirection: "column", gap: 28 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
-          <Crest d={d} size={104} />
-          <div>
-            <div style={{ fontFamily: COND, fontWeight: 800, fontSize: 60, lineHeight: 1 }}>{upper(d.club)}</div>
-            {d.label ? <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 24, letterSpacing: 4, color: c.accent }}>{upper(d.label)}</div> : null}
-          </div>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontFamily: COND, fontWeight: 800, fontSize: 60, lineHeight: 1 }}>{upper(d.monthName)}</div>
-          <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 24, letterSpacing: 4, color: c.accent }}>{d.year}</div>
-        </div>
-      </div>
+      <Head d={d} comp={d.comp} />
       {first && (
         <div style={{ background: mix(c.card, c.accent, 0.12), borderRadius: 28, padding: "36px 40px", display: "flex", flexDirection: "column", gap: 20, position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", top: -40, left: 440, width: 150, height: 700, background: `${c.accent}1a`, transform: "rotate(25deg)" }} />
@@ -235,8 +199,8 @@ function NextPoster({ d }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 22, padding: "0 32px 0 24px", flexGrow: 1, minWidth: 0 }}>
                   <Badge src={f.logo} name={f.opp} size={76 * k} c={c} />
                   <div style={{ flexGrow: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: COND, fontWeight: 800, fontSize: nameSize(upper(f.opp), 44 * k), lineHeight: 1 }}>{upper(f.opp)}</div>
-                    <div style={{ fontFamily: COND, fontWeight: 600, fontSize: 22, letterSpacing: 3, color: c.muted }}>{[upper(f.compLabel), f.ha ? (f.ha === "A" ? "AWAY" : "HOME") : "", upper(f.venue || "")].filter(Boolean).join(" · ")}</div>
+                    <div style={{ fontFamily: COND, fontWeight: 800, fontSize: nameSize(upper(oppParts(f.opp).name), 44 * k), lineHeight: 1 }}>{upper(oppParts(f.opp).name)}</div>
+                    <div style={{ fontFamily: COND, fontWeight: 600, fontSize: 22, letterSpacing: 3, color: c.muted }}>{[oppParts(f.opp).sub || upper(f.compLabel), f.ha ? (f.ha === "A" ? "AWAY" : "HOME") : "", upper(f.venue || "")].filter(Boolean).join(" · ")}</div>
                   </div>
                   <div style={{ fontFamily: COND, fontWeight: 800, fontSize: 54 * k }}>{f.time || "TBC"}</div>
                 </div>
@@ -251,10 +215,50 @@ function NextPoster({ d }) {
   );
 }
 
+// ── single: just the next fixture ──
+function SinglePoster({ d }) {
+  const c = d.colors, f = d.fixtures[0];
+  if (!f) return <div style={{ width: POSTER_W, height: POSTER_H, background: c.bg }} />;
+  const [L, R] = sides(f, d);
+  const side = (s) => (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18, width: 400 }}>
+      {s.ours ? <Crest d={d} size={300} /> : <Badge src={s.logo} name={f.opp} size={300} c={c} />}
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontFamily: COND, fontWeight: 800, fontSize: nameSize(s.name, 66), lineHeight: 1 }}>{s.name}</div>
+        {s.sub ? <div style={{ fontFamily: COND, fontWeight: 600, fontSize: 30, letterSpacing: 5, color: c.accent, marginTop: 6 }}>{s.sub}</div> : null}
+      </div>
+    </div>
+  );
+  return (
+    <div style={{ width: POSTER_W, height: POSTER_H, boxSizing: "border-box", background: c.bg, color: "#fff", fontFamily: BODY, padding: "64px 64px 48px", display: "flex", flexDirection: "column", gap: 28 }}>
+      <Head d={d} comp={f.compLabel} />
+      <div style={{ flexGrow: 1, background: mix(c.card, c.accent, 0.12), borderRadius: 28, padding: "44px 40px", display: "flex", flexDirection: "column", justifyContent: "space-between", position: "relative", overflow: "hidden", minHeight: 0 }}>
+        <div style={{ position: "absolute", top: -40, left: 460, width: 170, height: 1300, background: `${c.accent}1a`, transform: "rotate(25deg)" }} />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative" }}>
+          <div style={{ background: c.accent, color: c.accentInk, borderRadius: 8, padding: "8px 22px", fontFamily: COND, fontWeight: 800, fontSize: 32, letterSpacing: 6 }}>NEXT UP</div>
+          <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 32, letterSpacing: 5, color: c.muted }}>{f.ha ? (f.ha === "A" ? "AWAY" : "HOME") : upper(f.compLabel)}</div>
+        </div>
+        <div style={{ textAlign: "center", position: "relative" }}>
+          <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 42, letterSpacing: 8, color: c.accent }}>{dayName(f.date)}</div>
+          <div style={{ fontFamily: COND, fontWeight: 800, fontSize: 128, lineHeight: 0.95, whiteSpace: "nowrap" }}>{f.date.getDate()} {monthName(f.date)}</div>
+          <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 56, letterSpacing: 5, marginTop: 6 }}>KICK-OFF {f.time || "TBC"}</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative" }}>
+          {side(L)}
+          <div style={{ fontFamily: COND, fontWeight: 800, fontStyle: "italic", fontSize: 96, color: c.accent }}>VS</div>
+          {side(R)}
+        </div>
+        <div style={{ textAlign: "center", fontFamily: COND, fontWeight: 600, fontSize: 28, letterSpacing: 5, color: c.muted, position: "relative", minHeight: 34 }}>{upper(f.venue || "")}</div>
+      </div>
+      <Footer d={d} />
+    </div>
+  );
+}
+
 export function PosterCanvas({ layout, d }) {
   if (layout === "tickets") return <TicketPoster d={d} />;
-  if (layout === "next") return <NextPoster d={d} />;
-  return <ListPoster d={d} centred={layout === "clean"} />;
+  if (layout === "single") return <SinglePoster d={d} />;
+  return <NextPoster d={d} />;
 }
 
 // Barlow isn't part of the app's own fonts, so load it before drawing a poster.

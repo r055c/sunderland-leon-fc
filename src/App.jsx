@@ -1376,22 +1376,29 @@ export default function App() {
     catch (e) { showToast("❌ Couldn't delete it"); }
   };
   const posterMonths = [...new Set(seasonFixtures.map(f => f.rawDate.slice(0, 7)))];
-  const openPoster = () => {
+  const upcomingFixtures = seasonFixtures.filter(f => isoToDate(f.rawDate) >= todayStart());
+  const openPoster = (forceLayout) => {
     if (!seasonFixtures.length) { showToast("Add some fixtures first"); return; }
+    if (forceLayout === "single" && !upcomingFixtures.length) { showToast("No upcoming fixtures"); return; }
     let saved = {}; try { saved = JSON.parse(localStorage.getItem("poster_opts") || "{}"); } catch (e) {}
     const nowKey = todayStart().toISOString().slice(0, 7);
     const month = posterMonths.find(k => k >= nowKey) || posterMonths[posterMonths.length - 1];
-    setPosterModal({ layout: saved.layout || "list", month, club: saved.club || BRAND.short || BRAND.name, label: saved.label ?? (viewingSeason?.age_group || "") });
+    const savedLayout = ["next", "tickets"].includes(saved.layout) ? saved.layout : "next";
+    setPosterModal({ layout: forceLayout === "single" ? "single" : savedLayout, month, club: saved.club || BRAND.short || BRAND.name, label: saved.label ?? (viewingSeason?.age_group || "") });
   };
   const posterData = (m) => {
-    const [y, mo] = m.month.split("-").map(Number);
+    const single = m.layout === "single";
+    const nextOne = upcomingFixtures[0];
+    const [y, mo] = (single && nextOne ? nextOne.rawDate.slice(0, 7) : m.month).split("-").map(Number);
     const mDate = new Date(y, mo - 1, 1);
-    let list = seasonFixtures.filter(f => f.rawDate.startsWith(m.month)).map(f => ({
+    let list = (single ? upcomingFixtures.slice(0, 1) : seasonFixtures.filter(f => f.rawDate.startsWith(m.month))).map(f => ({
       date: isoToDate(f.rawDate), time: f.kickoff_time || "", ha: f.home_away || null, opp: f.opposition,
       logo: findTeamLogo(teams, f.opposition), compLabel: compTypeOf(f.competition || ""), venue: f.venue || "",
     }));
     if (m.layout === "next") { const i = list.findIndex(f => f.date >= todayStart()); list = list.slice(i < 0 ? 0 : i); }
+    const comps = [...new Set(list.map(f => f.compLabel).filter(Boolean))];
     return {
+      comp: comps.length === 1 ? comps[0] : "",
       club: m.club, label: m.label, crest: BRAND.badge || DEFAULT_BADGE, motto: branding.slogan || "",
       monthLabel: `${mDate.toLocaleDateString("en-GB", { month: "long" })} ${y}`, monthName: mDate.toLocaleDateString("en-GB", { month: "long" }), year: y,
       colors: posterColors(THEME.navy, THEME.sky), fixtures: list.slice(0, 8), total: list.length,
@@ -1401,12 +1408,12 @@ export default function App() {
     if (!posterRef.current || !posterModal) return;
     setPosterBusy(true);
     try {
-      try { localStorage.setItem("poster_opts", JSON.stringify({ layout: posterModal.layout, club: posterModal.club, label: posterModal.label })); } catch (e) {}
+      try { localStorage.setItem("poster_opts", JSON.stringify({ layout: posterModal.layout === "single" ? (JSON.parse(localStorage.getItem("poster_opts") || "{}").layout || "next") : posterModal.layout, club: posterModal.club, label: posterModal.label })); } catch (e) {}
       await ensurePosterFonts();
       const h2c = await loadHtml2Canvas();
       const canvas = await h2c(posterRef.current, { scale: 2, width: POSTER_W, height: POSTER_H, backgroundColor: null, useCORS: true, logging: false });
       const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.92));
-      const name = `fixtures-${posterModal.month}.jpg`;
+      const name = posterModal.layout === "single" ? `next-fixture-${(upcomingFixtures[0]?.rawDate || posterModal.month)}.jpg` : `fixtures-${posterModal.month}.jpg`;
       const file = new File([blob], name, { type: "image/jpeg" });
       if (share && navigator.canShare && navigator.canShare({ files: [file] })) {
         try { await navigator.share({ files: [file], title: posterModal.club }); setPosterBusy(false); return; } catch (e) { if (e && e.name === "AbortError") { setPosterBusy(false); return; } }
@@ -2202,7 +2209,8 @@ export default function App() {
               <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 16, color: THEME.navy, marginBottom: 12 }}>Fixtures · {viewingSeason?.name}</div>
               <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
                 <button onClick={() => openFixtureForm(null)} style={{ flex: 1, padding: 12, border: "none", borderRadius: 12, background: THEME.navy, color: THEME.sky, fontWeight: 800, fontSize: 13, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit" }}>+ ADD FIXTURE</button>
-                <button onClick={openPoster} style={{ flex: 1, padding: 12, border: `2px solid ${THEME.navy}`, borderRadius: 12, background: "#fff", color: THEME.navy, fontWeight: 800, fontSize: 13, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit" }}>🖼 MAKE POSTER</button>
+                <button onClick={() => openPoster()} style={{ flex: 1, padding: 12, border: `2px solid ${THEME.navy}`, borderRadius: 12, background: "#fff", color: THEME.navy, fontWeight: 800, fontSize: 13, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit" }}>🖼 MONTH POSTER</button>
+                <button onClick={() => openPoster("single")} style={{ flex: 1, padding: 12, border: `2px solid ${THEME.navy}`, borderRadius: 12, background: "#fff", color: THEME.navy, fontWeight: 800, fontSize: 13, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit" }}>⏭ NEXT FIXTURE</button>
               </div>
               {up.length === 0 && <div style={{ textAlign: "center", padding: "24px 20px", color: THEME.ink60 }}>No upcoming fixtures yet.</div>}
               {up.map(row)}
@@ -3519,12 +3527,12 @@ export default function App() {
                 <button onClick={() => setPosterModal(null)} style={{ background: "#f0f0f0", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
               </div>
               <div style={{ display: "flex", gap: 10 }}>
-                <div style={{ flex: 1 }}>
+                {m.layout !== "single" && <div style={{ flex: 1 }}>
                   <label style={lab}>Month</label>
                   <select value={m.month} onChange={e => set("month", e.target.value)} style={inp}>
                     {posterMonths.map(k => { const [y, mo] = k.split("-").map(Number); return <option key={k} value={k}>{new Date(y, mo - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</option>; })}
                   </select>
-                </div>
+                </div>}
                 <div style={{ flex: 1 }}>
                   <label style={lab}>Layout</label>
                   <select value={m.layout} onChange={e => set("layout", e.target.value)} style={inp}>
