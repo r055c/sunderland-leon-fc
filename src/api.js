@@ -170,6 +170,13 @@ export function parseYouTubeId(input) {
   return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
 }
 
+// ── Fixtures ──
+// A failure here must never stop the app loading, so a read falls back to "no fixtures".
+export const fetchFixtures = () => get("fixtures", "fixtures", "id.asc").catch(() => []);
+export async function insertFixture(f) { return (await post("fixtures", [strip(f)], "fixture"))[0]; }
+export async function updateFixture(f) { return (await patch(`fixtures/${f.id}`, strip(f), "fixture"))[0]; }
+export const deleteFixture = (id) => del(`fixtures/${id}`, "fixture");
+
 // ── Tournament league tables ──
 // Failing here must never stop the app loading, so a read falls back to "no tables".
 export const fetchTournamentTables = () => get("tournament_tables", "tournament tables", "id.desc").catch(() => []);

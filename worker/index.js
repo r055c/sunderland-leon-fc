@@ -9,7 +9,7 @@ const TABLES = {
     order: "date.desc",
   },
   teams: { cols: ["name", "logo"], kinds: {}, order: "name.asc" },
-  fixtures: { cols: ["date", "rawDate", "opposition", "competition", "venue", "notes", "season_id"], kinds: {}, order: "id.asc" },
+  fixtures: { cols: ["date", "rawDate", "opposition", "competition", "venue", "notes", "season_id", "kickoff_time", "home_away"], kinds: {}, order: "id.asc" },
   seasons: {
     cols: ["name", "age_group", "is_active", "competitions", "placements", "competition_types"],
     kinds: { is_active: "bool", competitions: "array", placements: "object", competition_types: "object" },
