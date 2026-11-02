@@ -3569,8 +3569,18 @@ export default function App() {
                 <button onClick={() => setFixtureModal(null)} style={{ background: "#f0f0f0", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
               </div>
               <label style={lab}>Opposition</label>
-              <input list="fx-teams" value={m.opposition} onChange={e => set("opposition", e.target.value)} placeholder="Team name" style={inp} />
-              <datalist id="fx-teams">{teams.map(t => <option key={t.id} value={t.name} />)}</datalist>
+              {(() => {
+                const names = teams.map(t => t.name).filter(Boolean).sort((a, b) => a.localeCompare(b));
+                const other = m.otherTeam || (m.opposition && !names.includes(m.opposition));
+                return <>
+                  <select value={other ? "__other" : m.opposition} onChange={e => e.target.value === "__other" ? setFixtureModal(x => ({ ...x, otherTeam: true, opposition: "" })) : setFixtureModal(x => ({ ...x, otherTeam: false, opposition: e.target.value }))} style={inp}>
+                    <option value="">Choose a team…</option>
+                    {names.map(n => <option key={n} value={n}>{n}</option>)}
+                    <option value="__other">Other (not in Teams)…</option>
+                  </select>
+                  {other ? <input value={m.opposition} onChange={e => set("opposition", e.target.value)} placeholder="Team name (add it under Teams to get a badge)" style={{ ...inp, marginTop: 8 }} /> : null}
+                </>;
+              })()}
               <div style={{ display: "flex", gap: 10 }}>
                 <div style={{ flex: 1 }}><label style={lab}>Date</label><input type="date" value={m.rawDate} onChange={e => set("rawDate", e.target.value)} style={inp} /></div>
                 <div style={{ flex: 1 }}><label style={lab}>Kick-off</label><input type="time" value={m.time} onChange={e => set("time", e.target.value)} style={inp} /></div>
