@@ -56,10 +56,35 @@ export function oppParts(name) {
 const dayName = (d) => d.toLocaleDateString("en-GB", { weekday: "long" }).toUpperCase();
 const monthName = (d) => d.toLocaleDateString("en-GB", { month: "long" }).toUpperCase();
 
+// Badge files saved with an off-white or tinted background show as a box inside the circle,
+// so the circle takes the colour of the image's corner when that corner is solid.
+function cornerColour(src) {
+  return new Promise((resolve) => {
+    if (!src) return resolve(null);
+    const img = new Image(); img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const w = Math.min(img.naturalWidth || 64, 256), h = Math.min(img.naturalHeight || 64, 256);
+        const c = document.createElement("canvas"); c.width = w; c.height = h;
+        const x = c.getContext("2d"); x.drawImage(img, 0, 0, w, h);
+        const at = (px, py) => Array.from(x.getImageData(px, py, 1, 1).data);
+        const pts = [at(1, 1), at(w - 2, 1), at(1, h - 2), at(w - 2, h - 2)];
+        if (pts.some((p) => p[3] < 200)) return resolve(null);               // transparent corners: keep white
+        const [r, g, b] = pts[0];
+        if (pts.some((p) => Math.abs(p[0] - r) + Math.abs(p[1] - g) + Math.abs(p[2] - b) > 24)) return resolve(null); // corners differ
+        resolve(`rgb(${r},${g},${b})`);
+      } catch (e) { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
 function Badge({ src, name, size, c, ring }) {
+  const [bg, setBg] = useState(null);
+  useEffect(() => { let on = true; setBg(null); cornerColour(src).then((v) => { if (on) setBg(v); }); return () => { on = false; }; }, [src]);
   return (
-    <div style={{ width: size, height: size, borderRadius: size / 2, background: "#ffffff", border: ring ? `3px solid ${c.accent}` : "none", boxSizing: "border-box", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      {src ? <img src={src} alt="" style={{ width: "84%", height: "84%", objectFit: "contain" }} />
+    <div style={{ width: size, height: size, borderRadius: size / 2, background: bg || "#ffffff", border: ring ? `3px solid ${c.accent}` : "none", boxSizing: "border-box", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      {src ? <img src={src} alt="" style={{ width: "72%", height: "72%", objectFit: "contain" }} />
         : <div style={{ fontFamily: COND, fontWeight: 800, fontSize: size * 0.4, color: "#0b1320" }}>{initials(name)}</div>}
     </div>
   );
@@ -69,7 +94,7 @@ function Crest({ d, size }) {
   // SVG crests can't be drawn into the exported image, so those fall back to initials.
   const ok = d.crest && !/^data:image\/svg|\.svg(\?|$)/i.test(d.crest);
   return ok
-    ? <img src={d.crest} alt="" style={{ width: size, height: size, objectFit: "contain", borderRadius: size / 2, flexShrink: 0 }} />
+    ? <img src={d.crest} alt="" style={{ width: size, height: size, objectFit: "contain", flexShrink: 0 }} />
     : <div style={{ width: size, height: size, borderRadius: size / 2, background: c.accent, color: c.accentInk, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: COND, fontWeight: 800, fontSize: size * 0.4, flexShrink: 0 }}>{initials(d.club)}</div>;
 }
 
