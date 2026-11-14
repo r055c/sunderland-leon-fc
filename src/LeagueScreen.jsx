@@ -134,13 +134,13 @@ export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfNam
             <div style={{ textAlign: "center", padding: "28px 12px", color: T.ink60, fontSize: 13 }}>No results yet.{isAdmin ? " Use Paste results to add the scores people send you." : ""}</div>
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead><tr><th style={{ ...th, width: 22 }}>#</th><th style={{ ...th, textAlign: "left" }}>TEAM</th>{["P", "W", "D", "L", "GD", "PTS"].map(h => <th key={h} style={{ ...th, width: h === "GD" || h === "PTS" ? 34 : 24 }}>{h}</th>)}</tr></thead>
+              <thead><tr><th style={{ ...th, width: 22 }}>#</th><th style={{ ...th, textAlign: "left" }}>TEAM</th>{["P", "W", "D", "L", "F", "A", "GD", "PTS"].map(h => <th key={h} style={{ ...th, width: h === "GD" || h === "PTS" ? 32 : 22 }}>{h}</th>)}</tr></thead>
               <tbody>
                 {table.map((r, i) => (
                   <tr key={r.team} style={{ background: r.self ? `${T.sky}33` : i % 2 ? "transparent" : "#f6f7fb", borderBottom: "1px solid #eef0f5" }}>
                     <td style={{ ...td, fontWeight: 700, color: T.ink60 }}>{i + 1}</td>
                     <td style={{ ...td, textAlign: "left", fontFamily: T.body, fontWeight: r.self ? 800 : 600, fontSize: 13 }}>{r.team}</td>
-                    <td style={td}>{r.p}</td><td style={td}>{r.w}</td><td style={td}>{r.d}</td><td style={td}>{r.l}</td>
+                    <td style={td}>{r.p}</td><td style={td}>{r.w}</td><td style={td}>{r.d}</td><td style={td}>{r.l}</td><td style={td}>{r.gf}</td><td style={td}>{r.ga}</td>
                     <td style={td}>{r.gd > 0 ? "+" : ""}{r.gd}</td><td style={{ ...td, fontWeight: 800 }}>{r.pts}</td>
                   </tr>
                 ))}

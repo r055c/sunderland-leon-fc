@@ -534,7 +534,7 @@ function LeaguePoster({ d }) {
   const c = d.colors, rows = d.rows || [], n = rows.length;
   const k = n <= 8 ? 1 : n <= 10 ? 0.86 : n <= 12 ? 0.74 : 0.64;
   const ink = c.bg;
-  const cols = [["P", 52], ["W", 48], ["D", 48], ["L", 48], ["GD", 74], ["PTS", 84]];
+  const cols = [["P", 46], ["W", 42], ["D", 42], ["L", 42], ["F", 48], ["A", 48], ["GD", 66], ["PTS", 74]];
   return (
     <div style={{ width: POSTER_W, height: POSTER_H, boxSizing: "border-box", background: `linear-gradient(170deg, ${mix(c.accent, c.bg, 0.78)} 0%, ${c.bg} 78%)`, color: "#fff", fontFamily: BODY, padding: "58px 50px 40px", display: "flex", flexDirection: "column", gap: 30 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 26, padding: "0 10px" }}>
@@ -555,10 +555,10 @@ function LeaguePoster({ d }) {
             <div style={{ width: 60, fontFamily: COND, fontWeight: 800, fontSize: 46 * k }}>{i + 1}</div>
             <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 16 }}>
               {r.self ? <Crest d={d} size={64 * k} /> : <Badge src={r.logo} name={r.team} size={64 * k} c={c} />}
-              <div style={{ fontFamily: COND, fontWeight: 800, fontSize: (r.team.length <= 12 ? 44 : r.team.length <= 17 ? 36 : 29) * k, lineHeight: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{upper(r.team)}</div>
+              <div style={{ fontFamily: COND, fontWeight: 800, fontSize: (r.team.length <= 12 ? 42 : r.team.length <= 17 ? 34 : 27) * k, lineHeight: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{upper(r.team)}</div>
             </div>
-            {[r.p, r.w, r.d, r.l, (r.gd > 0 ? "+" : "") + r.gd, r.pts].map((v, j) => (
-              <div key={j} style={{ width: cols[j][1], textAlign: "center", fontFamily: COND, fontWeight: j === 5 ? 800 : 700, fontSize: (j === 5 ? 52 : 42) * k }}>{v}</div>
+            {[r.p, r.w, r.d, r.l, r.gf, r.ga, (r.gd > 0 ? "+" : "") + r.gd, r.pts].map((v, j) => (
+              <div key={j} style={{ width: cols[j][1], textAlign: "center", fontFamily: COND, fontWeight: j === 7 ? 800 : 700, fontSize: (j === 7 ? 50 : 38) * k }}>{v}</div>
             ))}
           </div>
         ))}
