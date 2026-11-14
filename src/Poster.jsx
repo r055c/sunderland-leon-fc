@@ -529,12 +529,55 @@ function PillPoster({ d }) {
   );
 }
 
+// ── unofficial league table ──
+function LeaguePoster({ d }) {
+  const c = d.colors, rows = d.rows || [], n = rows.length;
+  const k = n <= 8 ? 1 : n <= 10 ? 0.86 : n <= 12 ? 0.74 : 0.64;
+  const ink = c.bg;
+  const cols = [["P", 52], ["W", 48], ["D", 48], ["L", 48], ["GD", 74], ["PTS", 84]];
+  return (
+    <div style={{ width: POSTER_W, height: POSTER_H, boxSizing: "border-box", background: `linear-gradient(170deg, ${mix(c.accent, c.bg, 0.78)} 0%, ${c.bg} 78%)`, color: "#fff", fontFamily: BODY, padding: "58px 50px 40px", display: "flex", flexDirection: "column", gap: 30 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 26, padding: "0 10px" }}>
+        <Crest d={d} size={120} />
+        <div style={{ flexGrow: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: COND, fontWeight: 800, fontSize: 88, lineHeight: 0.95 }}>LEAGUE TABLE</div>
+          <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 26, letterSpacing: 4, color: c.accent }}>{[upper(d.leagueName), upper(d.seasonLabel), "UNOFFICIAL"].filter(Boolean).join(" · ")}</div>
+        </div>
+        <LeagueChip d={d} h={110} />
+      </div>
+      <div style={{ background: "#fff", borderRadius: 26, overflow: "hidden", color: ink, display: "flex", flexDirection: "column", flexGrow: 1, minHeight: 0, maxHeight: 1010 }}>
+        <div style={{ display: "flex", alignItems: "center", padding: "14px 24px", background: ink, color: "#fff", fontFamily: COND, fontWeight: 700, fontSize: 28, letterSpacing: 2 }}>
+          <div style={{ width: 60 }}>#</div><div style={{ flex: 1 }}>TEAM</div>
+          {cols.map(([h, w]) => <div key={h} style={{ width: w, textAlign: "center" }}>{h}</div>)}
+        </div>
+        {rows.map((r, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", flex: "1 1 0", minHeight: 0, padding: "0 24px", background: r.self ? mix(c.accent, "#ffffff", 0.7) : i % 2 ? "#ffffff" : "#eef1f7", borderLeft: i < 3 ? `10px solid ${c.accent}` : "10px solid transparent", marginLeft: -10 }}>
+            <div style={{ width: 60, fontFamily: COND, fontWeight: 800, fontSize: 46 * k }}>{i + 1}</div>
+            <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 16 }}>
+              {r.self ? <Crest d={d} size={64 * k} /> : <Badge src={r.logo} name={r.team} size={64 * k} c={c} />}
+              <div style={{ fontFamily: COND, fontWeight: 800, fontSize: (r.team.length <= 12 ? 44 : r.team.length <= 17 ? 36 : 29) * k, lineHeight: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{upper(r.team)}</div>
+            </div>
+            {[r.p, r.w, r.d, r.l, (r.gd > 0 ? "+" : "") + r.gd, r.pts].map((v, j) => (
+              <div key={j} style={{ width: cols[j][1], textAlign: "center", fontFamily: COND, fontWeight: j === 5 ? 800 : 700, fontSize: (j === 5 ? 52 : 42) * k }}>{v}</div>
+            ))}
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontFamily: COND, fontWeight: 600, fontSize: 24, letterSpacing: 4, color: c.muted }}>
+        <span>UNOFFICIAL TABLE{d.asOf ? ` · ${upper(d.asOf)}` : ""}</span>
+        <span>{upper(d.motto)}</span>
+      </div>
+    </div>
+  );
+}
+
 export function PosterCanvas({ layout, d }) {
   if (layout === "tickets") return <TicketPoster d={d} />;
   if (layout === "single") return <SinglePoster d={d} />;
   if (layout === "grid") return <GridPoster d={d} />;
   if (layout === "table") return <TablePoster d={d} />;
   if (layout === "pill") return <PillPoster d={d} />;
+  if (layout === "league") return <LeaguePoster d={d} />;
   return <NextPoster d={d} />;
 }
 

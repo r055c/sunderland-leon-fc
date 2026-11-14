@@ -1,6 +1,7 @@
 // Club results app — v2.3
 import { useState, useRef, useEffect, useCallback } from "react";
-import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, uploadIcon, verifyAdminPin, setAdminPin, changeAdminPin, moveExternalImages, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchMatchVideos, insertMatchVideo, deleteMatchVideo, parseYouTubeId, fetchFixtures, insertFixture, updateFixture, deleteFixture, fetchTournamentTables, insertTournamentTable, updateTournamentTable, deleteTournamentTable, fetchClubSettings, saveClubSettings } from "./api.js";
+import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, uploadIcon, verifyAdminPin, setAdminPin, changeAdminPin, moveExternalImages, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchMatchVideos, insertMatchVideo, deleteMatchVideo, parseYouTubeId, fetchFixtures, insertFixture, updateFixture, deleteFixture, fetchTournamentTables, insertTournamentTable, updateTournamentTable, deleteTournamentTable, fetchClubSettings, saveClubSettings, fetchLeagueMatches, insertLeagueMatches, deleteLeagueMatch, fetchLeagueStart } from "./api.js";
+import LeagueScreen from "./LeagueScreen.jsx";
 import { DEFAULT_BADGE } from "./defaultBadge.js";
 import { PosterCanvas, POSTER_LAYOUTS, POSTER_W, POSTER_H, posterColors, findTeamLogo, ensurePosterFonts, cutWhite } from "./Poster.jsx";
 import { DEFAULT_BRANDING, FONTS, PRESETS, applyBranding, deriveTheme, loadCachedBranding, cacheBranding, contrast } from "./branding.js";
@@ -1155,6 +1156,8 @@ export default function App() {
   const [posterBusy, setPosterBusy] = useState(false);
   const posterRef = useRef();
   const [tournamentTables, setTournamentTables] = useState([]);
+  const [leagueMatches, setLeagueMatches] = useState([]);
+  const [leagueStart, setLeagueStart] = useState([]);
   const [tableModal, setTableModal] = useState(null); // { id, competition, date, photo, others: [{name,w,d,l,f,a}] }
   const [savingTable, setSavingTable] = useState(false);
   const [uploadingTablePhoto, setUploadingTablePhoto] = useState(false);
@@ -1231,7 +1234,7 @@ export default function App() {
       try {
         const cs = await fetchClubSettings().catch(() => null);
         if (cs) { const b = { ...DEFAULT_BRANDING, ...cs }; setBranding(b); cacheBranding(b); }
-        const [r, t, s, pl, ap, mp, mv, tt, fx] = await Promise.all([fetchResults(), fetchTeams(), fetchSeasons(), fetchPlayers(), fetchAppearances(), fetchMatchPhotos(), fetchMatchVideos(), fetchTournamentTables(), fetchFixtures()]);
+        const [r, t, s, pl, ap, mp, mv, tt, fx, lm, ls] = await Promise.all([fetchResults(), fetchTeams(), fetchSeasons(), fetchPlayers(), fetchAppearances(), fetchMatchPhotos(), fetchMatchVideos(), fetchTournamentTables(), fetchFixtures(), fetchLeagueMatches(), fetchLeagueStart()]);
         setResults(r);
         setTeams(t);
         setPlayers(pl);
@@ -1240,6 +1243,8 @@ export default function App() {
         setMatchVideos(mv || []);
         setTournamentTables(tt || []);
         setFixtures(fx || []);
+        setLeagueMatches(lm || []);
+        setLeagueStart(ls || []);
         if (s && s.length > 0) {
           setSeasons(s);
           const active = s.find(x => x.is_active) || s[0];
@@ -2219,6 +2224,12 @@ export default function App() {
               ))}
             </div>
 
+            <button onClick={() => setMode("league")} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, background: THEME.white, border: "none", borderLeft: `3px solid ${THEME.pitch}`, borderRadius: 14, padding: "12px 14px", marginBottom: 24, boxShadow: "0 2px 8px rgba(18,23,46,0.06)", cursor: "pointer", fontFamily: THEME.body, textAlign: "left" }}>
+              <span style={{ fontSize: 22 }}>📋</span>
+              <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: 14, fontWeight: 700, color: THEME.navy }}>League table</span><span style={{ display: "block", fontSize: 11, color: THEME.ink60 }}>Unofficial, from the results we've been sent</span></span>
+              <span style={{ color: THEME.ink30, fontSize: 18 }}>›</span>
+            </button>
+
             <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, marginBottom: 10 }}>Latest Result</div>
             {latestResult ? (
               <ScoreCard match={latestResult} compColor={getCompColor(competitions, latestResult.competition)} />
@@ -2261,6 +2272,20 @@ export default function App() {
             )}
           </div>
         )}
+
+        {/* ── UNOFFICIAL LEAGUE TABLE ── */}
+        {mode === "league" && (() => {
+          const sid = viewingSeason?.id;
+          const own = seasonResults.filter(r => compTypeOf(r.competition || "") === "league");
+          return (
+            <LeagueScreen T={THEME} isAdmin={isAdmin} seasonId={sid} seasonName={viewingSeason?.name || ""} selfName={BRAND.name} selfNames={[BRAND.name, BRAND.short].filter(Boolean)}
+              teams={teams} matches={leagueMatches.filter(m => m.season_id === sid)} start={leagueStart.filter(x => x.season_id === sid)} ownLeague={own} branding={branding}
+              posterBase={{ club: BRAND.name, label: (branding.poster_label || "").trim(), crest: BRAND.badge || DEFAULT_BADGE, motto: branding.slogan || "", leagueLogo: branding.league_logo || null, leagueName: branding.league_name || "", colors: posterColors(THEME.navy, THEME.sky) }}
+              onAdd={async rows => { const created = await insertLeagueMatches(rows); setLeagueMatches(ms => [...(created || []), ...ms]); }}
+              onDelete={async id => { try { await deleteLeagueMatch(id); setLeagueMatches(ms => ms.filter(m => m.id !== id)); showToast("Removed"); } catch (e) { showToast("❌ Couldn't remove it"); } }}
+              showToast={showToast} onBack={() => setMode(isAdmin ? "staff" : "home")} loadH2c={loadHtml2Canvas} ensureFonts={ensurePosterFonts} />
+          );
+        })()}
 
         {/* ── FIXTURES (admin) ── */}
         {mode === "fixtures" && isAdmin && (() => {
@@ -2371,6 +2396,7 @@ export default function App() {
               { key: "new", icon: "⚽", accent: THEME.sky, title: "Log a Result", desc: "Add a new match result", disabled: !isViewingActive },
               { key: "squad", icon: "🏃", accent: THEME.pitch, title: "Squad", desc: "Players, squad numbers, photos" },
               { key: "fixtures", icon: "📅", accent: THEME.sky, title: "Fixtures & Poster", desc: "Upcoming games, make a monthly poster" },
+              { key: "league", icon: "📋", accent: THEME.pitch, title: "League Table", desc: "Unofficial table: paste in the scores" },
               { key: "teams", icon: "👥", accent: THEME.amber, title: "Teams", desc: "Opposition club list & badges" },
               { key: "report", icon: "📊", accent: "#c084fc", title: "Report", desc: "Season stats & shareable image" },
               { key: "seasons", icon: "🗓", accent: THEME.loss, title: "Season History", desc: "Past seasons, archive & switch" },
@@ -3553,7 +3579,7 @@ export default function App() {
           </button>
         ))}
         <button onClick={() => isAdmin ? setMode("staff") : setShowPinGate(true)}
-          style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: 9, letterSpacing: 0.5, textTransform: "uppercase", color: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures"].includes(mode)) ? THEME.navy : THEME.ink60, fontWeight: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures"].includes(mode)) ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
+          style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: 9, letterSpacing: 0.5, textTransform: "uppercase", color: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league"].includes(mode)) ? THEME.navy : THEME.ink60, fontWeight: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league"].includes(mode)) ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
           <span style={{ fontSize: 18 }}>{isAdmin ? "🔓" : "🔒"}</span>
           Admin
         </button>

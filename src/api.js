@@ -184,6 +184,15 @@ export async function insertTournamentTable(rec) { return (await post("tournamen
 export async function updateTournamentTable(rec) { return (await patch(`tournament_tables/${rec.id}`, strip(rec), "league table"))[0]; }
 export const deleteTournamentTable = (id) => del(`tournament_tables/${id}`, "league table");
 
+// ── Unofficial league table (other teams' results + opening records) ──
+// Failing here must never stop the app loading, so reads fall back to "nothing entered".
+export const fetchLeagueMatches = () => get("league_matches", "league results", "date.desc").catch(() => []);
+export const insertLeagueMatches = (records) => post("league_matches", records.map(strip), "league results");
+export const deleteLeagueMatch = (id) => del(`league_matches/${id}`, "league result");
+export const fetchLeagueStart = () => get("league_start", "league starting records", "id.asc").catch(() => []);
+export const insertLeagueStart = (records) => post("league_start", records.map(strip), "league starting records");
+export const deleteLeagueStart = (id) => del(`league_start/${id}`, "league starting record");
+
 // ── Club settings (branding) ──
 export async function fetchClubSettings() { return (await get("club_settings", "club settings"))[0] || null; }
 export async function saveClubSettings(s) {

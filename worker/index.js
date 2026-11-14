@@ -19,6 +19,8 @@ const TABLES = {
   appearances: { cols: ["player_id", "result_id", "season_id"], kinds: {}, order: "id.desc" },
   match_photos: { cols: ["result_id", "url"], kinds: {}, order: "id.desc", extraRead: ["created_at"] },
   tournament_tables: { cols: ["season_id", "competition", "date", "rows", "photo"], kinds: { rows: "object" }, order: "id.desc" },
+  league_matches: { cols: ["season_id", "date", "home", "away", "home_goals", "away_goals"], kinds: {}, order: "date.desc" },
+  league_start: { cols: ["season_id", "team", "p", "w", "d", "l", "gf", "ga", "as_of"], kinds: {}, order: "id.asc" },
   match_videos: { cols: ["result_id", "video_id", "title"], kinds: {}, order: "id.desc", extraRead: ["created_at"] },
   club_settings: {
     cols: ["club_name", "short_name", "slogan", "primary_color", "accent_color", "font_pairing", "badge_url", "icon_url", "league_logo", "league_name", "poster_styles", "poster_label", "updated_at"],

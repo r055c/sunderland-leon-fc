@@ -1,0 +1,4 @@
+-- Unofficial league table: results between other teams (pasted or typed in), plus an optional opening record per team.
+CREATE TABLE IF NOT EXISTS league_matches (id INTEGER PRIMARY KEY AUTOINCREMENT, season_id INTEGER REFERENCES seasons(id), date TEXT NOT NULL, home TEXT NOT NULL, away TEXT NOT NULL, home_goals INTEGER NOT NULL, away_goals INTEGER NOT NULL, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));
+CREATE TABLE IF NOT EXISTS league_start (id INTEGER PRIMARY KEY AUTOINCREMENT, season_id INTEGER REFERENCES seasons(id), team TEXT NOT NULL, p INTEGER NOT NULL DEFAULT 0, w INTEGER NOT NULL DEFAULT 0, d INTEGER NOT NULL DEFAULT 0, l INTEGER NOT NULL DEFAULT 0, gf INTEGER NOT NULL DEFAULT 0, ga INTEGER NOT NULL DEFAULT 0, as_of TEXT);
+CREATE INDEX IF NOT EXISTS idx_lm_season ON league_matches(season_id);
