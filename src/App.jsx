@@ -1,7 +1,9 @@
 // Club results app — v2.3
 import { useState, useRef, useEffect, useCallback } from "react";
-import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, uploadIcon, verifyAdminPin, setAdminPin, changeAdminPin, moveExternalImages, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchMatchVideos, insertMatchVideo, deleteMatchVideo, parseYouTubeId, fetchFixtures, insertFixture, updateFixture, deleteFixture, fetchTournamentTables, insertTournamentTable, updateTournamentTable, deleteTournamentTable, fetchClubSettings, saveClubSettings, fetchLeagueMatches, insertLeagueMatches, deleteLeagueMatch, fetchLeagueStart } from "./api.js";
+import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, uploadIcon, verifyAdminPin, setAdminPin, changeAdminPin, moveExternalImages, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchMatchVideos, insertMatchVideo, deleteMatchVideo, parseYouTubeId, fetchFixtures, insertFixture, updateFixture, deleteFixture, fetchTournamentTables, insertTournamentTable, updateTournamentTable, deleteTournamentTable, fetchClubSettings, saveClubSettings, fetchLeagueMatches, insertLeagueMatches, deleteLeagueMatch, fetchLeagueStart, fetchLiveMatch, insertLiveMatch, updateLiveMatch, deleteLiveMatch } from "./api.js";
 import LeagueScreen from "./LeagueScreen.jsx";
+import LiveScreen, { LiveCard } from "./LiveScreen.jsx";
+import { buildResultFields } from "./liveMatch.js";
 import { DEFAULT_BADGE } from "./defaultBadge.js";
 import { PosterCanvas, POSTER_LAYOUTS, POSTER_W, POSTER_H, posterColors, findTeamLogo, ensurePosterFonts, cutWhite } from "./Poster.jsx";
 import { DEFAULT_BRANDING, FONTS, PRESETS, applyBranding, deriveTheme, loadCachedBranding, cacheBranding, contrast } from "./branding.js";
@@ -620,6 +622,23 @@ function ResultCard({ match, teamName = "Team", compColor = THEME.sky, players =
           </>
         )}
 
+        {(match.goal_times || []).length > 0 && (
+          <>
+            <div style={{ height: 1, background: "#eee", margin: "0 18px" }} />
+            <div style={{ padding: "12px 18px" }}>
+              <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: THEME.skyInk, display: "block", marginBottom: 8 }}>Goal Times</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                {match.goal_times.map((g, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontFamily: THEME.mono, fontWeight: 700, fontSize: 11, background: g.side === "them" ? "#e9ebf2" : THEME.navy, color: g.side === "them" ? THEME.ink60 : THEME.sky, borderRadius: 6, padding: "2px 7px", minWidth: 38, textAlign: "center" }}>{g.min}'</span>
+                    <span style={{ fontFamily: THEME.body, fontSize: 13, fontWeight: 600, color: g.side === "them" ? THEME.ink60 : THEME.navy }}>{g.name || "Goal"}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
         {(match.motm || match.oppMotm) && (
           <>
             <div style={{ height: 1, background: "#eee", margin: "0 18px" }} />
@@ -1158,6 +1177,8 @@ export default function App() {
   const [tournamentTables, setTournamentTables] = useState([]);
   const [leagueMatches, setLeagueMatches] = useState([]);
   const [leagueStart, setLeagueStart] = useState([]);
+  const [live, setLive] = useState(null);
+  const [liveStartFx, setLiveStartFx] = useState(null);
   const [tableModal, setTableModal] = useState(null); // { id, competition, date, photo, others: [{name,w,d,l,f,a}] }
   const [savingTable, setSavingTable] = useState(false);
   const [uploadingTablePhoto, setUploadingTablePhoto] = useState(false);
@@ -1234,7 +1255,7 @@ export default function App() {
       try {
         const cs = await fetchClubSettings().catch(() => null);
         if (cs) { const b = { ...DEFAULT_BRANDING, ...cs }; setBranding(b); cacheBranding(b); }
-        const [r, t, s, pl, ap, mp, mv, tt, fx, lm, ls] = await Promise.all([fetchResults(), fetchTeams(), fetchSeasons(), fetchPlayers(), fetchAppearances(), fetchMatchPhotos(), fetchMatchVideos(), fetchTournamentTables(), fetchFixtures(), fetchLeagueMatches(), fetchLeagueStart()]);
+        const [r, t, s, pl, ap, mp, mv, tt, fx, lm, ls, lv] = await Promise.all([fetchResults(), fetchTeams(), fetchSeasons(), fetchPlayers(), fetchAppearances(), fetchMatchPhotos(), fetchMatchVideos(), fetchTournamentTables(), fetchFixtures(), fetchLeagueMatches(), fetchLeagueStart(), fetchLiveMatch()]);
         setResults(r);
         setTeams(t);
         setPlayers(pl);
@@ -1245,6 +1266,7 @@ export default function App() {
         setFixtures(fx || []);
         setLeagueMatches(lm || []);
         setLeagueStart(ls || []);
+        setLive(lv || null);
         if (s && s.length > 0) {
           setSeasons(s);
           const active = s.find(x => x.is_active) || s[0];
@@ -1441,7 +1463,7 @@ export default function App() {
     catch (e) { showToast("❌ Couldn't delete it"); }
   };
   const posterMonths = [...new Set(seasonFixtures.map(f => f.rawDate.slice(0, 7)))];
-  const upcomingFixtures = seasonFixtures.filter(f => isoToDate(f.rawDate) >= todayStart());
+  const upcomingFixtures = seasonFixtures.filter(f => isoToDate(f.rawDate) >= todayStart() && !f.played);
   const openPoster = (kind) => {
     if (!seasonFixtures.length) { showToast("Add some fixtures first"); return; }
     if (kind === "single" && !upcomingFixtures.length) { showToast("No upcoming fixtures"); return; }
@@ -1459,7 +1481,7 @@ export default function App() {
     const nextOne = upcomingFixtures[0];
     const [y, mo] = (single && nextOne ? nextOne.rawDate.slice(0, 7) : m.month).split("-").map(Number);
     const mDate = new Date(y, mo - 1, 1);
-    let list = (single ? upcomingFixtures.slice(0, 1) : seasonFixtures.filter(f => f.rawDate.startsWith(m.month))).map(f => ({
+    let list = (single ? upcomingFixtures.slice(0, 1) : seasonFixtures.filter(f => f.rawDate.startsWith(m.month) && !f.played)).map(f => ({
       date: isoToDate(f.rawDate), time: f.kickoff_time || "", ha: f.home_away || null, opp: f.opposition,
       logo: findTeamLogo(teams, f.opposition), compLabel: compTypeOf(f.competition || ""), venue: f.venue || "",
     }));
@@ -1511,6 +1533,44 @@ export default function App() {
     } catch (e) { console.error("poster export failed", e); showToast("❌ Couldn't make the poster"); }
     setPosterBusy(false);
   };
+
+  // ── Live match ──
+  // Anyone with the app open sees a live game: re-check every 15 seconds (not while scoring it on this screen).
+  useEffect(() => {
+    if (mode === "live" && isAdmin) return;
+    const t = setInterval(async () => { if (document.visibilityState === "visible") { try { setLive(await fetchLiveMatch()); } catch (e) {} } }, 15000);
+    return () => clearInterval(t);
+  }, [mode, isAdmin]);
+  const startLive = async setup => {
+    const row = await insertLiveMatch({ ...setup, season_id: viewingSeason?.id || activeSeason?.id, goals: [], phase: "h1", base_ms: 0, run_since: Date.now(), started_at: Date.now() });
+    setLive(row);
+  };
+  const updateLive = async patch => {
+    const next = { ...live, ...patch };
+    setLive(next);
+    await updateLiveMatch(live.id, patch);
+  };
+  const discardLive = async () => { await deleteLiveMatch(live.id); setLive(null); setMode("home"); showToast("Match cancelled"); };
+  const endLive = async () => {
+    const f = buildResultFields(live);
+    const result = resultFrom(f.homeScore, f.awayScore, null, null);
+    const displayDate = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    const newMatch = { date: displayDate, opposition: live.opposition, homeScore: f.homeScore, awayScore: f.awayScore, scorers: f.scorers, result, competition: live.competition, motm: "", oppMotm: "", oppLogo: null, round: "", season_id: live.season_id || activeSeason?.id, homePens: null, awayPens: null, penScorers: null, goal_times: f.goal_times };
+    const saved = await insertResult(newMatch);
+    const match = saved || { ...newMatch, id: Date.now() };
+    setResults(prev => [...prev, match]);
+    if (match.id && (live.squad || []).length) {
+      try { const recs = await insertAppearances(live.squad.map(pid => ({ player_id: pid, result_id: match.id, season_id: match.season_id }))); setAppearances(prev => [...prev, ...recs]); } catch (e) {}
+    }
+    const fx = live.fixture_id && fixtures.find(x => x.id === live.fixture_id);
+    if (fx) { try { await updateFixture({ ...fx, played: true }); setFixtures(fs => fs.map(x => x.id === fx.id ? { ...x, played: true } : x)); } catch (e) {} }
+    try { await deleteLiveMatch(live.id); } catch (e) {}
+    setLive(null);
+    setNewResult(match);
+    setMode("new");
+    showToast("✅ Result saved!");
+  };
+  const startLiveFrom = fxId => { setLiveStartFx(fxId); setMode("live"); };
 
   // ── Tournament league table ──
   const tableEntry = (competition, date) => tournamentTables.find(t => t.competition === competition && t.date === date) || null;
@@ -2209,6 +2269,19 @@ export default function App() {
         {/* ── HOME TAB ── */}
         {mode === "home" && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
+            {live && <LiveCard T={THEME} live={live} selfName={BRAND.name} onOpen={isAdmin ? () => { setLiveStartFx(null); setMode("live"); } : null} />}
+            {!live && isAdmin && isViewingActive && (() => {
+              const td = new Date(); const iso = `${td.getFullYear()}-${String(td.getMonth() + 1).padStart(2, "0")}-${String(td.getDate()).padStart(2, "0")}`;
+              const f = seasonFixtures.find(x => x.rawDate === iso && !x.played);
+              return f ? (
+                <button onClick={() => startLiveFrom(f.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, background: THEME.navy, border: "none", borderRadius: 14, padding: "12px 14px", marginBottom: 24, cursor: "pointer", fontFamily: THEME.body, textAlign: "left" }}>
+                  <span style={{ fontSize: 22 }}>🔴</span>
+                  <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: 14, fontWeight: 700, color: "#fff" }}>Today: v {f.opposition}</span><span style={{ display: "block", fontSize: 11, color: THEME.sky }}>{[f.kickoff_time && `KO ${f.kickoff_time}`, f.competition].filter(Boolean).join(" · ")}</span></span>
+                  <span style={{ background: "#e53935", color: "#fff", fontWeight: 800, fontSize: 11, letterSpacing: 1, borderRadius: 8, padding: "7px 10px" }}>GO LIVE</span>
+                </button>
+              ) : null;
+            })()}
+
             <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, marginBottom: 10 }}>Season Record</div>
             <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
               {[
@@ -2273,6 +2346,12 @@ export default function App() {
           </div>
         )}
 
+        {/* ── LIVE MATCH ── */}
+        {mode === "live" && isAdmin && (
+          <LiveScreen T={THEME} live={live} players={players.filter(p => p.is_active !== false)} fixtures={seasonFixtures.filter(f => !f.played)} competitions={competitions} selfName={BRAND.name}
+            startFixtureId={liveStartFx} onStart={startLive} onUpdate={updateLive} onEnd={endLive} onDiscard={discardLive} showToast={showToast} onBack={() => { setLiveStartFx(null); setMode(live ? "home" : "staff"); }} />
+        )}
+
         {/* ── UNOFFICIAL LEAGUE TABLE ── */}
         {mode === "league" && (() => {
           const sid = viewingSeason?.id;
@@ -2290,13 +2369,14 @@ export default function App() {
         {/* ── FIXTURES (admin) ── */}
         {mode === "fixtures" && isAdmin && (() => {
           const today = todayStart();
-          const up = seasonFixtures.filter(f => isoToDate(f.rawDate) >= today);
-          const past = seasonFixtures.filter(f => isoToDate(f.rawDate) < today);
+          const up = seasonFixtures.filter(f => isoToDate(f.rawDate) >= today && !f.played);
+          const past = seasonFixtures.filter(f => isoToDate(f.rawDate) < today || f.played);
           const row = (f) => {
             const d = isoToDate(f.rawDate);
             const missing = !f.kickoff_time || !f.home_away;
             return (
-              <button key={f.id} onClick={() => openFixtureForm(f)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, background: THEME.white, border: "none", borderRadius: 14, padding: 10, marginBottom: 8, boxShadow: "0 2px 8px rgba(18,23,46,0.05)", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
+              <div key={f.id} style={{ display: "flex", alignItems: "stretch", gap: 6, marginBottom: 8 }}>
+              <button onClick={() => openFixtureForm(f)} style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 12, background: THEME.white, border: "none", borderRadius: 14, padding: 10, boxShadow: "0 2px 8px rgba(18,23,46,0.05)", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
                 <div style={{ width: 50, borderRadius: 10, background: THEME.navy, color: THEME.sky, textAlign: "center", padding: "6px 0", flexShrink: 0 }}>
                   <div style={{ fontSize: 9, letterSpacing: 1, fontFamily: THEME.mono }}>{d.toLocaleDateString("en-GB", { weekday: "short" }).toUpperCase()}</div>
                   <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1 }}>{d.getDate()}</div>
@@ -2309,6 +2389,10 @@ export default function App() {
                 </div>
                 <div style={{ color: THEME.ink30, fontSize: 18 }}>›</div>
               </button>
+              {isViewingActive && !f.played && isoToDate(f.rawDate) >= today && (
+                <button onClick={() => startLiveFrom(f.id)} style={{ flexShrink: 0, width: 64, border: "none", borderRadius: 14, background: "#e53935", color: "#fff", fontWeight: 800, fontSize: 10, letterSpacing: 0.5, cursor: "pointer", fontFamily: "inherit", lineHeight: 1.3 }}>▶<br />START<br />MATCH</button>
+              )}
+              </div>
             );
           };
           return (
@@ -2393,6 +2477,7 @@ export default function App() {
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
             <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, marginBottom: 10 }}>Manage</div>
             {[
+              { key: "live", icon: "🔴", accent: "#e53935", title: live ? "Continue live match" : "Live Match", desc: live ? `v ${live.opposition} is in progress` : "Score a game as it happens, with goal minutes", disabled: !isViewingActive },
               { key: "new", icon: "⚽", accent: THEME.sky, title: "Log a Result", desc: "Add a new match result", disabled: !isViewingActive },
               { key: "squad", icon: "🏃", accent: THEME.pitch, title: "Squad", desc: "Players, squad numbers, photos" },
               { key: "fixtures", icon: "📅", accent: THEME.sky, title: "Fixtures & Poster", desc: "Upcoming games, make a monthly poster" },
@@ -2403,7 +2488,7 @@ export default function App() {
               { key: "branding", icon: "🎨", accent: THEME.sky, title: "Branding", desc: "Club colours, badge, name & slogan" },
               { key: "placements", icon: "🏆", accent: THEME.amber, title: "Trophy Cabinet", desc: "Set how a tournament finished" },
             ].map(item => (
-              <button key={item.key} disabled={item.disabled} onClick={() => setMode(item.key)}
+              <button key={item.key} disabled={item.disabled} onClick={() => { if (item.key === "live") setLiveStartFx(null); setMode(item.key); }}
                 style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, background: THEME.white, border: "none", borderLeft: `3px solid ${item.accent}`, borderRadius: 14, padding: "14px 16px", marginBottom: 10, boxShadow: "0 2px 8px rgba(18,23,46,0.05)", cursor: item.disabled ? "default" : "pointer", opacity: item.disabled ? 0.5 : 1, fontFamily: THEME.body, textAlign: "left" }}>
                 <div style={{ width: 38, height: 38, borderRadius: 10, background: THEME.navy, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{item.icon}</div>
                 <div style={{ flex: 1 }}>
@@ -3579,7 +3664,7 @@ export default function App() {
           </button>
         ))}
         <button onClick={() => isAdmin ? setMode("staff") : setShowPinGate(true)}
-          style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: 9, letterSpacing: 0.5, textTransform: "uppercase", color: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league"].includes(mode)) ? THEME.navy : THEME.ink60, fontWeight: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league"].includes(mode)) ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
+          style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: 9, letterSpacing: 0.5, textTransform: "uppercase", color: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league","live"].includes(mode)) ? THEME.navy : THEME.ink60, fontWeight: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league","live"].includes(mode)) ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
           <span style={{ fontSize: 18 }}>{isAdmin ? "🔓" : "🔒"}</span>
           Admin
         </button>

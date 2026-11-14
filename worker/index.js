@@ -4,12 +4,12 @@
 // Column definitions. kind: "array" | "object" (stored as JSON text), "bool" (stored 0/1).
 const TABLES = {
   results: {
-    cols: ["date", "opposition", "homeScore", "awayScore", "scorers", "result", "competition", "motm", "oppMotm", "oppLogo", "season_id", "round", "homePens", "awayPens", "penScorers"],
-    kinds: { scorers: "array", penScorers: "array" },
+    cols: ["date", "opposition", "homeScore", "awayScore", "scorers", "result", "competition", "motm", "oppMotm", "oppLogo", "season_id", "round", "homePens", "awayPens", "penScorers", "goal_times"],
+    kinds: { scorers: "array", penScorers: "array", goal_times: "array" },
     order: "date.desc",
   },
   teams: { cols: ["name", "logo"], kinds: {}, order: "name.asc" },
-  fixtures: { cols: ["date", "rawDate", "opposition", "competition", "venue", "notes", "season_id", "kickoff_time", "home_away"], kinds: {}, order: "id.asc" },
+  fixtures: { cols: ["date", "rawDate", "opposition", "competition", "venue", "notes", "season_id", "kickoff_time", "home_away", "played"], kinds: { played: "bool" }, order: "id.asc" },
   seasons: {
     cols: ["name", "age_group", "is_active", "competitions", "placements", "competition_types"],
     kinds: { is_active: "bool", competitions: "array", placements: "object", competition_types: "object" },
@@ -21,6 +21,7 @@ const TABLES = {
   tournament_tables: { cols: ["season_id", "competition", "date", "rows", "photo"], kinds: { rows: "object" }, order: "id.desc" },
   league_matches: { cols: ["season_id", "date", "home", "away", "home_goals", "away_goals"], kinds: {}, order: "date.desc" },
   league_start: { cols: ["season_id", "team", "p", "w", "d", "l", "gf", "ga", "as_of"], kinds: {}, order: "id.asc" },
+  live_match: { cols: ["fixture_id", "season_id", "opposition", "competition", "home_away", "venue", "squad", "goals", "phase", "base_ms", "run_since", "started_at"], kinds: { squad: "array", goals: "array" }, order: "id.desc" },
   match_videos: { cols: ["result_id", "video_id", "title"], kinds: {}, order: "id.desc", extraRead: ["created_at"] },
   club_settings: {
     cols: ["club_name", "short_name", "slogan", "primary_color", "accent_color", "font_pairing", "badge_url", "icon_url", "league_logo", "league_name", "poster_styles", "poster_label", "updated_at"],

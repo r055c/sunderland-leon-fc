@@ -193,6 +193,13 @@ export const fetchLeagueStart = () => get("league_start", "league starting recor
 export const insertLeagueStart = (records) => post("league_start", records.map(strip), "league starting records");
 export const deleteLeagueStart = (id) => del(`league_start/${id}`, "league starting record");
 
+// ── Live match (one row while a game is being scored) ──
+// A failure must never stop the app loading, so a read falls back to "no live match".
+export const fetchLiveMatch = async () => (await get("live_match", "live match", "id.desc").catch(() => []))[0] || null;
+export async function insertLiveMatch(rec) { return (await post("live_match", [strip(rec)], "live match"))[0]; }
+export async function updateLiveMatch(id, patchData) { return (await patch(`live_match/${id}`, patchData, "live match"))[0]; }
+export const deleteLiveMatch = (id) => del(`live_match/${id}`, "live match");
+
 // ── Club settings (branding) ──
 export async function fetchClubSettings() { return (await get("club_settings", "club settings"))[0] || null; }
 export async function saveClubSettings(s) {
