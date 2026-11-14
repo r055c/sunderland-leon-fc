@@ -167,13 +167,18 @@ export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfNam
                 const issue = rowIssue(r);
                 return (
                   <div key={i} style={{ border: `1.5px solid ${issue ? "#f0d9b5" : "#e8e8e8"}`, borderRadius: 11, padding: 9, marginBottom: 8, opacity: r.use ? 1 : 0.5 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <input type="checkbox" checked={r.use} onChange={e => setRow(i, { use: e.target.checked })} />
-                      <input list="lt-teams" value={r.home} onChange={e => setRow(i, { home: e.target.value })} style={{ ...inp, padding: "7px 8px", fontSize: 13, flex: 1, minWidth: 0 }} />
-                      <input type="number" min="0" value={r.hg} onChange={e => setRow(i, { hg: +e.target.value })} style={{ ...inp, width: 46, padding: "7px 2px", textAlign: "center", fontWeight: 800 }} />
-                      <span style={{ color: T.ink60 }}>-</span>
-                      <input type="number" min="0" value={r.ag} onChange={e => setRow(i, { ag: +e.target.value })} style={{ ...inp, width: 46, padding: "7px 2px", textAlign: "center", fontWeight: 800 }} />
-                      <input list="lt-teams" value={r.away} onChange={e => setRow(i, { away: e.target.value })} style={{ ...inp, padding: "7px 8px", fontSize: 13, flex: 1, minWidth: 0 }} />
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <input type="checkbox" checked={r.use} onChange={e => setRow(i, { use: e.target.checked })} style={{ width: 20, height: 20, flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input list="lt-teams" value={r.home} onChange={e => setRow(i, { home: e.target.value })} style={{ ...inp, padding: "9px 10px", fontSize: 14, flex: 1, minWidth: 0 }} />
+                          <input type="number" min="0" inputMode="numeric" value={r.hg} onChange={e => setRow(i, { hg: +e.target.value })} style={{ ...inp, width: 52, padding: "9px 2px", textAlign: "center", fontWeight: 800, fontSize: 16, flexShrink: 0 }} />
+                        </div>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input list="lt-teams" value={r.away} onChange={e => setRow(i, { away: e.target.value })} style={{ ...inp, padding: "9px 10px", fontSize: 14, flex: 1, minWidth: 0 }} />
+                          <input type="number" min="0" inputMode="numeric" value={r.ag} onChange={e => setRow(i, { ag: +e.target.value })} style={{ ...inp, width: 52, padding: "9px 2px", textAlign: "center", fontWeight: 800, fontSize: 16, flexShrink: 0 }} />
+                        </div>
+                      </div>
                     </div>
                     <div style={{ fontSize: 11, marginTop: 5, color: T.ink60 }}>
                       {r.homeStatus === "ambiguous" && r.homeCands.map(c => <button key={c} onClick={() => setRow(i, { home: c, homeStatus: "exact" })} style={{ marginRight: 6, marginBottom: 3, fontSize: 11, border: `1px solid ${T.ink30}`, background: "#fff", borderRadius: 8, padding: "3px 8px", cursor: "pointer", fontFamily: "inherit" }}>{c}</button>)}
