@@ -81,6 +81,8 @@ export default function LiveScreen({ T, live, players, fixtures, competitions, s
   const right = away ? { n: selfName, s: score.us } : { n: live.opposition, s: score.them };
   const goals = sortedGoals(goalsOf(live)).reverse();
   const squadPlayers = players.filter(p => (live.squad || []).includes(p.id));
+  // Anyone not ticked for today's squad is still offered as a scorer (a late arrival, or a tap missed at the start).
+  const otherPlayers = players.filter(p => !(live.squad || []).includes(p.id));
   const running = !!live.run_since;
   const save = async patch => { try { await onUpdate(patch); } catch (e) { showToast("❌ Couldn't save that, check your signal"); } };
 
@@ -91,7 +93,10 @@ export default function LiveScreen({ T, live, players, fixtures, competitions, s
     const g = { id: s.id || newGoalId(), min: Math.max(1, s.min), side: s.side };
     if (s.side === "us") { if (s.own) g.own = true; else if (s.name) { g.name = s.name; g.pid = s.pid; } }
     setSheet(null);
-    save({ goals: [...rest, g] });
+    // A scorer who wasn't in the squad is added to it, so they get their appearance when the match is saved.
+    const squadNow = live.squad || [];
+    const addToSquad = g.pid != null && !squadNow.includes(g.pid);
+    save(addToSquad ? { goals: [...rest, g], squad: [...squadNow, g.pid] } : { goals: [...rest, g] });
   };
   const delGoal = () => { const id = sheet.id; setSheet(null); save({ goals: goalsOf(live).filter(g => g.id !== id) }); };
   const label = g => g.side === "them" ? "Opposition goal" : g.own ? "Own goal" : (g.name || "Goal");
@@ -147,24 +152,41 @@ export default function LiveScreen({ T, live, players, fixtures, competitions, s
 
       {sheet && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => setSheet(null)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "22px 22px 0 0", padding: 16, width: "100%", maxWidth: 520, maxHeight: "88vh", overflowY: "auto" }}>
-            <div style={{ fontWeight: 800, fontSize: 13, letterSpacing: 1, color: T.navy, textAlign: "center" }}>{sheet.id ? "EDIT GOAL" : "GOAL"}</div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, margin: "8px 0 12px" }}>
-              <button onClick={() => setSheet(s => ({ ...s, min: Math.max(1, s.min - 1) }))} style={stepBtn}>−</button>
-              <span style={{ fontFamily: T.mono, fontWeight: 700, fontSize: 36, color: T.navy, minWidth: 80, textAlign: "center" }}>{sheet.min}'</span>
-              <button onClick={() => setSheet(s => ({ ...s, min: s.min + 1 }))} style={stepBtn}>+</button>
-            </div>
-            {sheet.side === "us" && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {squadPlayers.map(p => { const on = !sheet.own && sheet.name === p.name; return (
-                  <button key={p.id} onClick={() => setSheet(s => ({ ...s, name: p.name, pid: p.id, own: false }))} style={{ padding: "12px 6px", borderRadius: 10, border: `1.5px solid ${on ? T.navy : T.ink30}`, background: on ? T.navy : "#fff", color: on ? T.sky : T.navy, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer" }}>{p.name}</button>
-                ); })}
-                <button onClick={() => setSheet(s => ({ ...s, own: true, name: null }))} style={{ padding: "12px 6px", borderRadius: 10, border: `1.5px solid ${sheet.own ? T.navy : T.ink30}`, background: sheet.own ? T.navy : "#fff", color: sheet.own ? T.sky : T.navy, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer" }}>Own goal</button>
-                <button onClick={() => setSheet(s => ({ ...s, own: false, name: null }))} style={{ padding: "12px 6px", borderRadius: 10, border: `1.5px solid ${!sheet.own && !sheet.name ? T.navy : T.ink30}`, background: !sheet.own && !sheet.name ? T.navy : "#fff", color: !sheet.own && !sheet.name ? T.sky : T.navy, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer" }}>Not sure</button>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "22px 22px 0 0", width: "100%", maxWidth: 520, maxHeight: "86vh", display: "flex", flexDirection: "column" }}>
+            {/* The list scrolls; the buttons stay fixed at the bottom so Save is never pushed off the screen on a phone. */}
+            <div style={{ overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "16px 16px 8px", flex: "1 1 auto", minHeight: 0 }}>
+              <div style={{ fontWeight: 800, fontSize: 13, letterSpacing: 1, color: T.navy, textAlign: "center" }}>{sheet.id ? "EDIT GOAL" : "GOAL"}</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, margin: "8px 0 12px" }}>
+                <button onClick={() => setSheet(s => ({ ...s, min: Math.max(1, s.min - 1) }))} style={stepBtn}>−</button>
+                <span style={{ fontFamily: T.mono, fontWeight: 700, fontSize: 36, color: T.navy, minWidth: 80, textAlign: "center" }}>{sheet.min}'</span>
+                <button onClick={() => setSheet(s => ({ ...s, min: s.min + 1 }))} style={stepBtn}>+</button>
               </div>
-            )}
-            <button onClick={saveSheet} style={{ ...btn(T.navy, T.sky), marginTop: 14 }}>SAVE GOAL</button>
-            {sheet.id && <button onClick={delGoal} style={{ ...btn("#fff", T.loss), marginTop: 8 }}>DELETE THIS GOAL</button>}
+              {sheet.side === "us" && (() => {
+                const chip = (on) => ({ padding: "12px 6px", borderRadius: 10, border: `1.5px solid ${on ? T.navy : T.ink30}`, background: on ? T.navy : "#fff", color: on ? T.sky : T.navy, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer" });
+                const playerBtn = p => { const on = !sheet.own && sheet.name === p.name; return (
+                  <button key={p.id} onClick={() => setSheet(s => ({ ...s, name: p.name, pid: p.id, own: false }))} style={chip(on)}>{p.name}</button>
+                ); };
+                return (
+                  <>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      {squadPlayers.map(playerBtn)}
+                      <button onClick={() => setSheet(s => ({ ...s, own: true, name: null, pid: undefined }))} style={chip(sheet.own)}>Own goal</button>
+                      <button onClick={() => setSheet(s => ({ ...s, own: false, name: null, pid: undefined }))} style={chip(!sheet.own && !sheet.name)}>Not sure</button>
+                    </div>
+                    {otherPlayers.length > 0 && (
+                      <>
+                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: T.ink60, textTransform: "uppercase", margin: "14px 0 6px" }}>Not in today's squad</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>{otherPlayers.map(playerBtn)}</div>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+            <div style={{ padding: "8px 16px calc(14px + env(safe-area-inset-bottom, 0px))", borderTop: `1px solid ${T.ink30}`, flex: "0 0 auto" }}>
+              <button onClick={saveSheet} style={btn(T.navy, T.sky)}>SAVE GOAL</button>
+              {sheet.id && <button onClick={delGoal} style={{ ...btn("#fff", T.loss), marginTop: 8 }}>DELETE THIS GOAL</button>}
+            </div>
           </div>
         </div>
       )}
