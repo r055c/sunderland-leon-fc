@@ -1,13 +1,16 @@
 // Unofficial league table screen: view the table, add results by pasting messages (primary) or typing them in (backup).
-import { useState, useMemo, useRef } from "react";
-import { parsePaste, matchTeam, computeTable, normName, toISO } from "./leagueTable.js";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { parsePaste, matchTeam, computeTable, normName, toISO, checkTableRows } from "./leagueTable.js";
 import { PosterCanvas, POSTER_W, POSTER_H, findTeamLogo } from "./Poster.jsx";
 
 const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const niceDate = (iso) => { try { return new Date(iso + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); } catch (e) { return iso; } };
 
-export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfName, selfNames, teams, matches, start, ownLeague, branding, posterBase, onAdd, onDelete, showToast, onBack, loadH2c, ensureFonts }) {
-  const [tab, setTab] = useState("table"); // table | paste | manual | list
+export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfName, selfNames, teams, matches, start, ownLeague, branding, posterBase, onAdd, onDelete, onSaveTable, onDeleteTable, showToast, onBack, loadH2c, ensureFonts }) {
+  const [tab, setTab] = useState("table"); // table | paste | manual | entry | list
+  const [entryDate, setEntryDate] = useState(todayISO());
+  const [entryRows, setEntryRows] = useState([]); // typed-in table: [{team,p,w,d,l,f,a}] as strings
+  const [addTeam, setAddTeam] = useState("");
   const [text, setText] = useState("");
   const [date, setDate] = useState(todayISO());
   const [preview, setPreview] = useState(null); // { rows, skipped }
@@ -19,7 +22,42 @@ export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfNam
 
   const teamNames = useMemo(() => teams.map(t => t.name).filter(Boolean), [teams]);
   const table = useMemo(() => computeTable({ matches, own: ownLeague, start, selfName }), [matches, ownLeague, start, selfName]);
-  const lastDate = useMemo(() => [...matches.map(m => m.date), ...ownLeague.map(r => toISO(r.date))].filter(Boolean).sort().pop() || "", [matches, ownLeague]);
+  const tableAsOf = useMemo(() => start.map(s => s.as_of).filter(Boolean).sort().pop() || "", [start]);
+  const lastDate = useMemo(() => [...matches.map(m => m.date), ...ownLeague.map(r => toISO(r.date)), tableAsOf].filter(Boolean).sort().pop() || "", [matches, ownLeague, tableAsOf]);
+  const sinceCount = useMemo(() => tableAsOf ? matches.filter(m => m.date > tableAsOf).length + ownLeague.filter(r => toISO(r.date) > tableAsOf).length : 0, [matches, ownLeague, tableAsOf]);
+  // Every table that has been typed in (grouped by the date it is "as at"), newest first.
+  const snapshots = useMemo(() => { const m = new Map(); start.forEach(r => { const k = r.as_of || ""; if (!m.has(k)) m.set(k, []); m.get(k).push(r); }); return [...m.entries()].sort((a, b) => b[0].localeCompare(a[0])); }, [start]);
+
+  // Opening the typed-table screen starts from the table as it is now, so only the numbers that changed need typing.
+  useEffect(() => {
+    if (tab !== "entry") return;
+    const base = table.length ? table.map(r => ({ team: r.team, p: String(r.p), w: String(r.w), d: String(r.d), l: String(r.l), f: String(r.gf), a: String(r.ga) })) : (selfName ? [{ team: selfName, p: "", w: "", d: "", l: "", f: "", a: "" }] : []);
+    setEntryRows(base);
+    setEntryDate(todayISO());
+    // eslint-disable-next-line
+  }, [tab]);
+  const entryCheck = useMemo(() => checkTableRows(entryRows, table), [entryRows, table]);
+  const setCell = (i, c, v) => setEntryRows(rs => rs.map((r, j) => j === i ? { ...r, [c]: v.replace(/[^0-9]/g, "").slice(0, 3) } : r));
+  const addEntryTeam = () => {
+    const name = addTeam.trim(); if (!name) return;
+    const m = matchTeam(name, teamNames, selfNames);
+    const nm = m.status === "ambiguous" || m.status === "new" ? name : m.name;
+    if (entryRows.some(r => normName(r.team) === normName(nm))) { showToast("That team is already in the list"); return; }
+    setEntryRows(rs => [...rs, { team: nm, p: "", w: "", d: "", l: "", f: "", a: "" }]);
+    setAddTeam("");
+  };
+  const saveEntry = async () => {
+    if (entryCheck.errors.length || !entryRows.length) return;
+    if (snapshots.some(([d]) => d === entryDate) && !window.confirm(`A table as at ${niceDate(entryDate)} is already saved. Replace it?`)) return;
+    setBusy(true);
+    try {
+      const n = v => (v === "" ? 0 : +v);
+      await onSaveTable(entryDate, entryRows.map(r => ({ season_id: seasonId, team: r.team.trim(), p: n(r.p), w: n(r.w), d: n(r.d), l: n(r.l), gf: n(r.f), ga: n(r.a), as_of: entryDate })));
+      showToast("✅ Table saved");
+      setTab("table");
+    } catch (e) { console.error(e); showToast("❌ Couldn't save the table, check your signal"); }
+    setBusy(false);
+  };
 
   const card = { background: T.white, borderRadius: 14, padding: 14, boxShadow: "0 2px 8px rgba(18,23,46,0.06)", marginBottom: 12 };
   const inp = { width: "100%", padding: "10px 12px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 15, fontFamily: "inherit", color: T.navy, outline: "none", boxSizing: "border-box" };
@@ -120,18 +158,18 @@ export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfNam
         <div style={{ fontFamily: T.display, fontWeight: 700, fontSize: 20, color: T.navy }}>League table</div>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1.5, background: "#fde8c8", color: "#a35a00", borderRadius: 6, padding: "3px 8px" }}>UNOFFICIAL</span>
       </div>
-      <div style={{ fontSize: 12, color: T.ink60, marginBottom: 12 }}>{[branding.league_name, seasonName].filter(Boolean).join(" · ")} · based on results we've been sent{lastDate ? `, up to ${niceDate(lastDate)}` : ""}</div>
+      <div style={{ fontSize: 12, color: T.ink60, marginBottom: 12 }}>{[branding.league_name, seasonName].filter(Boolean).join(" · ")} · {tableAsOf ? `Table as at ${niceDate(tableAsOf)}${sinceCount ? ` + ${sinceCount} result${sinceCount === 1 ? "" : "s"} since` : ""}` : `based on results we've been sent${lastDate ? `, up to ${niceDate(lastDate)}` : ""}`}</div>
 
       {isAdmin && (
         <div style={{ display: "flex", gap: 4, background: "#eef0f5", borderRadius: 11, padding: 4, marginBottom: 12 }}>
-          {tabBtn("table", "Table")}{tabBtn("paste", "Paste results")}{tabBtn("manual", "Type one in")}{tabBtn("list", "Added")}
+          {tabBtn("table", "Table")}{tabBtn("paste", "Paste")}{tabBtn("manual", "Type one")}{tabBtn("entry", "From table")}{tabBtn("list", "Added")}
         </div>
       )}
 
       {tab === "table" && (
         <div style={{ ...card, padding: "6px 8px" }}>
           {table.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "28px 12px", color: T.ink60, fontSize: 13 }}>No results yet.{isAdmin ? " Use Paste results to add the scores people send you." : ""}</div>
+            <div style={{ textAlign: "center", padding: "28px 12px", color: T.ink60, fontSize: 13 }}>No results yet.{isAdmin ? " Use Paste to add the scores people send you, or From table if you only have the table." : ""}</div>
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead><tr><th style={{ ...th, width: 22 }}>#</th><th style={{ ...th, textAlign: "left" }}>TEAM</th>{["P", "W", "D", "L", "F", "A", "GD", "PTS"].map(h => <th key={h} style={{ ...th, width: h === "GD" || h === "PTS" ? 32 : 22 }}>{h}</th>)}</tr></thead>
@@ -220,9 +258,65 @@ export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfNam
         </div>
       )}
 
+      {tab === "entry" && isAdmin && (
+        <div style={card}>
+          <datalist id="lt-teams2">{teamNames.map(n => <option key={n} value={n} />)}</datalist>
+          <div style={{ fontSize: 12, color: T.ink60, marginBottom: 8 }}>Only got the table, not the scores? Type in each team's record. This replaces what the table shows for those teams, and any results you add afterwards go on top.</div>
+          <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: T.skyInk, letterSpacing: 2, margin: "10px 0 5px", textTransform: "uppercase" }}>Table as at</label>
+          <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)} style={inp} />
+          <div style={{ margin: "14px 0 6px", fontFamily: T.mono, fontSize: 10, fontWeight: 700, color: T.ink60 }}>TAP A NUMBER TO CHANGE IT</div>
+          <div style={{ display: "flex", gap: 4, fontFamily: T.mono, fontSize: 10, fontWeight: 700, color: T.ink60, textAlign: "center", position: "sticky", top: 0 }}>
+            {["P", "W", "D", "L", "F", "A"].map(h => <div key={h} style={{ flex: 1 }}>{h}</div>)}<div style={{ width: 34 }}>PTS</div>
+          </div>
+          {entryRows.map((r, i) => {
+            const n = v => (v === "" ? 0 : +v);
+            const bad = n(r.w) + n(r.d) + n(r.l) !== n(r.p);
+            const cell = (c) => <input key={c} type="text" inputMode="numeric" value={r[c]} onChange={e => setCell(i, c, e.target.value)} onFocus={e => e.target.select()} aria-label={`${r.team} ${c}`} style={{ width: 0, flex: 1, minWidth: 0, padding: "9px 0", border: `1.5px solid ${bad && ["p", "w", "d", "l"].includes(c) ? "#e0a050" : "#d5dbe6"}`, borderRadius: 8, textAlign: "center", fontFamily: T.mono, fontSize: 14, fontWeight: 700, color: T.navy, background: "#fff", outline: "none", boxSizing: "border-box" }} />;
+            return (
+              <div key={r.team} style={{ padding: "8px 0", borderBottom: "1px solid #eef0f5" }}>
+                <div style={{ display: "flex", alignItems: "center", marginBottom: 5 }}>
+                  <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: T.navy }}>{r.team}</div>
+                  <button onClick={() => setEntryRows(rs => rs.filter((_, j) => j !== i))} aria-label={`Remove ${r.team}`} style={{ background: "none", border: "none", color: T.ink60, fontSize: 16, cursor: "pointer", padding: "0 4px", lineHeight: 1 }}>×</button>
+                </div>
+                <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                  {["p", "w", "d", "l", "f", "a"].map(cell)}
+                  <div style={{ width: 34, textAlign: "center", fontFamily: T.mono, fontWeight: 800, fontSize: 14, color: T.navy }}>{n(r.w) * 3 + n(r.d)}</div>
+                </div>
+              </div>
+            );
+          })}
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <input list="lt-teams2" placeholder="Add another team" value={addTeam} onChange={e => setAddTeam(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addEntryTeam(); }} style={{ ...inp, flex: 1, minWidth: 0 }} />
+            <button onClick={addEntryTeam} style={btn(false)}>ADD</button>
+          </div>
+          <div style={{ marginTop: 14 }}>
+            {entryRows.length > 0 && entryCheck.errors.length === 0 && <div style={{ background: "#e4f5ea", border: "1.5px solid #1f8f55", color: "#14583a", borderRadius: 10, padding: "8px 10px", fontSize: 12, marginBottom: 8 }}>✓ {entryRows.length} team{entryRows.length === 1 ? "" : "s"} · every row adds up</div>}
+            {entryCheck.errors.length > 0 && <div style={{ background: "#fde8c8", border: "1.5px solid #e0a050", color: "#7a4300", borderRadius: 10, padding: "8px 10px", fontSize: 12, marginBottom: 8 }}>{entryCheck.errors.map((e, i) => <div key={i}>⚠ {e}</div>)}</div>}
+            {entryCheck.warnings.length > 0 && <div style={{ background: "#fdf3d8", border: "1.5px solid #b8860b", color: "#5c4400", borderRadius: 10, padding: "8px 10px", fontSize: 12, marginBottom: 8 }}>{entryCheck.warnings.map((e, i) => <div key={i}>ℹ {e}</div>)}</div>}
+          </div>
+          <button onClick={saveEntry} disabled={busy || entryCheck.errors.length > 0 || !entryRows.length} style={{ ...btn(true, busy || entryCheck.errors.length > 0 || !entryRows.length), width: "100%" }}>{busy ? "SAVING..." : "SAVE TABLE"}</button>
+          <div style={{ fontSize: 11, color: T.ink60, textAlign: "center", marginTop: 8 }}>Replaces each team's record as at {niceDate(entryDate)}. Nothing changes until you tap Save.</div>
+        </div>
+      )}
+
       {tab === "list" && isAdmin && (
         <div style={card}>
-          {matches.length === 0 && <div style={{ fontSize: 13, color: T.ink60, textAlign: "center", padding: 16 }}>Nothing added yet.</div>}
+          {snapshots.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontFamily: T.mono, fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: T.skyInk, marginBottom: 4 }}>TABLES TYPED IN</div>
+              {snapshots.map(([d, rows]) => (
+                <div key={d} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid #eef0f5" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: T.navy }}>Table as at {d ? niceDate(d) : "(no date)"}</div>
+                    <div style={{ fontSize: 11, color: T.ink60 }}>{rows.length} teams{d === tableAsOf ? " · the one in use" : ""}</div>
+                  </div>
+                  <button onClick={() => { if (window.confirm(`Remove the table as at ${d ? niceDate(d) : "(no date)"}? The table goes back to the one before it, or to results only.`)) onDeleteTable(rows.map(r => r.id)); }} style={{ background: "none", border: "none", color: T.loss, fontWeight: 800, cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>Delete</button>
+                </div>
+              ))}
+              <div style={{ fontFamily: T.mono, fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: T.skyInk, margin: "14px 0 0" }}>RESULTS ADDED</div>
+            </div>
+          )}
+          {matches.length === 0 && <div style={{ fontSize: 13, color: T.ink60, textAlign: "center", padding: 16 }}>No results added yet.</div>}
           {matches.map(m => (
             <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid #eef0f5" }}>
               <div style={{ flex: 1, minWidth: 0 }}>

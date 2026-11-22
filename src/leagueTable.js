@@ -76,7 +76,8 @@ export function parsePaste(text, teamNames, selfNames = []) {
 // Build the table.
 //   matches : [{date, home, away, home_goals, away_goals}]  (entered by hand or pasted)
 //   own     : [{date, opposition, homeScore, awayScore}]   (this club's logged league games; our score first)
-//   start   : [{team, p, w, d, l, gf, ga, as_of}]          (record up to a date; later games are added on top)
+//   start   : [{team, p, w, d, l, gf, ga, as_of}]          (record up to a date; later games are added on top).
+//             If a team has more than one, only its newest (latest as_of) is used, so a newer table replaces an older one.
 export function computeTable({ matches = [], own = [], start = [], selfName = "" }) {
   const all = [...matches.map((m) => ({ date: m.date || "", home: m.home, away: m.away, hg: +m.home_goals, ag: +m.away_goals }))];
   for (const r of own) {
@@ -90,8 +91,15 @@ export function computeTable({ matches = [], own = [], start = [], selfName = ""
     if (!teams.has(k)) teams.set(k, { team: name, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0 });
     return teams.get(k);
   };
-  const startBy = new Map(start.map((s) => [normName(s.team), s]));
+  const newest = new Map();
   for (const s of start) {
+    const k = normName(s.team), cur = newest.get(k);
+    const a = s.as_of || "", b = cur ? cur.as_of || "" : "";
+    if (!cur || a > b || (a === b && (+s.id || 0) >= (+cur.id || 0))) newest.set(k, s);
+  }
+  const current = [...newest.values()];
+  const startBy = new Map(current.map((s) => [normName(s.team), s]));
+  for (const s of current) {
     const t = row(s.team);
     t.p += +s.p || 0; t.w += +s.w || 0; t.d += +s.d || 0; t.l += +s.l || 0; t.gf += +s.gf || 0; t.ga += +s.ga || 0;
   }
@@ -110,4 +118,30 @@ export function computeTable({ matches = [], own = [], start = [], selfName = ""
   const out = [...teams.values()].map((t) => ({ ...t, gd: t.gf - t.ga, pts: t.w * 3 + t.d, self: normName(t.team) === selfKey }));
   out.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.team.localeCompare(b.team));
   return out;
+}
+
+// Check a typed-in table. Returns { errors: [..], warnings: [..] } (errors stop it being saved).
+//   rows: [{team, p, w, d, l, f, a}] with the numbers as typed (strings or numbers)
+export function checkTableRows(rows, previous = []) {
+  const errors = [], warnings = [];
+  const num = (v) => (v === "" || v == null ? 0 : Number(v));
+  const seen = new Set();
+  const prevBy = new Map(previous.map((r) => [normName(r.team), r]));
+  let gf = 0, ga = 0;
+  for (const r of rows) {
+    const name = String(r.team || "").trim();
+    if (!name) { errors.push("A team has no name."); continue; }
+    const k = normName(name);
+    if (seen.has(k)) errors.push(`${name} is in the list twice.`);
+    seen.add(k);
+    const v = ["p", "w", "d", "l", "f", "a"].map((c) => num(r[c]));
+    if (v.some((x) => !Number.isInteger(x) || x < 0 || x > 999)) { errors.push(`${name}: numbers must be whole numbers, 0 or more.`); continue; }
+    const [p, w, d, l, f, a] = v;
+    if (w + d + l !== p) errors.push(`${name}: played ${p}, but W + D + L is ${w + d + l}.`);
+    gf += f; ga += a;
+    const prev = prevBy.get(k);
+    if (prev && p < prev.p) warnings.push(`${name} has played ${p}, fewer than the ${prev.p} in the table now.`);
+  }
+  if (rows.length > 1 && gf !== ga) warnings.push(`Goals for (${gf}) and goals against (${ga}) across all teams should match. One number may be mistyped.`);
+  return { errors, warnings };
 }

@@ -1,6 +1,6 @@
 // Club results app — v2.3
 import { useState, useRef, useEffect, useCallback } from "react";
-import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, uploadIcon, verifyAdminPin, setAdminPin, changeAdminPin, moveExternalImages, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchMatchVideos, insertMatchVideo, deleteMatchVideo, parseYouTubeId, fetchFixtures, insertFixture, updateFixture, deleteFixture, fetchTournamentTables, insertTournamentTable, updateTournamentTable, deleteTournamentTable, fetchClubSettings, saveClubSettings, fetchLeagueMatches, insertLeagueMatches, deleteLeagueMatch, fetchLeagueStart, fetchLiveMatch, insertLiveMatch, updateLiveMatch, deleteLiveMatch } from "./api.js";
+import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, uploadIcon, verifyAdminPin, setAdminPin, changeAdminPin, moveExternalImages, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchMatchVideos, insertMatchVideo, deleteMatchVideo, parseYouTubeId, fetchFixtures, insertFixture, updateFixture, deleteFixture, fetchTournamentTables, insertTournamentTable, updateTournamentTable, deleteTournamentTable, fetchClubSettings, saveClubSettings, fetchLeagueMatches, insertLeagueMatches, deleteLeagueMatch, fetchLeagueStart, insertLeagueStart, deleteLeagueStart, fetchLiveMatch, insertLiveMatch, updateLiveMatch, deleteLiveMatch } from "./api.js";
 import LeagueScreen from "./LeagueScreen.jsx";
 import LiveScreen, { LiveCard } from "./LiveScreen.jsx";
 import { buildResultFields } from "./liveMatch.js";
@@ -2361,6 +2361,13 @@ export default function App() {
               teams={teams} matches={leagueMatches.filter(m => m.season_id === sid)} start={leagueStart.filter(x => x.season_id === sid)} ownLeague={own} branding={branding}
               posterBase={{ club: BRAND.name, label: (branding.poster_label || "").trim(), crest: BRAND.badge || DEFAULT_BADGE, motto: branding.slogan || "", leagueLogo: branding.league_logo || null, leagueName: branding.league_name || "", colors: posterColors(THEME.navy, THEME.sky) }}
               onAdd={async rows => { const created = await insertLeagueMatches(rows); setLeagueMatches(ms => [...(created || []), ...ms]); }}
+              onSaveTable={async (asOf, rows) => {
+                const old = leagueStart.filter(x => x.season_id === sid && x.as_of === asOf);
+                for (const o of old) await deleteLeagueStart(o.id);
+                const created = await insertLeagueStart(rows);
+                setLeagueStart(ls => [...ls.filter(x => !old.some(o => o.id === x.id)), ...(created || [])]);
+              }}
+              onDeleteTable={async ids => { try { for (const id of ids) await deleteLeagueStart(id); setLeagueStart(ls => ls.filter(x => !ids.includes(x.id))); showToast("Removed"); } catch (e) { showToast("❌ Couldn't remove it"); } }}
               onDelete={async id => { try { await deleteLeagueMatch(id); setLeagueMatches(ms => ms.filter(m => m.id !== id)); showToast("Removed"); } catch (e) { showToast("❌ Couldn't remove it"); } }}
               showToast={showToast} onBack={() => setMode(isAdmin ? "staff" : "home")} loadH2c={loadHtml2Canvas} ensureFonts={ensurePosterFonts} />
           );
