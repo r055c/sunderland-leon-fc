@@ -2173,8 +2173,8 @@ export default function App() {
       {/* Top bar */}
       <div style={{ background: THEME.navy, padding: "16px 20px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.3)", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -20, right: -30, width: 140, height: 140, opacity: 0.08, backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="white" d="M20 65 Q 35 55 45 40 Q 50 30 58 32 Q 65 34 62 42 Q 58 52 68 48 Q 78 44 75 55 Q 70 68 55 70 Q 40 72 30 78 Z"/></svg>')`, backgroundSize: "contain", backgroundRepeat: "no-repeat", pointerEvents: "none" }} />
-        <div style={{ background: THEME.white, borderRadius: "50%", padding: 4, display: "flex", alignItems: "center", justifyContent: "center", width: 44, height: 44, flexShrink: 0, border: `2px solid ${THEME.sky}`, position: "relative", zIndex: 1 }}>
-          <ClubLogo size={34} />
+        <div style={{ background: THEME.white, borderRadius: "50%", padding: 1, display: "flex", alignItems: "center", justifyContent: "center", width: 50, height: 50, flexShrink: 0, border: `2px solid ${THEME.sky}`, position: "relative", zIndex: 1, overflow: "hidden" }}>
+          <ClubLogo size={44} />
         </div>
         <div style={{ flex: 1, minWidth: 0, position: "relative", zIndex: 1 }}>
           <div style={{ color: THEME.white, fontFamily: THEME.display, fontWeight: 600, fontSize: 17, letterSpacing: 0.5, lineHeight: 1.1 }}>{BRAND.name}</div>

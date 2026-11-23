@@ -33,17 +33,41 @@ async function shrink(blob, bucket) {
   if (/svg/.test(blob.type) && blob.size < 400000) return blob;
   try {
     const bmp = await createImageBitmap(blob);
-    const scale = Math.min(1, maxDim / Math.max(bmp.width, bmp.height));
-    const w = Math.max(1, Math.round(bmp.width * scale)), h = Math.max(1, Math.round(bmp.height * scale));
+    const box = bucket === "branding" ? contentBox(bmp) : { sx: 0, sy: 0, sw: bmp.width, sh: bmp.height };
+    const trimmed = box.sw < bmp.width || box.sh < bmp.height;
+    const scale = Math.min(1, maxDim / Math.max(box.sw, box.sh));
+    const w = Math.max(1, Math.round(box.sw * scale)), h = Math.max(1, Math.round(box.sh * scale));
     const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
     const ctx = canvas.getContext("2d");
     if (!keepAlpha) { ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h); }
-    ctx.drawImage(bmp, 0, 0, w, h);
+    ctx.drawImage(bmp, box.sx, box.sy, box.sw, box.sh, 0, 0, w, h);
     const type = keepAlpha ? "image/png" : "image/jpeg";
     const out = await new Promise((r) => canvas.toBlob(r, type, 0.82));
-    if (out && (out.size < blob.size || blob.size > 1000000)) return out;
+    if (out && (trimmed || out.size < blob.size || blob.size > 1000000)) return out;
   } catch (e) { /* fall back to the original */ }
   return blob;
+}
+// The part of a logo that isn't plain white or empty margin, as a source rectangle. Logos saved with a wide white border
+// look small once they are squeezed into a round badge, so crests are cropped to their real edges before saving.
+function contentBox(bmp) {
+  const full = { sx: 0, sy: 0, sw: bmp.width, sh: bmp.height };
+  try {
+    const k = Math.min(1, 256 / Math.max(bmp.width, bmp.height));
+    const w = Math.max(1, Math.round(bmp.width * k)), h = Math.max(1, Math.round(bmp.height * k));
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(bmp, 0, 0, w, h);
+    const d = x.getImageData(0, 0, w, h).data;
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let y = 0; y < h; y++) for (let xx = 0; xx < w; xx++) {
+      const i = (y * w + xx) * 4;
+      if (d[i + 3] > 20 && !(d[i] > 238 && d[i + 1] > 238 && d[i + 2] > 238)) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+    if (x1 < 0) return full;
+    const pad = Math.max(1, Math.round(Math.max(w, h) * 0.015));
+    x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(w - 1, x1 + pad); y1 = Math.min(h - 1, y1 + pad);
+    if ((x1 - x0 + 1) >= w * 0.97 && (y1 - y0 + 1) >= h * 0.97) return full;
+    return { sx: x0 / k, sy: y0 / k, sw: (x1 - x0 + 1) / k, sh: (y1 - y0 + 1) / k };
+  } catch (e) { return full; }
 }
 export async function uploadImage(file, bucket = "logos") {
   const body = await shrink(file, bucket);
@@ -54,13 +78,14 @@ export async function uploadImage(file, bucket = "logos") {
 // Home-screen icon: the badge centred on a light square, 512x512 (iPhones fill transparent areas with black).
 export async function uploadIcon(file) {
   const bmp = await createImageBitmap(file);
-  const size = 512, pad = 0.14;
+  const size = 512, pad = 0.1;
   const canvas = document.createElement("canvas"); canvas.width = size; canvas.height = size;
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = "#f8f8f8"; ctx.fillRect(0, 0, size, size);
-  const box = size * (1 - pad * 2), sc = Math.min(box / bmp.width, box / bmp.height);
-  const w = bmp.width * sc, h = bmp.height * sc;
-  ctx.drawImage(bmp, (size - w) / 2, (size - h) / 2, w, h);
+  const cb = contentBox(bmp);
+  const box = size * (1 - pad * 2), sc = Math.min(box / cb.sw, box / cb.sh);
+  const w = cb.sw * sc, h = cb.sh * sc;
+  ctx.drawImage(bmp, cb.sx, cb.sy, cb.sw, cb.sh, (size - w) / 2, (size - h) / 2, w, h);
   const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
   const res = await fetch(api("upload"), { method: "POST", headers: { ...authHeaders(), "Content-Type": "image/png" }, body: blob });
   if (!res.ok) throw new Error("Icon upload failed");
