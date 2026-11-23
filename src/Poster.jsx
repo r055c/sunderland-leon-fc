@@ -538,7 +538,6 @@ function LeaguePoster({ d }) {
   return (
     <div style={{ width: POSTER_W, height: POSTER_H, boxSizing: "border-box", background: `linear-gradient(170deg, ${mix(c.accent, c.bg, 0.78)} 0%, ${c.bg} 78%)`, color: "#fff", fontFamily: BODY, padding: "58px 50px 40px", display: "flex", flexDirection: "column", gap: 30 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 26, padding: "0 10px" }}>
-        <Crest d={d} size={120} />
         <div style={{ flexGrow: 1, minWidth: 0 }}>
           <div style={{ fontFamily: COND, fontWeight: 800, fontSize: 88, lineHeight: 0.95 }}>LEAGUE TABLE</div>
           <div style={{ fontFamily: COND, fontWeight: 700, fontSize: 26, letterSpacing: 4, color: c.accent }}>{[upper(d.leagueName), upper(d.seasonLabel), "UNOFFICIAL"].filter(Boolean).join(" · ")}</div>
@@ -565,7 +564,6 @@ function LeaguePoster({ d }) {
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", fontFamily: COND, fontWeight: 600, fontSize: 24, letterSpacing: 4, color: c.muted }}>
         <span>UNOFFICIAL TABLE{d.asOf ? ` · ${upper(d.asOf)}` : ""}</span>
-        <span>{upper(d.motto)}</span>
       </div>
     </div>
   );
