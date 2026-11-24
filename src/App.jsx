@@ -538,7 +538,7 @@ function ScoreCard({ match, compColor = THEME.sky, onClick, showMeta = true, pho
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {row(<SBadge src={BRAND.badge || DEFAULT_BADGE} name={BRAND.short} size={34} ours />, BRAND.short || BRAND.name.replace(/ FC$/i, ""), us, us >= them)}
-          {row(<SBadge src={match.oppLogo} name={match.opposition} size={34} />, match.opposition, them, them >= us)}
+          {row(<SBadge src={match.oppLogo || BRAND.teams?.find(t => t.name === match.opposition)?.logo || findTeamLogo(BRAND.teams, match.opposition)} name={match.opposition} size={34} />, match.opposition, them, them >= us)}
         </div>
         {showMeta && ((match.scorers || []).length > 0 || match.motm || hasPens(match) || photoCount > 0 || videoCount > 0) && (
           <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${THEME.ink30}`, fontSize: 13, color: "#aeaeb2", lineHeight: 1.5 }}>
@@ -1218,6 +1218,7 @@ export default function App() {
   const [results, setResults] = useState([]);
   const [competitions, setCompetitions] = useState(DEFAULT_COMPETITIONS);
   const [teams, setTeams] = useState([]);
+  BRAND.teams = teams; // read by the result rows so they can show a team's badge when the result has none
   const [players, setPlayers] = useState([]);
   const [appearances, setAppearances] = useState([]);
   const [matchPhotos, setMatchPhotos] = useState([]);
@@ -2326,7 +2327,7 @@ export default function App() {
         {/* ── HOME TAB ── */}
         {mode === "home" && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
-            {live && <LiveCard T={THEME} live={live} selfName={THEME.sports ? (BRAND.short || BRAND.name) : BRAND.name} badge={BRAND.badge || DEFAULT_BADGE} onOpen={isAdmin ? () => { setLiveStartFx(null); setMode("live"); } : null} />}
+            {live && <LiveCard T={THEME} live={live} selfName={THEME.sports ? (BRAND.short || BRAND.name) : BRAND.name} badge={BRAND.badge || DEFAULT_BADGE} oppLogo={BRAND.teams?.find(t => t.name === live.opposition)?.logo || findTeamLogo(BRAND.teams, live.opposition)} onOpen={isAdmin ? () => { setLiveStartFx(null); setMode("live"); } : null} />}
             {!live && isAdmin && isViewingActive && (() => {
               const td = new Date(); const iso = `${td.getFullYear()}-${String(td.getMonth() + 1).padStart(2, "0")}-${String(td.getDate()).padStart(2, "0")}`;
               const f = seasonFixtures.find(x => x.rawDate === iso && !x.played);

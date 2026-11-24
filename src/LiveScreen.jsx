@@ -197,7 +197,7 @@ export default function LiveScreen({ T, live, players, fixtures, competitions, s
 }
 
 // The red LIVE card on the Home screen. Anyone can see it; admins can tap it to open the scoring controls.
-export function LiveCard({ T, live, selfName, badge, onOpen }) {
+export function LiveCard({ T, live, selfName, badge, oppLogo, onOpen }) {
   const [, tick] = useState(0);
   useEffect(() => { const t = setInterval(() => tick(n => n + 1), 1000); return () => clearInterval(t); }, []);
   const score = scoreOf(live), away = live.home_away === "A";
@@ -209,7 +209,7 @@ export function LiveCard({ T, live, selfName, badge, onOpen }) {
   if (T.sports) {
     const side = (x, ours) => (
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, minWidth: 0 }}>
-        <SBadge src={ours ? badge : null} name={x.n} size={54} ours={ours} />
+        <SBadge src={ours ? badge : oppLogo} name={x.n} size={54} ours={ours} />
         <span style={{ fontSize: 13, fontWeight: 700, textAlign: "center", lineHeight: 1.15 }}>{x.n}</span>
       </div>
     );
