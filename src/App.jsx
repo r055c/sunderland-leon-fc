@@ -1152,7 +1152,7 @@ export default function App() {
     setShowInstallBanner(false);
     localStorage.setItem("leon_install_dismissed", "1");
   };
-  const [scorersTab, setScorersTab] = useState("goals");
+  const [scorersTab, setScorersTab] = useState("squad");
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState(false);
   const [dbErrorMsg, setDbErrorMsg] = useState("");
@@ -2827,7 +2827,7 @@ export default function App() {
               const showVideos = galleryFilter !== "photos";
               // One section per match, except tournament games, which are combined into one section per tournament day.
               const groupMap = new Map();
-              seasonResults.forEach(m => {
+              seasonResultsSorted.forEach(m => {
                 const isTour = compTypeOf(m.competition) === "tournament";
                 const key = isTour ? `t|${m.competition}|${m.date}` : `m|${m.id}`;
                 if (!groupMap.has(key)) groupMap.set(key, { key, match: m, title: isTour ? `🎪 ${m.competition}` : `vs ${m.opposition || ""}`, photos: [], videos: [] });
