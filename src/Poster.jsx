@@ -6,6 +6,8 @@ import { mix, contrast } from "./branding.js";
 export const POSTER_W = 1080, POSTER_H = 1350;
 // kind "month" = a whole month of games; "single" = just the next fixture.
 export const POSTER_LAYOUTS = [
+  { id: "sportslist", kind: "month", name: "Sports list", desc: "Dark rows, big dates, both badges" },
+  { id: "sportsnext", kind: "single", name: "Sports next match", desc: "Next fixture, large badges and date" },
   { id: "grid", kind: "month", name: "Weekend grid", desc: "Opposition badges across the top, centred list" },
   { id: "table", kind: "month", name: "Fixtures table", desc: "Date headers and striped rows" },
   { id: "next", kind: "month", name: "Next up + coming up", desc: "Next game in a big card, the rest below" },
@@ -124,7 +126,7 @@ function Ghost({ src, side, opacity }) {
   if (!u || svgSrc(u)) return null;
   return <img src={u} alt="" style={{ position: "absolute", [side]: -330, top: 330, width: 660, height: 660, objectFit: "contain", opacity }} />;
 }
-function Badge({ src, name, size, c, ring }) {
+export function Badge({ src, name, size, c, ring }) {
   const [bg, setBg] = useState(null);
   useEffect(() => { let on = true; setBg(null); cornerColour(src).then((v) => { if (on) setBg(v); }); return () => { on = false; }; }, [src]);
   return (
@@ -569,7 +571,115 @@ function LeaguePoster({ d }) {
   );
 }
 
+
+// ── Sports look: dark, big badges, minimal rows ──
+const SANS = "-apple-system, 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+const sportsBg = (c) => `radial-gradient(900px 600px at 85% -6%, ${mix(c.accent, c.bg, 0.72)} 0%, ${c.bg} 70%)`;
+function SportsBrand({ d }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 18, marginBottom: 30 }}>
+      <Crest d={d} size={68} />
+      <div>
+        <div style={{ fontWeight: 800, fontSize: 36, letterSpacing: -0.5, lineHeight: 1.05 }}>{d.club}</div>
+        {d.label ? <div style={{ fontWeight: 700, fontSize: 21, letterSpacing: 2, color: "#8e8e93" }}>{upper(d.label)}</div> : null}
+      </div>
+      <div style={{ marginLeft: "auto" }}><LeagueChip d={d} h={64} /></div>
+    </div>
+  );
+}
+const SportsFoot = ({ d, left }) => (
+  <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 20, letterSpacing: 2.5, color: "#636366", marginTop: 26 }}>
+    <span>{upper(left || "")}</span><span>{upper(d.motto || "")}</span>
+  </div>
+);
+const SportsSide = ({ s, f, d, size }) => (s.ours ? <Crest d={d} size={size} /> : <Badge src={f.logo} name={f.opp} size={size} c={d.colors} />);
+
+function SportsListPoster({ d }) {
+  const c = d.colors, n = d.fixtures.length, k = kFor(n);
+  return (
+    <div style={{ width: POSTER_W, height: POSTER_H, boxSizing: "border-box", background: sportsBg(c), color: "#fff", fontFamily: SANS, padding: "64px 70px 54px", display: "flex", flexDirection: "column" }}>
+      <SportsBrand d={d} />
+      <div style={{ fontWeight: 700, fontSize: 24, letterSpacing: 3, color: c.accent }}>{upper(d.monthName)} {d.year}</div>
+      <div style={{ fontWeight: 800, fontSize: 150, letterSpacing: -5, lineHeight: 0.95, margin: "6px 0 32px" }}>Fixtures</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14, flex: 1, minHeight: 0 }}>
+        {d.fixtures.map((f, i) => {
+          const [L, R] = sides(f, d), p = oppParts(f.opp);
+          return (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 26, background: "#1c1c1e", borderRadius: 30, padding: "0 30px", flex: "1 1 0", minHeight: 0, maxHeight: 230 }}>
+              <div style={{ width: 96, textAlign: "center", lineHeight: 1 }}>
+                <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: 2, color: c.accent }}>{upper(dayName(f.date).slice(0, 3))}</div>
+                <div style={{ fontSize: 70 * k + 8, fontWeight: 800, margin: "2px 0" }}>{f.date.getDate()}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: 2, color: "#8e8e93" }}>{upper(monthName(f.date).slice(0, 3))}</div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <SportsSide s={L} f={f} d={d} size={88 * k + 8} /><span style={{ color: "#636366", fontSize: 24, fontWeight: 600 }}>v</span><SportsSide s={R} f={f} d={d} size={88 * k + 8} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: p.name.length <= 16 ? 40 : p.name.length <= 24 ? 34 : 29, lineHeight: 1.1 }}>
+                {p.name}
+                <div style={{ fontSize: 20, color: "#8e8e93", letterSpacing: 2, marginTop: 5, fontWeight: 700 }}>{f.ha ? (f.ha === "A" ? "AWAY" : "HOME") : upper(f.compLabel)}{f.venue ? ` · ${upper(f.venue)}` : ""}</div>
+              </div>
+              <div style={{ fontWeight: 800, fontSize: 46, letterSpacing: -1 }}>{f.time || "TBC"}</div>
+            </div>
+          );
+        })}
+      </div>
+      <SportsFoot d={d} left={d.leagueName || d.compLabel || ""} />
+    </div>
+  );
+}
+
+function SportsNextPoster({ d }) {
+  const c = d.colors, [first, ...rest] = d.fixtures;
+  if (!first) return <div style={{ width: POSTER_W, height: POSTER_H, background: c.bg }} />;
+  const [L, R] = sides(first, d), p = oppParts(first.opp);
+  const nm = (s) => (s.ours ? (d.club || "").replace(/ FC$/i, "") : p.name);
+  const side = (s) => (
+    <div style={{ width: 300, display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
+      <SportsSide s={s} f={first} d={d} size={250} />
+      <div style={{ fontWeight: 700, fontSize: nm(s).length <= 12 ? 42 : nm(s).length <= 20 ? 36 : 30, textAlign: "center", lineHeight: 1.1 }}>{nm(s)}</div>
+    </div>
+  );
+  return (
+    <div style={{ width: POSTER_W, height: POSTER_H, boxSizing: "border-box", background: sportsBg(c), color: "#fff", fontFamily: SANS, padding: "64px 70px 54px", display: "flex", flexDirection: "column" }}>
+      <SportsBrand d={d} />
+      <div style={{ textAlign: "center", fontWeight: 700, fontSize: 24, letterSpacing: 4, color: c.accent, margin: "26px 0 34px" }}>NEXT MATCH{d.leagueName ? ` · ${upper(d.leagueName)}` : d.compLabel ? ` · ${upper(d.compLabel)}` : ""}</div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: rest.length ? 0 : "auto" }}>
+        {side(L)}
+        <div style={{ textAlign: "center", lineHeight: 1 }}>
+          <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: 4, color: c.accent }}>{upper(dayName(first.date).slice(0, 3))}</div>
+          <div style={{ fontSize: 190, fontWeight: 800, letterSpacing: -8 }}>{first.date.getDate()}</div>
+          <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: 4, color: c.accent }}>{upper(monthName(first.date).slice(0, 3))}</div>
+        </div>
+        {side(R)}
+      </div>
+      <div style={{ display: "flex", gap: 16, marginTop: 44 }}>
+        <div style={{ flex: 1, background: "#1c1c1e", borderRadius: 30, padding: "26px 34px" }}>
+          <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: 2, color: "#8e8e93" }}>KICK-OFF</div>
+          <div style={{ fontSize: 80, fontWeight: 800, letterSpacing: -2 }}>{first.time || "TBC"}</div>
+        </div>
+        <div style={{ flex: 1, background: "#1c1c1e", borderRadius: 30, padding: "26px 34px" }}>
+          <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: 2, color: "#8e8e93" }}>{first.venue ? "VENUE" : "HOME / AWAY"}</div>
+          <div style={{ fontSize: first.venue && first.venue.length > 10 ? 40 : 80, fontWeight: 800, letterSpacing: -1, lineHeight: first.venue && first.venue.length > 10 ? 1.9 : 1.05 }}>{first.venue || (first.ha === "A" ? "Away" : "Home")}</div>
+        </div>
+      </div>
+      {rest.length > 0 && (
+        <div style={{ marginTop: 34, flex: 1, minHeight: 0, overflow: "hidden" }}>
+          <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: 3, color: c.accent, marginBottom: 6 }}>THEN</div>
+          {rest.slice(0, 4).map((f, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 32, fontWeight: 600, padding: "18px 0", borderBottom: "1px solid #2c2c2e" }}>
+              <span>{dayName(f.date).slice(0, 3)} {f.date.getDate()} {monthName(f.date).slice(0, 3)}</span><span style={{ color: "#aeaeb2" }}>{oppParts(f.opp).name}</span><span>{f.time || "TBC"}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{ marginTop: "auto" }}><SportsFoot d={d} left={d.seasonLabel || ""} /></div>
+    </div>
+  );
+}
+
 export function PosterCanvas({ layout, d }) {
+  if (layout === "sportslist") return <SportsListPoster d={d} />;
+  if (layout === "sportsnext") return <SportsNextPoster d={d} />;
   if (layout === "tickets") return <TicketPoster d={d} />;
   if (layout === "single") return <SinglePoster d={d} />;
   if (layout === "grid") return <GridPoster d={d} />;

@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, uploadIcon, verifyAdminPin, setAdminPin, changeAdminPin, moveExternalImages, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchMatchVideos, insertMatchVideo, deleteMatchVideo, parseYouTubeId, fetchFixtures, insertFixture, updateFixture, deleteFixture, fetchTournamentTables, insertTournamentTable, updateTournamentTable, deleteTournamentTable, fetchClubSettings, saveClubSettings, fetchLeagueMatches, insertLeagueMatches, deleteLeagueMatch, fetchLeagueStart, insertLeagueStart, deleteLeagueStart, fetchLiveMatch, insertLiveMatch, updateLiveMatch, deleteLiveMatch } from "./api.js";
 import LeagueScreen from "./LeagueScreen.jsx";
+import { ShareCardB } from "./ShareCard.jsx";
 import LiveScreen, { LiveCard } from "./LiveScreen.jsx";
 import { buildResultFields } from "./liveMatch.js";
 import { DEFAULT_BADGE } from "./defaultBadge.js";
@@ -554,6 +555,7 @@ function ResultCard({ match, teamName = "Team", compColor = THEME.sky, players =
   const pillBg = isWin ? THEME.pitch : isLoss ? THEME.loss : THEME.amber;
   const resultLabel = isWin ? "WIN" : isLoss ? "LOSS" : "DRAW";
   const cardRef = useRef();
+  const shareRef = useRef(); // the square dark card that is actually exported when sharing
   const filename = `${(BRAND.short || "club").replace(/\s+/g,"-").toLowerCase()}-vs-${(match.opposition || "result").replace(/\s+/g,"-").toLowerCase()}.png`;
   // Prefer the logo saved on the result itself; if it wasn't set at the time (e.g. the
   // logo was added to the team afterwards), fall back to the team's current logo.
@@ -692,7 +694,10 @@ function ResultCard({ match, teamName = "Team", compColor = THEME.sky, players =
           <span style={{ fontFamily: THEME.mono, fontSize: 9, color: THEME.ink60 }}>{match.date}</span>
         </div>
       </div>
-      <SaveCardButton cardRef={cardRef} filename={filename} shareText={buildResultCaption(match)} />
+      <div aria-hidden="true" style={{ position: "fixed", left: -20000, top: 0, pointerEvents: "none" }}>
+        <div ref={shareRef}><ShareCardB match={match} club={BRAND.name} short={BRAND.short} label={teamName} crest={BRAND.badge || DEFAULT_BADGE} oppLogo={displayLogo} colors={posterColors(THEME.navy, THEME.sky)} compLabel={match.competition} /></div>
+      </div>
+      <SaveCardButton cardRef={shareRef} filename={filename} shareText={buildResultCaption(match)} />
     </div>
   );
 }
