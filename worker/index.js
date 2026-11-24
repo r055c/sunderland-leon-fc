@@ -24,7 +24,7 @@ const TABLES = {
   live_match: { cols: ["fixture_id", "season_id", "opposition", "competition", "home_away", "venue", "squad", "goals", "phase", "base_ms", "run_since", "started_at"], kinds: { squad: "array", goals: "array" }, order: "id.desc" },
   match_videos: { cols: ["result_id", "video_id", "title"], kinds: {}, order: "id.desc", extraRead: ["created_at"] },
   club_settings: {
-    cols: ["club_name", "short_name", "slogan", "primary_color", "accent_color", "font_pairing", "badge_url", "icon_url", "league_logo", "league_name", "poster_styles", "poster_label", "updated_at"],
+    cols: ["club_name", "short_name", "slogan", "primary_color", "accent_color", "font_pairing", "badge_url", "icon_url", "league_logo", "league_name", "poster_styles", "poster_label", "look", "updated_at"],
     kinds: { poster_styles: "array" }, order: "id.asc",
   },
 };

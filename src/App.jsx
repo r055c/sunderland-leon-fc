@@ -3,11 +3,12 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, uploadIcon, verifyAdminPin, setAdminPin, changeAdminPin, moveExternalImages, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchMatchVideos, insertMatchVideo, deleteMatchVideo, parseYouTubeId, fetchFixtures, insertFixture, updateFixture, deleteFixture, fetchTournamentTables, insertTournamentTable, updateTournamentTable, deleteTournamentTable, fetchClubSettings, saveClubSettings, fetchLeagueMatches, insertLeagueMatches, deleteLeagueMatch, fetchLeagueStart, insertLeagueStart, deleteLeagueStart, fetchLiveMatch, insertLiveMatch, updateLiveMatch, deleteLiveMatch } from "./api.js";
 import LeagueScreen from "./LeagueScreen.jsx";
 import { ShareCardB } from "./ShareCard.jsx";
+import { SBadge } from "./sportsUI.jsx";
 import LiveScreen, { LiveCard } from "./LiveScreen.jsx";
 import { buildResultFields } from "./liveMatch.js";
 import { DEFAULT_BADGE } from "./defaultBadge.js";
 import { PosterCanvas, POSTER_LAYOUTS, POSTER_W, POSTER_H, posterColors, findTeamLogo, ensurePosterFonts, cutWhite } from "./Poster.jsx";
-import { DEFAULT_BRANDING, FONTS, PRESETS, applyBranding, deriveTheme, loadCachedBranding, cacheBranding, contrast } from "./branding.js";
+import { DEFAULT_BRANDING, FONTS, PRESETS, applyBranding, deriveTheme, loadCachedBranding, cacheBranding, contrast, L, LOOKS } from "./branding.js";
 
 // ── Logo ─────────────────────────────────────────────────
 
@@ -27,6 +28,8 @@ function ClubLogo({ size = 68 }) {
 // ── Constants ─────────────────────────────────────────────
 // Design tokens — redesign v3 (navy/sky-blue club identity, scoreboard motif)
 const THEME = {
+  sports: false,
+  text: "#12172e",
   navy: "#12172e",
   navySoft: "#1c2344",
   sky: "#5fb2d9",
@@ -148,10 +151,10 @@ const fmtGd = g => g > 0 ? `+${g}` : g < 0 ? `−${Math.abs(g)}` : "0";
 
 function LeagueTable({ rows, photo, onEdit, onPhoto }) {
   const played = rows.find(r => r.me)?.p ?? 0;
-  const th = { fontFamily: THEME.mono, fontSize: 9.5, fontWeight: 700, letterSpacing: 0.5, color: THEME.ink60, padding: "7px 3px", textAlign: "center", borderBottom: "1px solid #eceff4", background: "#fafbfd" };
-  const td = { padding: "9px 3px", textAlign: "center", borderBottom: "1px solid #f0f2f6", fontSize: 12.5, fontWeight: 600, color: THEME.navy };
+  const th = { fontFamily: THEME.mono, fontSize: 9.5, fontWeight: 700, letterSpacing: 0.5, color: THEME.ink60, padding: "7px 3px", textAlign: "center", borderBottom: `1px solid ${L("#eceff4")}`, background: L("#fafbfd") };
+  const td = { padding: "9px 3px", textAlign: "center", borderBottom: `1px solid ${L("#f0f2f6")}`, fontSize: 12.5, fontWeight: 600, color: THEME.text };
   return (
-    <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 8px rgba(0,0,0,0.08)", overflow: "hidden", margin: "0 0 12px" }}>
+    <div style={{ background: L("#fff"), borderRadius: 14, boxShadow: "0 2px 8px rgba(0,0,0,0.08)", overflow: "hidden", margin: "0 0 12px" }}>
       <div style={{ background: THEME.navy, color: "#fff", padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 14, letterSpacing: 0.5 }}>🏆 LEAGUE TABLE</span>
         {rows.length > 0 && <span style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 1, color: THEME.sky }}>AFTER {played} {played === 1 ? "GAME" : "GAMES"}</span>}
@@ -164,7 +167,7 @@ function LeagueTable({ rows, photo, onEdit, onPhoto }) {
           </tr></thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.name + i} style={r.me ? { background: "#eaf5fb" } : undefined}>
+              <tr key={r.name + i} style={r.me ? { background: L("#eaf5fb") } : undefined}>
                 <td style={{ ...td, paddingLeft: 10, color: THEME.ink60, fontWeight: 800, boxShadow: r.me ? `inset 4px 0 0 ${THEME.sky}` : "none" }}>{i + 1}</td>
                 <td style={{ ...td, textAlign: "left", fontWeight: r.me ? 800 : 700, maxWidth: 120, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}{r.me ? " ★" : ""}</td>
                 <td style={td}>{r.p}</td><td style={td}>{r.w}</td><td style={td}>{r.d}</td><td style={td}>{r.l}</td><td style={td}>{fmtGd(r.gd)}</td>
@@ -175,11 +178,11 @@ function LeagueTable({ rows, photo, onEdit, onPhoto }) {
         </table>
       )}
       {photo && (
-        <button onClick={onPhoto} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: rows.length ? "#fafbfd" : "#fff", border: "none", borderTop: rows.length ? "1px solid #eceff4" : "none", padding: rows.length ? "8px 14px" : 0, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+        <button onClick={onPhoto} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: rows.length ? L("#fafbfd") : L("#fff"), border: "none", borderTop: rows.length ? `1px solid ${L("#eceff4")}` : "none", padding: rows.length ? "8px 14px" : 0, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
           {rows.length > 0 ? (
             <>
-              <img src={photo} alt="" style={{ width: 54, height: 36, objectFit: "cover", objectPosition: "top", borderRadius: 6, border: "1px solid #dde2ea" }} />
-              <span style={{ fontWeight: 700, fontSize: 12, color: THEME.navy }}>📷 Organiser's table <span style={{ color: THEME.ink60, fontWeight: 600 }}>· tap to view</span></span>
+              <img src={photo} alt="" style={{ width: 54, height: 36, objectFit: "cover", objectPosition: "top", borderRadius: 6, border: `1px solid ${L("#dde2ea")}` }} />
+              <span style={{ fontWeight: 700, fontSize: 12, color: THEME.text }}>📷 Organiser's table <span style={{ color: THEME.ink60, fontWeight: 600 }}>· tap to view</span></span>
             </>
           ) : (
             <img src={photo} alt="League table" style={{ width: "100%", maxHeight: 220, objectFit: "cover", objectPosition: "top", display: "block" }} />
@@ -226,7 +229,7 @@ function PlayerProfileScreen({ name, players, appearances, results, seasons, age
             ? <img src={stats.player.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={name} />
             : <span style={{ color: THEME.sky, fontFamily: THEME.display, fontWeight: 600, fontSize: 24 }}>{initials}</span>}
         </div>
-        <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 20, color: THEME.navy }}>{name}</div>
+        <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 20, color: THEME.text }}>{name}</div>
         <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: THEME.ink60, marginTop: 2 }}>
           {[ageGroup, stats.player?.squad_number ? `Squad No. ${stats.player.squad_number}` : null].filter(Boolean).join(" · ")}
         </div>
@@ -234,7 +237,7 @@ function PlayerProfileScreen({ name, players, appearances, results, seasons, age
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
         {[
-          { l: "Apps", v: stats.apps, c: THEME.navy },
+          { l: "Apps", v: stats.apps, c: THEME.text },
           { l: "Goals", v: stats.goals, c: THEME.pitch },
           { l: "MOTM", v: stats.motm, c: THEME.amber },
           { l: "Clean Sheets", v: stats.cleanSheets, c: THEME.sky },
@@ -255,7 +258,7 @@ function PlayerProfileScreen({ name, players, appearances, results, seasons, age
               { l: "Drawn", v: stats.draws, c: THEME.amber },
               { l: "Lost", v: stats.losses, c: THEME.loss },
             ].map((x, i) => (
-              <div key={x.l} style={{ flex: 1, textAlign: "center", padding: "12px 4px", borderLeft: i > 0 ? "1px solid #f0f0f0" : "none" }}>
+              <div key={x.l} style={{ flex: 1, textAlign: "center", padding: "12px 4px", borderLeft: i > 0 ? `1px solid ${L("#f0f0f0")}` : "none" }}>
                 <div style={{ fontFamily: THEME.mono, fontSize: 18, fontWeight: 700, color: x.c }}>{x.v}</div>
                 <div style={{ fontSize: 9, color: THEME.ink60, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>{x.l}</div>
               </div>
@@ -272,8 +275,8 @@ function PlayerProfileScreen({ name, players, appearances, results, seasons, age
           <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, marginBottom: 10 }}>Goals by Season</div>
           {stats.seasonBreakdown.map(sb => (
             <div key={sb.season.id} style={{ display: "flex", alignItems: "center", gap: 12, background: THEME.white, borderRadius: 12, padding: "10px 14px", marginBottom: 8, boxShadow: "0 2px 8px rgba(18,23,46,0.05)" }}>
-              <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 13, color: THEME.navy, width: 64, flexShrink: 0 }}>{sb.season.name}</div>
-              <div style={{ flex: 1, height: 6, background: "#eef0f4", borderRadius: 4, overflow: "hidden" }}>
+              <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 13, color: THEME.text, width: 64, flexShrink: 0 }}>{sb.season.name}</div>
+              <div style={{ flex: 1, height: 6, background: L("#eef0f4"), borderRadius: 4, overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${Math.round((sb.goals / maxSeasonGoals) * 100)}%`, background: THEME.pitch, borderRadius: 4 }} />
               </div>
               <div style={{ fontFamily: THEME.mono, fontSize: 12, fontWeight: 700, color: THEME.pitch, width: 24, textAlign: "right", flexShrink: 0 }}>{sb.goals}</div>
@@ -289,7 +292,7 @@ function PlayerProfileScreen({ name, players, appearances, results, seasons, age
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, background: THEME.white, borderRadius: 12, padding: "10px 14px", marginBottom: 8, boxShadow: "0 2px 8px rgba(18,23,46,0.05)" }}>
               <span style={{ fontSize: 16, flexShrink: 0 }}>{m.type === "motm" ? "⭐" : "⚽"}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: THEME.navy, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: THEME.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {m.type === "motm" ? "Man of the Match" : m.goals > 1 ? `${m.goals} goals` : "Goal"} vs {m.result.opposition}
                 </div>
                 <div style={{ fontFamily: THEME.mono, fontSize: 9, color: THEME.ink60, marginTop: 1 }}>{m.result.date}</div>
@@ -375,7 +378,7 @@ function SaveCardButton({ cardRef, filename = "result.png", onSaved, shareText =
     setSaving(true); setErr(false);
     try {
       const h2c = await loadHtml2Canvas();
-      const canvas = await h2c(cardRef.current, { backgroundColor: "#ffffff", scale: 3, useCORS: true, logging: false, allowTaint: true });
+      const canvas = await h2c(cardRef.current, { backgroundColor: L("#ffffff"), scale: 3, useCORS: true, logging: false, allowTaint: true });
       await shareImage(canvas, filename, shareText);
       if (onSaved) onSaved();
     } catch(e) { setErr(true); }
@@ -414,20 +417,20 @@ function Leaderboard({ data, label, emptyMsg, filterLabel, accentColor = THEME.s
       {data.length === 0
         ? <p style={{ textAlign: "center", color: "#bbb", fontSize: 15, marginTop: 20 }}>{emptyMsg}</p>
         : (
-          <div style={{ background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "36px 1fr 100px 48px", padding: "10px 18px", background: "#f7f8fa", borderBottom: "2px solid #e8e8e8" }}>
+          <div style={{ background: L("#fff"), borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "36px 1fr 100px 48px", padding: "10px 18px", background: L("#f7f8fa"), borderBottom: `2px solid ${L("#e8e8e8")}` }}>
               {["#","NAME","",""].map((h,i) => <span key={i} style={{ fontSize: 10, fontWeight: 800, color: "#aaa", letterSpacing: 2 }}>{h}</span>)}
             </div>
             {data.map((p, i) => (
-              <div key={p.name} onClick={() => onRowClick && onRowClick(p.name)} style={{ display: "grid", gridTemplateColumns: "36px 1fr 100px 48px", alignItems: "center", padding: "13px 18px", borderBottom: i < data.length - 1 ? "1px solid #f0f0f0" : "none", background: i === 0 ? "#fffbea" : "#fff", cursor: onRowClick ? "pointer" : "default" }}>
+              <div key={p.name} onClick={() => onRowClick && onRowClick(p.name)} style={{ display: "grid", gridTemplateColumns: "36px 1fr 100px 48px", alignItems: "center", padding: "13px 18px", borderBottom: i < data.length - 1 ? `1px solid ${L("#f0f0f0")}` : "none", background: i === 0 ? L("#fffbea") : L("#fff"), cursor: onRowClick ? "pointer" : "default" }}>
                 <span style={{ fontSize: i < 3 ? 20 : 13, fontWeight: 800, color: i >= 3 ? "#bbb" : undefined }}>{i < 3 ? MEDAL[i] : i + 1}</span>
-                <span style={{ fontSize: 17, fontWeight: 800, color: THEME.navy }}>{p.name}</span>
+                <span style={{ fontSize: 17, fontWeight: 800, color: THEME.text }}>{p.name}</span>
                 <div style={{ paddingRight: 10 }}>
-                  <div style={{ height: 8, background: "#eee", borderRadius: 4, overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${Math.round((p.count / max) * 100)}%`, background: i === 0 ? `linear-gradient(90deg,${accentColor},#1a9be8)` : i === 1 ? "linear-gradient(90deg,#b0bec5,#607d8b)" : i === 2 ? "linear-gradient(90deg,#ffcc80,#ff9800)" : "#ddd", borderRadius: 4 }} />
+                  <div style={{ height: 8, background: L("#eee"), borderRadius: 4, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${Math.round((p.count / max) * 100)}%`, background: i === 0 ? `linear-gradient(90deg,${accentColor},#1a9be8)` : i === 1 ? "linear-gradient(90deg,#b0bec5,#607d8b)" : i === 2 ? `linear-gradient(90deg,${L("#ffcc80")},#ff9800)` : L("#ddd"), borderRadius: 4 }} />
                   </div>
                 </div>
-                <span style={{ fontSize: 20, fontWeight: 900, color: THEME.navy, textAlign: "right" }}>{p.count}</span>
+                <span style={{ fontSize: 20, fontWeight: 900, color: THEME.text, textAlign: "right" }}>{p.count}</span>
               </div>
             ))}
           </div>
@@ -449,7 +452,7 @@ function VideoCard({ video, onRemove, bg = "#fff" }) {
           <span style={{ position: "absolute", left: "50%", top: "50%", width: 34, height: 24, margin: "-12px 0 0 -17px", borderRadius: 7, background: "#e53935", color: "#fff", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>▶</span>
         </div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, color: THEME.navy, lineHeight: 1.25, overflowWrap: "anywhere" }}>{video.title || "Match video"}</div>
+          <div style={{ fontWeight: 700, fontSize: 13, color: THEME.text, lineHeight: 1.25, overflowWrap: "anywhere" }}>{video.title || "Match video"}</div>
           <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 0.5, color: THEME.ink60, marginTop: 3 }}>▶ YOUTUBE</div>
         </div>
       </a>
@@ -467,10 +470,10 @@ function PensBox({ pens, setPens, squad = [], oppName }) {
   const step = (key, delta) => setPens(p => ({ ...p, [key]: Math.max(0, p[key] + delta) }));
   const row = (label, key) => (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
-      <span style={{ fontWeight: 700, fontSize: 14, color: THEME.navy }}>{label}</span>
+      <span style={{ fontWeight: 700, fontSize: 14, color: THEME.text }}>{label}</span>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <button onClick={() => step(key, -1)} style={{ width: 32, height: 32, borderRadius: "50%", border: "1.5px solid #e0e0e0", background: "#fff", fontSize: 16, color: "#888", cursor: "pointer", fontFamily: "inherit" }}>−</button>
-        <span style={{ fontFamily: THEME.mono, fontWeight: 800, fontSize: 20, minWidth: 22, textAlign: "center", color: THEME.navy }}>{pens[key]}</span>
+        <button onClick={() => step(key, -1)} style={{ width: 32, height: 32, borderRadius: "50%", border: `1.5px solid ${L("#e0e0e0")}`, background: L("#fff"), fontSize: 16, color: "#888", cursor: "pointer", fontFamily: "inherit" }}>−</button>
+        <span style={{ fontFamily: THEME.mono, fontWeight: 800, fontSize: 20, minWidth: 22, textAlign: "center", color: THEME.text }}>{pens[key]}</span>
         <button onClick={() => step(key, 1)} style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: THEME.navy, fontSize: 16, color: THEME.sky, cursor: "pointer", fontFamily: "inherit" }}>+</button>
       </div>
     </div>
@@ -481,11 +484,11 @@ function PensBox({ pens, setPens, squad = [], oppName }) {
     return { ...p, scorers, home: Math.max(p.home, scorers.length) };
   });
   return (
-    <div style={{ background: "#fff8e8", border: `1.5px solid ${THEME.amber}`, borderRadius: 12, padding: "12px 14px", margin: "14px 0" }}>
-      <div style={{ fontWeight: 800, fontSize: 13, color: THEME.navy }}>🥅 Level at full time. Went to penalties?</div>
-      <button onClick={() => setPens(p => ({ ...p, on: !p.on }))} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", padding: "10px 0 0", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13, color: THEME.navy }}>
-        <span style={{ width: 42, height: 24, borderRadius: 99, background: pens.on ? THEME.amber : "#d8dbe3", position: "relative", display: "inline-block", transition: "background .15s" }}>
-          <span style={{ position: "absolute", top: 3, left: pens.on ? 21 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left .15s" }} />
+    <div style={{ background: L("#fff8e8"), border: `1.5px solid ${THEME.amber}`, borderRadius: 12, padding: "12px 14px", margin: "14px 0" }}>
+      <div style={{ fontWeight: 800, fontSize: 13, color: THEME.text }}>🥅 Level at full time. Went to penalties?</div>
+      <button onClick={() => setPens(p => ({ ...p, on: !p.on }))} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", padding: "10px 0 0", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13, color: THEME.text }}>
+        <span style={{ width: 42, height: 24, borderRadius: 99, background: pens.on ? THEME.amber : L("#d8dbe3"), position: "relative", display: "inline-block", transition: "background .15s" }}>
+          <span style={{ position: "absolute", top: 3, left: pens.on ? 21 : 3, width: 18, height: 18, borderRadius: "50%", background: L("#fff"), transition: "left .15s" }} />
         </span>
         Yes, penalty shoot-out
       </button>
@@ -499,7 +502,7 @@ function PensBox({ pens, setPens, squad = [], oppName }) {
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {squad.map(pl => {
                   const on = pens.scorers.includes(pl.name);
-                  return <button key={pl.id} onClick={() => toggleScorer(pl.name)} style={{ padding: "5px 12px", borderRadius: 16, border: on ? "none" : "1.5px solid #e0e0e0", background: on ? THEME.navy : "#fff", color: on ? THEME.sky : "#666", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>{pl.name}</button>;
+                  return <button key={pl.id} onClick={() => toggleScorer(pl.name)} style={{ padding: "5px 12px", borderRadius: 16, border: on ? "none" : `1.5px solid ${L("#e0e0e0")}`, background: on ? THEME.navy : L("#fff"), color: on ? THEME.sky : "#666", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>{pl.name}</button>;
                 })}
               </div>
             </>
@@ -517,12 +520,43 @@ function ScoreCard({ match, compColor = THEME.sky, onClick, showMeta = true, pho
   const isWin = match.result === "W", isLoss = match.result === "L";
   const resultBg = isWin ? "#4ade80" : isLoss ? "#f3a3ad" : "#e8a93b";
   const resultLabel = isWin ? "WIN" : isLoss ? "LOSS" : "DRAW";
+  if (THEME.sports) {
+    const us = match.homeScore, them = match.awayScore;
+    const chipC = isWin ? THEME.pitch : isLoss ? THEME.loss : THEME.amber;
+    const row = (badge, name, score, strong) => (
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        {badge}
+        <span style={{ flex: 1, minWidth: 0, fontSize: 17, fontWeight: strong ? 700 : 500, color: strong ? "#fff" : "#aeaeb2", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
+        <span style={{ fontSize: 26, fontWeight: strong ? 800 : 600, color: strong ? "#fff" : "#aeaeb2", fontVariantNumeric: "tabular-nums", minWidth: 28, textAlign: "right" }}>{score}</span>
+      </div>
+    );
+    return (
+      <button onClick={onClick} style={{ width: "100%", textAlign: "left", background: THEME.white, border: "none", borderRadius: 22, padding: "14px 18px 14px", marginBottom: 10, cursor: onClick ? "pointer" : "default", fontFamily: THEME.body, color: "#fff", display: "block" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, fontSize: 12, fontWeight: 600, color: THEME.ink60 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 7 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: chipC }} />{match.competition}{match.round ? ` · ${match.round}` : ""}</span>
+          <span>{match.date}</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {row(<SBadge src={BRAND.badge || DEFAULT_BADGE} name={BRAND.short} size={34} ours />, BRAND.short || BRAND.name.replace(/ FC$/i, ""), us, us >= them)}
+          {row(<SBadge src={match.oppLogo} name={match.opposition} size={34} />, match.opposition, them, them >= us)}
+        </div>
+        {showMeta && ((match.scorers || []).length > 0 || match.motm || hasPens(match) || photoCount > 0 || videoCount > 0) && (
+          <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${THEME.ink30}`, fontSize: 13, color: "#aeaeb2", lineHeight: 1.5 }}>
+            {(match.scorers || []).length > 0 && <div>⚽ {match.scorers.join(", ")}</div>}
+            {match.motm && <div>⭐ {match.motm}</div>}
+            {hasPens(match) && <div>🥅 {match.result === "W" ? "Won" : "Lost"} {match.homePens}–{match.awayPens} on penalties</div>}
+            {(photoCount > 0 || videoCount > 0) && <div style={{ color: THEME.sky }}>{photoCount > 0 ? `📷 ${photoCount}  ` : ""}{videoCount > 0 ? `▶ ${videoCount}` : ""}</div>}
+          </div>
+        )}
+      </button>
+    );
+  }
   return (
     <button onClick={onClick} style={{ width: "100%", textAlign: "left", background: THEME.navy, border: "none", borderRadius: 16, padding: "16px 18px", marginBottom: 12, cursor: onClick ? "pointer" : "default", position: "relative", overflow: "hidden", fontFamily: THEME.body }}>
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${compColor}, transparent)` }} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: compColor }}>{match.competition}</span>
-        <span style={{ fontFamily: THEME.mono, fontSize: 10, fontWeight: 700, letterSpacing: 1, padding: "3px 9px", borderRadius: 6, color: THEME.navy, background: resultBg }}>{resultLabel}</span>
+        <span style={{ fontFamily: THEME.mono, fontSize: 10, fontWeight: 700, letterSpacing: 1, padding: "3px 9px", borderRadius: 6, color: THEME.text, background: resultBg }}>{resultLabel}</span>
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ flex: 1, textAlign: "center" }}>
@@ -562,44 +596,44 @@ function ResultCard({ match, teamName = "Team", compColor = THEME.sky, players =
   const displayLogo = match.oppLogo || teams.find(t => t.name === match.opposition)?.logo || null;
   return (
     <div>
-      <div ref={cardRef} style={{ background: THEME.white, borderRadius: 18, overflow: "hidden", boxShadow: "0 4px 24px rgba(18,23,46,0.12)", width: "100%", maxWidth: 520, margin: "0 auto", fontFamily: THEME.body, border: "1px solid #eef0f4" }}>
+      <div ref={cardRef} style={{ background: THEME.white, borderRadius: 18, overflow: "hidden", boxShadow: "0 4px 24px rgba(18,23,46,0.12)", width: "100%", maxWidth: 520, margin: "0 auto", fontFamily: THEME.body, border: `1px solid ${L("#eef0f4")}` }}>
         <div style={{ background: THEME.navy, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ color: THEME.white, fontFamily: THEME.display, fontWeight: 600, fontSize: "clamp(12px,3.4vw,14px)", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{match.competition}</div>
+            <div style={{ color: "#ffffff", fontFamily: THEME.display, fontWeight: 600, fontSize: "clamp(12px,3.4vw,14px)", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{match.competition}</div>
             {match.round && <div style={{ color: THEME.sky, fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", marginTop: 2 }}>{match.round}</div>}
           </div>
 <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-            {BRAND.league && <div style={{ background: "#fff", borderRadius: 6, padding: 3, display: "flex" }}><img src={BRAND.league} alt="" crossOrigin="anonymous" style={{ height: 26, width: "auto", display: "block" }} /></div>}
-                      <span style={{ fontFamily: THEME.mono, fontSize: 10, fontWeight: 700, letterSpacing: 1, padding: "5px 12px", borderRadius: 20, background: pillBg, color: THEME.white, whiteSpace: "nowrap" }}>{resultLabel}</span>
+            {BRAND.league && <div style={{ background: L("#fff"), borderRadius: 6, padding: 3, display: "flex" }}><img src={BRAND.league} alt="" crossOrigin="anonymous" style={{ height: 26, width: "auto", display: "block" }} /></div>}
+                      <span style={{ fontFamily: THEME.mono, fontSize: 10, fontWeight: 700, letterSpacing: 1, padding: "5px 12px", borderRadius: 20, background: pillBg, color: "#ffffff", whiteSpace: "nowrap" }}>{resultLabel}</span>
           </div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 12px 16px", gap: 6 }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "1 1 0", minWidth: 0, gap: 8 }}>
-            <div style={{ background: THEME.chalk, border: "2px solid #eef0f4", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", width: "clamp(48px,17vw,64px)", height: "clamp(48px,17vw,64px)", flexShrink: 0 }}>
+            <div style={{ background: THEME.chalk, border: `2px solid ${L("#eef0f4")}`, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", width: "clamp(48px,17vw,64px)", height: "clamp(48px,17vw,64px)", flexShrink: 0 }}>
               <ClubLogo size={38} />
             </div>
-            <span style={{ fontSize: "clamp(9px,2.8vw,12px)", fontWeight: 600, color: THEME.navy, textAlign: "center", lineHeight: 1.2, fontFamily: THEME.display, textTransform: "uppercase" }}>{BRAND.name.replace(/ FC$/i, "")}</span>
+            <span style={{ fontSize: "clamp(9px,2.8vw,12px)", fontWeight: 600, color: THEME.text, textAlign: "center", lineHeight: 1.2, fontFamily: THEME.display, textTransform: "uppercase" }}>{BRAND.name.replace(/ FC$/i, "")}</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "0 0 auto", gap: 4 }}>
             <div style={{ display: "flex", alignItems: "center", gap: "clamp(6px,2vw,10px)" }}>
-              <span style={{ fontFamily: THEME.mono, fontSize: "clamp(26px,8vw,40px)", fontWeight: 700, color: THEME.navy, lineHeight: 1 }}>{match.homeScore}</span>
+              <span style={{ fontFamily: THEME.mono, fontSize: "clamp(26px,8vw,40px)", fontWeight: 700, color: THEME.text, lineHeight: 1 }}>{match.homeScore}</span>
               <span style={{ fontFamily: THEME.mono, fontSize: "clamp(16px,4.5vw,22px)", color: THEME.ink30 }}>–</span>
-              <span style={{ fontFamily: THEME.mono, fontSize: "clamp(26px,8vw,40px)", fontWeight: 700, color: THEME.navy, lineHeight: 1 }}>{match.awayScore}</span>
+              <span style={{ fontFamily: THEME.mono, fontSize: "clamp(26px,8vw,40px)", fontWeight: 700, color: THEME.text, lineHeight: 1 }}>{match.awayScore}</span>
             </div>
             {hasPens(match) && <div style={{ fontFamily: THEME.mono, fontSize: 11, fontWeight: 700, color: "#b7791f", letterSpacing: 0.5, textAlign: "center" }}>({match.homePens}–{match.awayPens} pens){(match.penScorers || []).length > 0 ? ` · ${match.penScorers.join(", ")}` : ""}</div>}
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "1 1 0", minWidth: 0, gap: 8 }}>
-            <div style={{ background: THEME.chalk, border: "2px solid #eef0f4", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", width: "clamp(48px,17vw,64px)", height: "clamp(48px,17vw,64px)", flexShrink: 0 }}>
+            <div style={{ background: THEME.chalk, border: `2px solid ${L("#eef0f4")}`, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", width: "clamp(48px,17vw,64px)", height: "clamp(48px,17vw,64px)", flexShrink: 0 }}>
               {displayLogo ? <img src={displayLogo} alt={match.opposition} style={{ width: "clamp(30px,13vw,52px)", height: "clamp(30px,13vw,52px)", objectFit: "contain" }} /> : <span style={{ fontSize: "clamp(18px,6vw,26px)" }}>⚽</span>}
             </div>
-            <span style={{ fontSize: "clamp(9px,2.8vw,12px)", fontWeight: 600, color: THEME.navy, textAlign: "center", lineHeight: 1.2, fontFamily: THEME.display, textTransform: "uppercase", wordBreak: "break-word" }}>{(match.opposition || "").toUpperCase()}</span>
+            <span style={{ fontSize: "clamp(9px,2.8vw,12px)", fontWeight: 600, color: THEME.text, textAlign: "center", lineHeight: 1.2, fontFamily: THEME.display, textTransform: "uppercase", wordBreak: "break-word" }}>{(match.opposition || "").toUpperCase()}</span>
           </div>
         </div>
 
         {(match.scorers || []).length > 0 && (
           <>
-            <div style={{ height: 1, background: "#eee", margin: "0 18px" }} />
+            <div style={{ height: 1, background: L("#eee"), margin: "0 18px" }} />
             <div style={{ padding: "12px 18px" }}>
               <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: THEME.skyInk, display: "block", marginBottom: 8 }}>Goal Scorers</span>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
@@ -615,7 +649,7 @@ function ResultCard({ match, teamName = "Team", compColor = THEME.sky, players =
                       ) : (
                         <span style={{ fontSize: 15 }}>⚽</span>
                       )}
-                      <span style={{ fontFamily: THEME.body, fontSize: 13, fontWeight: 700, color: THEME.navy }}>{player?.squad_number ? `#${player.squad_number} ` : ""}{scorer}</span>
+                      <span style={{ fontFamily: THEME.body, fontSize: 13, fontWeight: 700, color: THEME.text }}>{player?.squad_number ? `#${player.squad_number} ` : ""}{scorer}</span>
                     </div>
                   );
                 })}
@@ -626,14 +660,14 @@ function ResultCard({ match, teamName = "Team", compColor = THEME.sky, players =
 
         {(match.goal_times || []).length > 0 && (
           <>
-            <div style={{ height: 1, background: "#eee", margin: "0 18px" }} />
+            <div style={{ height: 1, background: L("#eee"), margin: "0 18px" }} />
             <div style={{ padding: "12px 18px" }}>
               <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: THEME.skyInk, display: "block", marginBottom: 8 }}>Goal Times</span>
               <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                 {match.goal_times.map((g, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontFamily: THEME.mono, fontWeight: 700, fontSize: 11, background: g.side === "them" ? "#e9ebf2" : THEME.navy, color: g.side === "them" ? THEME.ink60 : THEME.sky, borderRadius: 6, padding: "2px 7px", minWidth: 38, textAlign: "center" }}>{g.min}'</span>
-                    <span style={{ fontFamily: THEME.body, fontSize: 13, fontWeight: 600, color: g.side === "them" ? THEME.ink60 : THEME.navy }}>{g.name || "Goal"}</span>
+                    <span style={{ fontFamily: THEME.mono, fontWeight: 700, fontSize: 11, background: g.side === "them" ? L("#e9ebf2") : THEME.navy, color: g.side === "them" ? THEME.ink60 : THEME.sky, borderRadius: 6, padding: "2px 7px", minWidth: 38, textAlign: "center" }}>{g.min}'</span>
+                    <span style={{ fontFamily: THEME.body, fontSize: 13, fontWeight: 600, color: g.side === "them" ? THEME.ink60 : THEME.text }}>{g.name || "Goal"}</span>
                   </div>
                 ))}
               </div>
@@ -643,7 +677,7 @@ function ResultCard({ match, teamName = "Team", compColor = THEME.sky, players =
 
         {(match.motm || match.oppMotm) && (
           <>
-            <div style={{ height: 1, background: "#eee", margin: "0 18px" }} />
+            <div style={{ height: 1, background: L("#eee"), margin: "0 18px" }} />
             <div style={{ padding: "12px 18px", display: "flex", gap: 20, flexWrap: "wrap" }}>
               {match.motm && (() => {
                 const player = players.find(p => p.name === match.motm);
@@ -660,7 +694,7 @@ function ResultCard({ match, teamName = "Team", compColor = THEME.sky, players =
                     )}
                     <div>
                       <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: THEME.sky, display: "block", marginBottom: 2 }}>Man of the Match</span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: THEME.navy }}>{match.motm}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: THEME.text }}>{match.motm}</span>
                     </div>
                   </div>
                 );
@@ -689,7 +723,7 @@ function ResultCard({ match, teamName = "Team", compColor = THEME.sky, players =
           </>
         )}
 
-        <div style={{ background: THEME.chalk, padding: "10px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid #eee" }}>
+        <div style={{ background: THEME.chalk, padding: "10px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: `1px solid ${L("#eee")}` }}>
           <span style={{ fontFamily: THEME.mono, fontSize: 9, letterSpacing: 1, textTransform: "uppercase", color: THEME.ink60 }}>{BRAND.name}{teamName ? ` · ${teamName}` : ""}</span>
           <span style={{ fontFamily: THEME.mono, fontSize: 9, color: THEME.ink60 }}>{match.date}</span>
         </div>
@@ -710,25 +744,25 @@ function TeamPicker({ teams, value, onChange, onAddNew }) {
   const selected = teams.find(t => t.name === value);
   return (
     <div style={{ position: "relative" }}>
-      <div onClick={() => setOpen(o => !o)} style={{ border: "2px solid #e8e8e8", borderRadius: 10, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", background: "#fff" }}>
+      <div onClick={() => setOpen(o => !o)} style={{ border: `2px solid ${L("#e8e8e8")}`, borderRadius: 10, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", background: L("#fff") }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {selected?.logo ? <img src={selected.logo} style={{ width: 28, height: 28, objectFit: "contain" }} alt="" /> : <span style={{ fontSize: 22 }}>⚽</span>}
-          <span style={{ fontSize: 16, fontWeight: 600, color: value ? THEME.navy : "#aaa", fontFamily: "inherit" }}>{value || "Select opposition..."}</span>
+          <span style={{ fontSize: 16, fontWeight: 600, color: value ? THEME.text : "#aaa", fontFamily: "inherit" }}>{value || "Select opposition..."}</span>
         </div>
         <span style={{ color: "#aaa" }}>▼</span>
       </div>
       {open && (
-        <div style={{ position: "absolute", top: "110%", left: 0, right: 0, background: "#fff", border: "2px solid #e8e8e8", borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 50, maxHeight: 280, display: "flex", flexDirection: "column" }}>
-          <div style={{ padding: 10, borderBottom: "1px solid #f0f0f0" }}>
+        <div style={{ position: "absolute", top: "110%", left: 0, right: 0, background: L("#fff"), border: `2px solid ${L("#e8e8e8")}`, borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 50, maxHeight: 280, display: "flex", flexDirection: "column" }}>
+          <div style={{ padding: 10, borderBottom: `1px solid ${L("#f0f0f0")}` }}>
             <input autoFocus placeholder="Search teams..." value={search} onChange={e => setSearch(e.target.value)}
-              style={{ width: "100%", border: "1.5px solid #e8e8e8", borderRadius: 8, padding: "8px 12px", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
+              style={{ width: "100%", border: `1.5px solid ${L("#e8e8e8")}`, borderRadius: 8, padding: "8px 12px", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
           </div>
           <div style={{ overflowY: "auto", flex: 1 }}>
             {filtered.map(t => (
               <div key={t.id} onClick={() => { onChange(t.name); setSearch(""); setOpen(false); }}
-                style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", background: t.name === value ? "#f0f4ff" : "#fff", borderBottom: "1px solid #f8f8f8" }}>
+                style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", background: t.name === value ? L("#f0f4ff") : L("#fff"), borderBottom: `1px solid ${L("#f8f8f8")}` }}>
                 {t.logo ? <img src={t.logo} style={{ width: 32, height: 32, objectFit: "contain" }} alt="" /> : <span style={{ fontSize: 24 }}>⚽</span>}
-                <span style={{ fontSize: 15, fontWeight: 700, color: THEME.navy, fontFamily: "inherit" }}>{t.name}</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: THEME.text, fontFamily: "inherit" }}>{t.name}</span>
               </div>
             ))}
             {filtered.length === 0 && (
@@ -736,7 +770,7 @@ function TeamPicker({ teams, value, onChange, onAddNew }) {
             )}
           </div>
           <div onClick={() => { onAddNew(search); setOpen(false); }}
-            style={{ padding: "12px 16px", borderTop: "2px solid #f0f0f0", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: THEME.sky, fontWeight: 800, fontSize: 14, fontFamily: "inherit" }}>
+            style={{ padding: "12px 16px", borderTop: `2px solid ${L("#f0f0f0")}`, display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: THEME.sky, fontWeight: 800, fontSize: 14, fontFamily: "inherit" }}>
             <span>+</span> Add "{search || "new team"}" to list
           </div>
         </div>
@@ -754,7 +788,7 @@ function BrandingScreen({ branding, onSave, onBack, showToast }) {
   const t = deriveTheme(d);
   const set = (k, v) => setD(x => ({ ...x, [k]: v }));
   const lab = { fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: THEME.ink60, margin: "20px 0 8px", display: "block" };
-  const inp = { width: "100%", boxSizing: "border-box", padding: "11px 12px", borderRadius: 10, border: `1.5px solid ${THEME.ink30}`, fontSize: 14, fontFamily: "inherit", background: THEME.white, color: THEME.navy };
+  const inp = { width: "100%", boxSizing: "border-box", padding: "11px 12px", borderRadius: 10, border: `1.5px solid ${THEME.ink30}`, fontSize: 14, fontFamily: "inherit", background: THEME.white, color: THEME.text };
   const card = { background: THEME.white, borderRadius: 14, padding: 14, boxShadow: "0 2px 8px rgba(18,23,46,0.06)" };
   const lightAccent = contrast(d.accent_color, "#ffffff") < 4.5;
   const mainDarkened = t.navy.toLowerCase() !== (d.primary_color || "").toLowerCase();
@@ -816,7 +850,7 @@ function BrandingScreen({ branding, onSave, onBack, showToast }) {
   return (
     <div style={{ maxWidth: 520, margin: "0 auto", paddingBottom: 30 }}>
       <button onClick={onBack} style={{ background: "none", border: "none", color: THEME.ink60, fontFamily: THEME.mono, fontSize: 11, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", padding: "0 0 14px" }}>‹ Back</button>
-      <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 18, color: THEME.navy }}>Club branding</div>
+      <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 18, color: THEME.text }}>Club branding</div>
 
       {/* Live preview */}
       <span style={lab}>Preview</span>
@@ -831,7 +865,7 @@ function BrandingScreen({ branding, onSave, onBack, showToast }) {
           </div>
         </div>
         <div style={{ padding: 14 }}>
-          <div style={{ background: "#fff", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderLeft: "4px solid #1f6f4a" }}>
+          <div style={{ background: L("#fff"), borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderLeft: "4px solid #1f6f4a" }}>
             <div>
               <div style={{ fontFamily: t.body, fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: t.skyInk, fontWeight: 700 }}>League</div>
               <div style={{ fontFamily: t.body, fontSize: 14, color: t.navy, fontWeight: 600 }}>{short} v Rovers</div>
@@ -859,7 +893,7 @@ function BrandingScreen({ branding, onSave, onBack, showToast }) {
                 <span style={{ width: 18, height: 28, background: p.p, borderRadius: "6px 0 0 6px" }} />
                 <span style={{ width: 18, height: 28, background: p.a, borderRadius: "0 6px 6px 0" }} />
               </span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: THEME.navy }}>{p.n}</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: THEME.text }}>{p.n}</span>
             </button>
           );
         })}
@@ -868,7 +902,7 @@ function BrandingScreen({ branding, onSave, onBack, showToast }) {
       <span style={lab}>Custom colours</span>
       <div style={{ ...card, display: "flex", gap: 16 }}>
         {[["primary_color", "Main colour"], ["accent_color", "Highlight"]].map(([k, l]) => (
-          <label key={k} style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: THEME.navy, fontWeight: 600 }}>
+          <label key={k} style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: THEME.text, fontWeight: 600 }}>
             <input type="color" value={d[k]} onChange={e => set(k, e.target.value)} style={{ width: 44, height: 36, border: "none", padding: 0, background: "none" }} />
             {l}
           </label>
@@ -888,7 +922,7 @@ function BrandingScreen({ branding, onSave, onBack, showToast }) {
       <span style={lab}>League logo</span>
       <div style={{ ...card, display: "flex", alignItems: "center", gap: 12 }}>
         {d.league_logo
-          ? <img src={d.league_logo} alt="" style={{ width: 52, height: 52, objectFit: "contain", background: "#fff", borderRadius: 8 }} />
+          ? <img src={d.league_logo} alt="" style={{ width: 52, height: 52, objectFit: "contain", background: L("#fff"), borderRadius: 8 }} />
           : <div style={{ width: 52, height: 52, borderRadius: 8, background: THEME.chalk, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>🏆</div>}
         <div style={{ flex: 1, display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button onClick={() => leagueInput.current?.click()} disabled={uploadingLeague} style={{ background: THEME.navy, color: "#fff", border: "none", borderRadius: 10, padding: "9px 14px", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>{uploadingLeague ? "Uploading..." : d.league_logo ? "Change" : "Add league logo"}</button>
@@ -905,12 +939,27 @@ function BrandingScreen({ branding, onSave, onBack, showToast }) {
       <span style={lab}>Slogan</span>
       <input style={inp} value={d.slogan} onChange={e => set("slogan", e.target.value)} placeholder="Your club motto" />
 
+      <span style={lab}>Look</span>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 4 }}>
+        {LOOKS.map(l => (
+          <button key={l.id} onClick={() => set("look", l.id)}
+            style={{ ...card, textAlign: "left", border: (d.look || "classic") === l.id ? `2px solid ${THEME.skyInk}` : "2px solid transparent", cursor: "pointer", fontFamily: "inherit" }}>
+            <div style={{ height: 38, borderRadius: 8, marginBottom: 8, background: l.id === "sports" ? "#000" : "#f4f6f9", border: "1px solid #8884", display: "flex", alignItems: "center", gap: 6, padding: "0 8px" }}>
+              <span style={{ width: 20, height: 20, borderRadius: "50%", background: l.id === "sports" ? "#1c1c1e" : "#fff", border: `2px solid ${THEME.sky}` }} />
+              <span style={{ flex: 1, height: 8, borderRadius: 4, background: l.id === "sports" ? "#3a3a3c" : "#dde1e8" }} />
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: THEME.text }}>{l.name}</div>
+            <div style={{ fontSize: 11, color: THEME.ink60 }}>{l.desc}</div>
+          </button>
+        ))}
+      </div>
+
       <span style={lab}>Font style</span>
       <div style={{ display: "grid", gap: 8 }}>
         {FONTS.map(f => (
           <button key={f.id} onClick={() => set("font_pairing", f.id)}
             style={{ ...card, display: "flex", alignItems: "center", justifyContent: "space-between", border: d.font_pairing === f.id ? `2px solid ${THEME.skyInk}` : "2px solid transparent", cursor: "pointer", fontFamily: "inherit" }}>
-            <span style={{ fontFamily: f.display, fontSize: 20, color: THEME.navy }}>{f.sample}</span>
+            <span style={{ fontFamily: f.display, fontSize: 20, color: THEME.text }}>{f.sample}</span>
             <span style={{ fontSize: 11, color: THEME.ink60 }}>{f.name}</span>
           </button>
         ))}
@@ -929,7 +978,7 @@ function BrandingScreen({ branding, onSave, onBack, showToast }) {
                 <div style={{ width: POSTER_W, height: POSTER_H, transform: "scale(0.0648)", transformOrigin: "top left", pointerEvents: "none" }}><PosterCanvas layout={l.id} d={sampleD} /></div>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: THEME.navy }}>{l.name}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: THEME.text }}>{l.name}</div>
                 <div style={{ fontSize: 11, color: THEME.ink60, marginTop: 2 }}>{l.kind === "single" ? "Next fixture" : "Month"} · {l.desc}</div>
               </div>
               <span style={{ width: 26, height: 26, borderRadius: 7, border: `2px solid ${on ? THEME.skyInk : THEME.ink30}`, background: on ? THEME.skyInk : "transparent", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, flexShrink: 0 }}>{on ? "✓" : ""}</span>
@@ -952,7 +1001,7 @@ function BrandingScreen({ branding, onSave, onBack, showToast }) {
       <div style={{ ...card }}>
         <div style={{ fontSize: 12, color: THEME.ink60, marginBottom: 8, lineHeight: 1.4 }}>Copy any photos or crests still stored on the old system into this app. Safe to run more than once.</div>
         <button onClick={moveImages} disabled={moving}
-          style={{ background: "none", border: `1.5px solid ${THEME.ink30}`, borderRadius: 10, padding: "10px 14px", fontWeight: 700, fontSize: 13, color: THEME.navy, cursor: "pointer", opacity: moving ? 0.6 : 1 }}>
+          style={{ background: "none", border: `1.5px solid ${THEME.ink30}`, borderRadius: 10, padding: "10px 14px", fontWeight: 700, fontSize: 13, color: THEME.text, cursor: "pointer", opacity: moving ? 0.6 : 1 }}>
           {moving ? `Moving… ${moveMsg}` : "Move images into this app"}
         </button>
       </div>
@@ -982,12 +1031,12 @@ function H2HPanel({ results, competitions }) {
       <div style={{ position: "relative" }}>
         <input type="text" placeholder="🔍 Head-to-head — search an opponent…" value={q}
           onChange={e => { setQ(e.target.value); setTeam(null); }}
-          style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12, border: `1.5px solid ${THEME.ink30}`, fontSize: 14, fontFamily: "inherit", background: "#fff", color: THEME.navy }} />
+          style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 12, border: `1.5px solid ${THEME.ink30}`, fontSize: 14, fontFamily: "inherit", background: L("#fff"), color: THEME.text }} />
         {!team && matches.length > 0 && (
-          <div style={{ background: "#fff", borderRadius: 12, marginTop: 6, boxShadow: "0 4px 16px rgba(18,23,46,0.12)", overflow: "hidden" }}>
+          <div style={{ background: L("#fff"), borderRadius: 12, marginTop: 6, boxShadow: "0 4px 16px rgba(18,23,46,0.12)", overflow: "hidden" }}>
             {matches.map(n => (
               <button key={n} onClick={() => { setTeam(n); setQ(n); }}
-                style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 14px", border: "none", borderBottom: "1px solid #f0f0f0", background: "none", fontSize: 14, color: THEME.navy, cursor: "pointer", fontFamily: "inherit" }}>{n}</button>
+                style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 14px", border: "none", borderBottom: `1px solid ${L("#f0f0f0")}`, background: "none", fontSize: 14, color: THEME.text, cursor: "pointer", fontFamily: "inherit" }}>{n}</button>
             ))}
           </div>
         )}
@@ -997,7 +1046,7 @@ function H2HPanel({ results, competitions }) {
           <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: THEME.ink60, marginBottom: 10 }}>Head-to-head · {team}</div>
           <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 12, flexWrap: "wrap" }}>
             {[["Played", games.length, THEME.navy], ["Won", count("W"), "#00c853"], ["Drawn", count("D"), "#ffab00"], ["Lost", count("L"), "#d50000"], ["Goals", `${gf}–${ga}`, THEME.skyInk]].map(([l, v, c]) => (
-              <div key={l} style={{ background: "#fff", borderRadius: 12, padding: "8px 14px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.07)", borderBottom: `3px solid ${c}`, minWidth: 58 }}>
+              <div key={l} style={{ background: L("#fff"), borderRadius: 12, padding: "8px 14px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.07)", borderBottom: `3px solid ${c}`, minWidth: 58 }}>
                 <div style={{ fontSize: 19, fontWeight: 900, color: c }}>{v}</div>
                 <div style={{ fontSize: 10, color: "#999", fontWeight: 700 }}>{l.toUpperCase()}</div>
               </div>
@@ -1005,15 +1054,15 @@ function H2HPanel({ results, competitions }) {
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {games.map(m => (
-              <div key={m.id} style={{ background: "#fff", borderRadius: 12, padding: "11px 14px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)", borderLeft: `4px solid ${col(m.result)}` }}>
+              <div key={m.id} style={{ background: L("#fff"), borderRadius: 12, padding: "11px 14px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)", borderLeft: `4px solid ${col(m.result)}` }}>
                 <span style={{ background: col(m.result), color: "#fff", fontWeight: 800, fontSize: 13, borderRadius: 8, padding: "3px 8px" }}>{m.result}</span>
-                <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: THEME.navy }}>{scoreLabel(m)}</span>
+                <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: THEME.text }}>{scoreLabel(m)}</span>
                 <span style={{ fontSize: 12, color: "#aaa" }}>{m.date}</span>
-                <span style={{ fontSize: 11, color: getCompColor(competitions, m.competition), fontWeight: 700, background: "#f5f5f5", borderRadius: 8, padding: "2px 8px" }}>{m.competition}</span>
+                <span style={{ fontSize: 11, color: getCompColor(competitions, m.competition), fontWeight: 700, background: L("#f5f5f5"), borderRadius: 8, padding: "2px 8px" }}>{m.competition}</span>
               </div>
             ))}
           </div>
-          <button onClick={() => { setTeam(null); setQ(""); }} style={{ marginTop: 10, background: "none", border: "1.5px solid #e0e0e0", borderRadius: 10, padding: 10, width: "100%", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13, color: "#888" }}>Clear</button>
+          <button onClick={() => { setTeam(null); setQ(""); }} style={{ marginTop: 10, background: "none", border: `1.5px solid ${L("#e0e0e0")}`, borderRadius: 10, padding: 10, width: "100%", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13, color: "#888" }}>Clear</button>
         </div>
       )}
     </div>
@@ -1042,7 +1091,7 @@ function TournamentCard({ cardRef, name, date, placement, games, players, table 
         </div>
       </div>
       <div style={{ textAlign: "center", padding: "18px 16px 8px" }}>
-        {meta ? (<><div style={{ fontSize: 40 }}>{meta.icon}</div><div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 22, color: THEME.navy }}>{placement}</div></>) : <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 20, color: THEME.navy }}>Tournament report</div>}
+        {meta ? (<><div style={{ fontSize: 40 }}>{meta.icon}</div><div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 22, color: THEME.text }}>{placement}</div></>) : <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 20, color: THEME.text }}>Tournament report</div>}
       </div>
       <div style={{ display: "flex", gap: 8, padding: "8px 16px 12px" }}>
         {[["P", games.length, THEME.navy], ["W", w, "#00c853"], ["D", d, "#ffab00"], ["L", l, "#d50000"], ["GF–GA", `${gf}–${ga}`, THEME.skyInk]].map(([k, v, c]) => (
@@ -1054,11 +1103,11 @@ function TournamentCard({ cardRef, name, date, placement, games, players, table 
       </div>
       <div style={{ padding: "0 16px 6px" }}>
         {games.map(g => (
-          <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: "1px solid #f0f0f0", fontSize: 12.5 }}>
+          <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: `1px solid ${L("#f0f0f0")}`, fontSize: 12.5 }}>
             <span style={{ width: 18, height: 18, borderRadius: 5, background: col(g.result), color: "#fff", fontWeight: 800, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>{g.result}</span>
-            <span style={{ flex: 1, fontWeight: 600, color: THEME.navy }}>{g.opposition}</span>
+            <span style={{ flex: 1, fontWeight: 600, color: THEME.text }}>{g.opposition}</span>
             <span style={{ color: "#999", fontSize: 10.5 }}>{g.round}</span>
-            <span style={{ fontWeight: 800, color: THEME.navy }}>{scoreLabel(g)}</span>
+            <span style={{ fontWeight: 800, color: THEME.text }}>{scoreLabel(g)}</span>
           </div>
         ))}
       </div>
@@ -1072,7 +1121,7 @@ function TournamentCard({ cardRef, name, date, placement, games, players, table 
             </tr></thead>
             <tbody>
               {table.map((r, i) => (
-                <tr key={r.name + i} style={{ background: r.me ? "#eaf5fb" : "transparent", fontWeight: r.me ? 800 : 600, color: THEME.navy, textAlign: "center" }}>
+                <tr key={r.name + i} style={{ background: r.me ? L("#eaf5fb") : "transparent", fontWeight: r.me ? 800 : 600, color: THEME.text, textAlign: "center" }}>
                   <td style={{ textAlign: "left", padding: "4px 0 4px 3px", color: "#999" }}>{i + 1}</td>
                   <td style={{ textAlign: "left", padding: "4px 0", maxWidth: 110, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}</td>
                   <td>{r.p}</td><td>{r.w}</td><td>{r.d}</td><td>{r.l}</td><td>{fmtGd(r.gd)}</td><td style={{ fontWeight: 800 }}>{r.pts}</td>
@@ -1088,8 +1137,8 @@ function TournamentCard({ cardRef, name, date, placement, games, players, table 
           {top.map(([n, g], i) => (
             <div key={n} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0", fontSize: 12.5 }}>
               <span style={{ width: 16, color: "#aaa", fontWeight: 700 }}>{i + 1}</span>
-              <span style={{ flex: 1, fontWeight: 600, color: THEME.navy }}>{n}</span>
-              <span style={{ fontWeight: 800, color: THEME.navy }}>{g}</span>
+              <span style={{ flex: 1, fontWeight: 600, color: THEME.text }}>{n}</span>
+              <span style={{ fontWeight: 800, color: THEME.text }}>{g}</span>
             </div>
           ))}
         </div>
@@ -1113,8 +1162,10 @@ export default function App() {
   BRAND.league = branding.league_logo || null;
   useEffect(() => {
     document.title = BRAND.name;
-    const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute("content", THEME.navy);
+    const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute("content", THEME.sports ? "#000000" : THEME.navy);
     document.body.style.fontFamily = THEME.body;
+    document.body.style.background = THEME.sports ? "#000" : "";
+    document.documentElement.style.background = THEME.sports ? "#000" : "";
   }, [branding]);
   const [mode, setMode] = useState("home");
   const [isAdmin, setIsAdmin] = useState(false);
@@ -1634,7 +1685,7 @@ export default function App() {
     if (!entry && !isAdmin) return null;
     if (!entry) {
       return (
-        <button onClick={() => openTableEditor(competition, date)} style={{ width: "100%", marginBottom: 12, padding: "10px 14px", background: "#fff", border: `1.5px dashed ${THEME.ink30}`, borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13, color: THEME.skyInk }}>🏆 + Add league table</button>
+        <button onClick={() => openTableEditor(competition, date)} style={{ width: "100%", marginBottom: 12, padding: "10px 14px", background: L("#fff"), border: `1.5px dashed ${THEME.ink30}`, borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13, color: THEME.skyInk }}>🏆 + Add league table</button>
       );
     }
     return <LeagueTable rows={rows} photo={entry.photo} onPhoto={() => setTablePhotoView(entry.photo)} onEdit={isAdmin ? () => openTableEditor(competition, date) : null} />;
@@ -1955,13 +2006,13 @@ export default function App() {
   };
 
   // ── Styles ─────────────────────────────────────────────
-  const inputStyle = { width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: THEME.navy, outline: "none", boxSizing: "border-box" };
+  const inputStyle = { width: "100%", padding: "12px 14px", border: `2px solid ${L("#e8e8e8")}`, borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: THEME.text, outline: "none", boxSizing: "border-box" };
   const labelStyle = { display: "block", fontSize: 11, fontWeight: 700, color: THEME.skyInk, letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" };
-  const cardStyle = { background: "#fff", borderRadius: 16, padding: 20, boxShadow: "0 4px 20px rgba(0,0,0,0.08)", maxWidth: 520, margin: "0 auto" };
+  const cardStyle = { background: L("#fff"), borderRadius: 16, padding: 20, boxShadow: "0 4px 20px rgba(0,0,0,0.08)", maxWidth: 520, margin: "0 auto" };
 
   // ── Loading / Error screens ─────────────────────────────
   const renderTournamentDay = () => {
-    const chipSt = on => ({ padding: "8px 14px", borderRadius: 20, border: on ? "none" : "1.5px solid #e0e0e0", background: on ? THEME.navy : "#fff", color: on ? THEME.sky : "#888", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" });
+    const chipSt = on => ({ padding: "8px 14px", borderRadius: 20, border: on ? "none" : `1.5px solid ${L("#e0e0e0")}`, background: on ? THEME.navy : L("#fff"), color: on ? THEME.sky : "#888", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" });
     const squadPlayers = players.filter(p => p.is_active !== false);
     const sectionLabel = { ...labelStyle, marginTop: 4 };
 
@@ -2005,11 +2056,11 @@ export default function App() {
     const w = tourGames.filter(r => r.result === "W").length, d = tourGames.filter(r => r.result === "D").length, l = tourGames.filter(r => r.result === "L").length;
     const rc = r => r === "W" ? "#00c853" : r === "L" ? "#d50000" : "#ffab00";
     const gameRows = tourGames.map(m => (
-      <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", borderRadius: 10, padding: "9px 12px", marginBottom: 6, borderLeft: `4px solid ${rc(m.result)}`, boxShadow: "0 1px 6px rgba(0,0,0,0.05)" }}>
-        <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: THEME.navy }}>v {m.opposition}</span>
+      <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 8, background: L("#fff"), borderRadius: 10, padding: "9px 12px", marginBottom: 6, borderLeft: `4px solid ${rc(m.result)}`, boxShadow: "0 1px 6px rgba(0,0,0,0.05)" }}>
+        <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: THEME.text }}>v {m.opposition}</span>
         <span style={{ fontSize: 11, color: THEME.ink60 }}>{m.round}</span>
-        <span style={{ fontWeight: 800, fontSize: 14, color: THEME.navy }}>{scoreLabel(m)}</span>
-        <button onClick={() => setNewResult(m)} style={{ border: "none", background: "#f0f2f6", borderRadius: 8, padding: "4px 8px", fontSize: 11, fontWeight: 700, color: THEME.navy, cursor: "pointer" }}>Card</button>
+        <span style={{ fontWeight: 800, fontSize: 14, color: THEME.text }}>{scoreLabel(m)}</span>
+        <button onClick={() => setNewResult(m)} style={{ border: "none", background: L("#f0f2f6"), borderRadius: 8, padding: "4px 8px", fontSize: 11, fontWeight: 700, color: THEME.text, cursor: "pointer" }}>Card</button>
       </div>
     ));
     // Photos for the whole tournament day. They're stored against the latest game of the day (photos belong to a
@@ -2017,7 +2068,7 @@ export default function App() {
     const dayPhotos = tourGames.flatMap(g => matchPhotosFor(g.id));
     const photoTarget = tourGames.length ? tourGames.reduce((a, b) => (b.id > a.id ? b : a)) : null;
     const photoBlock = (
-      <div style={{ background: "#fff", borderRadius: 12, padding: "10px 12px", marginBottom: 14, boxShadow: "0 1px 6px rgba(0,0,0,0.06)" }}>
+      <div style={{ background: L("#fff"), borderRadius: 12, padding: "10px 12px", marginBottom: 14, boxShadow: "0 1px 6px rgba(0,0,0,0.06)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: THEME.ink60 }}>📷 Tournament photos{dayPhotos.length > 0 ? ` (${dayPhotos.length})` : ""}</span>
           <button disabled={!photoTarget || uploadingPhotosFor === photoTarget?.id}
@@ -2080,7 +2131,7 @@ export default function App() {
     // ── Logging games ──
     const sq = tourDay.squad.map(pid => players.find(x => x.id === pid)).filter(Boolean);
     const awayN = parseInt(form.awayScore) || 0;
-    const stepBtn = (primary, onClick, txt) => <button onClick={onClick} style={{ width: 36, height: 36, borderRadius: "50%", border: primary ? "none" : "1.5px solid #e0e0e0", background: primary ? THEME.navy : "#fff", color: primary ? "#fff" : THEME.navy, fontSize: 20, cursor: "pointer" }}>{txt}</button>;
+    const stepBtn = (primary, onClick, txt) => <button onClick={onClick} style={{ width: 36, height: 36, borderRadius: "50%", border: primary ? "none" : `1.5px solid ${L("#e0e0e0")}`, background: primary ? THEME.navy : L("#fff"), color: primary ? "#fff" : THEME.text, fontSize: 20, cursor: "pointer" }}>{txt}</button>;
     return (
       <>
         {header}
@@ -2105,13 +2156,13 @@ export default function App() {
           <TeamPicker teams={teams} value={form.opposition} onChange={v => setForm(f => ({ ...f, opposition: v }))} onAddNew={name => { handleAddTeam(name); setForm(f => ({ ...f, opposition: name })); }} />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-          <div style={{ background: "#f0f2f6", borderRadius: 12, padding: "8px 12px", textAlign: "center" }}>
-            <div style={{ fontSize: 28, fontWeight: 900, color: THEME.navy, lineHeight: 1.1 }}>{tourGoals}</div>
+          <div style={{ background: L("#f0f2f6"), borderRadius: 12, padding: "8px 12px", textAlign: "center" }}>
+            <div style={{ fontSize: 28, fontWeight: 900, color: THEME.text, lineHeight: 1.1 }}>{tourGoals}</div>
             <div style={{ fontSize: 10, color: THEME.ink60, fontWeight: 700 }}>{BRAND.short.toUpperCase()} · from scorers</div>
           </div>
-          <div style={{ background: "#f0f2f6", borderRadius: 12, padding: "8px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ background: L("#f0f2f6"), borderRadius: 12, padding: "8px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             {stepBtn(false, () => setForm(f => ({ ...f, awayScore: String(Math.max(0, awayN - 1)) })), "−")}
-            <div style={{ textAlign: "center" }}><div style={{ fontSize: 28, fontWeight: 900, color: THEME.navy, lineHeight: 1.1 }}>{awayN}</div><div style={{ fontSize: 10, color: THEME.ink60, fontWeight: 700 }}>THEM</div></div>
+            <div style={{ textAlign: "center" }}><div style={{ fontSize: 28, fontWeight: 900, color: THEME.text, lineHeight: 1.1 }}>{awayN}</div><div style={{ fontSize: 10, color: THEME.ink60, fontWeight: 700 }}>THEM</div></div>
             {stepBtn(true, () => setForm(f => ({ ...f, awayScore: String(awayN + 1) })), "+")}
           </div>
         </div>
@@ -2150,7 +2201,7 @@ export default function App() {
         {form.opposition && tourGoals === awayN && (tourGoals > 0 || form.awayScore !== "" || pens.on) && <PensBox pens={pens} setPens={setPens} squad={sq} oppName={form.opposition} />}
         <button onClick={handleSaveTourGame} disabled={!form.opposition || tourBusy}
           style={{ width: "100%", padding: 16, background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 12, fontSize: 16, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", opacity: (!form.opposition || tourBusy) ? 0.4 : 1 }}>{tourBusy ? "Saving…" : "Save & next game"}</button>
-        <button onClick={() => setTourFinishing(true)} style={{ width: "100%", marginTop: 8, padding: 13, background: "#fff", color: THEME.navy, border: "2px solid #e8e8e8", borderRadius: 12, fontWeight: 800, fontSize: 13, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit" }}>Finish tournament</button>
+        <button onClick={() => setTourFinishing(true)} style={{ width: "100%", marginTop: 8, padding: 13, background: L("#fff"), color: THEME.text, border: `2px solid ${L("#e8e8e8")}`, borderRadius: 12, fontWeight: 800, fontSize: 13, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit" }}>Finish tournament</button>
       </>
     );
   };
@@ -2168,27 +2219,28 @@ export default function App() {
       <div style={{ color: "#d50000", fontSize: 22, fontWeight: 800, letterSpacing: 2 }}>⚠️ CONNECTION ERROR</div>
       <div style={{ color: "#aaa", fontSize: 15, maxWidth: 320, lineHeight: 1.5 }}>Could not connect to the database. Check your Supabase URL and API key in <code style={{ color: THEME.sky }}>src/supabase.js</code></div>
       {dbErrorMsg && <div style={{ color: "#ff7eb3", fontSize: 12, maxWidth: 320, marginTop: 8, wordBreak: "break-all", background: "rgba(255,255,255,0.05)", padding: "8px 12px", borderRadius: 8 }}>{dbErrorMsg}</div>}
-      <button onClick={() => window.location.reload()} style={{ background: THEME.sky, color: THEME.navy, border: "none", borderRadius: 10, padding: "12px 24px", fontWeight: 800, fontSize: 15, cursor: "pointer", fontFamily: "inherit" }}>Try Again</button>
+      <button onClick={() => window.location.reload()} style={{ background: THEME.sky, color: THEME.text, border: "none", borderRadius: 10, padding: "12px 24px", fontWeight: 800, fontSize: 15, cursor: "pointer", fontFamily: "inherit" }}>Try Again</button>
     </div>
   );
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: THEME.chalk, backgroundImage: "linear-gradient(rgba(18,23,46,0.035) 2px, transparent 2px), linear-gradient(90deg, rgba(18,23,46,0.035) 2px, transparent 2px)", backgroundSize: "60px 60px, 60px 60px", backgroundPosition: "30px 0, 0 30px", fontFamily: THEME.body, paddingBottom: 100 }}>
+    <div className={THEME.sports ? "look-sports" : undefined} style={{ colorScheme: THEME.sports ? "dark" : undefined, minHeight: "100vh", backgroundColor: THEME.chalk, backgroundImage: THEME.sports ? "none" : "linear-gradient(rgba(18,23,46,0.035) 2px, transparent 2px), linear-gradient(90deg, rgba(18,23,46,0.035) 2px, transparent 2px)", backgroundSize: "60px 60px, 60px 60px", backgroundPosition: "30px 0, 0 30px", fontFamily: THEME.body, paddingBottom: 100 }}>
 
+      {THEME.sports && <style>{`.look-sports input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]), .look-sports select, .look-sports textarea { background-color: #2c2c2e; color: #fff; border-color: #3a3a3c; } .look-sports ::placeholder { color: #8e8e93; } .look-sports option { background: #1c1c1e; color: #fff; }`}</style>}
       {/* Top bar */}
-      <div style={{ background: THEME.navy, padding: "16px 20px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.3)", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: -20, right: -30, width: 140, height: 140, opacity: 0.08, backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="white" d="M20 65 Q 35 55 45 40 Q 50 30 58 32 Q 65 34 62 42 Q 58 52 68 48 Q 78 44 75 55 Q 70 68 55 70 Q 40 72 30 78 Z"/></svg>')`, backgroundSize: "contain", backgroundRepeat: "no-repeat", pointerEvents: "none" }} />
-        <div style={{ background: THEME.white, borderRadius: "50%", padding: 1, display: "flex", alignItems: "center", justifyContent: "center", width: 50, height: 50, flexShrink: 0, border: `2px solid ${THEME.sky}`, position: "relative", zIndex: 1, overflow: "hidden" }}>
-          <ClubLogo size={44} />
+      <div style={{ background: THEME.sports ? "#000" : THEME.navy, padding: THEME.sports ? "22px 20px 8px" : "16px 20px", display: "flex", alignItems: "center", gap: 12, boxShadow: THEME.sports ? "none" : "0 2px 12px rgba(0,0,0,0.3)", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: -20, right: -30, width: 140, height: 140, opacity: THEME.sports ? 0 : 0.08, backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="white" d="M20 65 Q 35 55 45 40 Q 50 30 58 32 Q 65 34 62 42 Q 58 52 68 48 Q 78 44 75 55 Q 70 68 55 70 Q 40 72 30 78 Z"/></svg>')`, backgroundSize: "contain", backgroundRepeat: "no-repeat", pointerEvents: "none" }} />
+        <div style={{ background: THEME.sports ? "#fff" : THEME.white, borderRadius: "50%", padding: THEME.sports ? 0 : 1, display: "flex", alignItems: "center", justifyContent: "center", width: THEME.sports ? 46 : 50, height: THEME.sports ? 46 : 50, flexShrink: 0, border: THEME.sports ? "none" : `2px solid ${THEME.sky}`, position: "relative", zIndex: 1, overflow: "hidden" }}>
+          <ClubLogo size={THEME.sports ? 46 : 44} />
         </div>
         <div style={{ flex: 1, minWidth: 0, position: "relative", zIndex: 1 }}>
-          <div style={{ color: THEME.white, fontFamily: THEME.display, fontWeight: 600, fontSize: 17, letterSpacing: 0.5, lineHeight: 1.1 }}>{BRAND.name}</div>
+          <div style={{ color: "#ffffff", fontFamily: THEME.display, fontWeight: THEME.sports ? 800 : 600, fontSize: THEME.sports ? 30 : 17, letterSpacing: THEME.sports ? -0.8 : 0.5, lineHeight: 1.1 }}>{THEME.sports ? (BRAND.short || BRAND.name) : BRAND.name}</div>
           {editingTeamName ? (
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
               <input autoFocus value={tempAgeGroup} onChange={e => setTempAgeGroup(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") handleUpdateAgeGroup(); if (e.key === "Escape") setEditingTeamName(false); }}
                 style={{ background: "rgba(255,255,255,0.15)", border: `1px solid ${THEME.sky}`, borderRadius: 6, color: "#fff", fontSize: 12, fontWeight: 600, letterSpacing: 1, padding: "3px 8px", fontFamily: THEME.mono, width: 150, outline: "none" }} />
-              <button onClick={handleUpdateAgeGroup} style={{ background: THEME.sky, border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontWeight: 700, fontSize: 11, color: THEME.navy, fontFamily: THEME.body }}>Save</button>
+              <button onClick={handleUpdateAgeGroup} style={{ background: THEME.sky, border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontWeight: 700, fontSize: 11, color: THEME.text, fontFamily: THEME.body }}>Save</button>
             </div>
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 1 }}>
@@ -2210,7 +2262,7 @@ export default function App() {
       </div>
 
       {/* Season selector row */}
-      <div style={{ background: THEME.navySoft, padding: "8px 20px", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
+      <div style={{ background: THEME.sports ? "#000" : THEME.navySoft, padding: THEME.sports ? "0 20px 10px" : "8px 20px", display: "flex", alignItems: "center", justifyContent: THEME.sports ? "flex-start" : "flex-end", gap: 8 }}>
         {seasons.length > 0 && (
           <select value={viewingSeason?.id || ""} onChange={e => {
             const s = seasons.find(x => x.id === parseInt(e.target.value));
@@ -2237,10 +2289,10 @@ export default function App() {
 
       {/* Competition / Round filters — dropdowns, no horizontal swipe needed */}
       {(mode === "history" || (mode === "scorers" && scorersTab !== "squad")) && (
-        <div style={{ background: "#fff", borderBottom: "1px solid #f0f0f0", padding: "10px 16px", display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ background: L("#fff"), borderBottom: `1px solid ${L("#f0f0f0")}`, padding: "10px 16px", display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ flex: "1 1 140px", display: "flex", alignItems: "center", gap: 6 }}>
             <select value={filterComp} onChange={e => { setFilterComp(e.target.value); setSelectedMatch(null); setFilterRound("All"); }}
-              style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: "1.5px solid #e0e0e0", background: "#fff", color: THEME.navy, fontWeight: 700, fontSize: 13, fontFamily: THEME.body, cursor: "pointer", outline: "none" }}>
+              style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: `1.5px solid ${L("#e0e0e0")}`, background: L("#fff"), color: THEME.text, fontWeight: 700, fontSize: 13, fontFamily: THEME.body, cursor: "pointer", outline: "none" }}>
               <option value="All">All Competitions</option>
               {competitionsInUse.map(comp => <option key={comp} value={comp}>{comp}</option>)}
             </select>
@@ -2251,7 +2303,7 @@ export default function App() {
                     onKeyDown={e => { if (e.key === "Enter") handleRenameComp(competitions.indexOf(filterComp)); if (e.key === "Escape") setEditingComp(null); }}
                     style={{ border: `1.5px solid ${THEME.sky}`, borderRadius: 10, padding: "8px 10px", fontSize: 13, fontWeight: 700, fontFamily: THEME.body, outline: "none", width: 110 }} />
                   <button onClick={() => handleRenameComp(competitions.indexOf(filterComp))} style={{ background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 8, padding: "8px 9px", cursor: "pointer", fontFamily: THEME.body, fontSize: 12, fontWeight: 800 }}>✓</button>
-                  <button onClick={() => setEditingComp(null)} style={{ background: "#eee", color: "#888", border: "none", borderRadius: 8, padding: "8px 9px", cursor: "pointer", fontFamily: THEME.body, fontSize: 12 }}>✕</button>
+                  <button onClick={() => setEditingComp(null)} style={{ background: L("#eee"), color: "#888", border: "none", borderRadius: 8, padding: "8px 9px", cursor: "pointer", fontFamily: THEME.body, fontSize: 12 }}>✕</button>
                 </div>
               ) : (
                 <button onClick={() => { setEditingComp(competitions.indexOf(filterComp)); setTempCompName(filterComp); }}
@@ -2262,7 +2314,7 @@ export default function App() {
 
           {mode === "history" && filterComp !== "All" && roundsInUse.length > 0 && (
             <select value={filterRound} onChange={e => setFilterRound(e.target.value)}
-              style={{ flex: "1 1 120px", padding: "10px 12px", borderRadius: 10, border: "1.5px solid #e0e0e0", background: "#fff", color: THEME.navy, fontWeight: 700, fontSize: 13, fontFamily: THEME.body, cursor: "pointer", outline: "none" }}>
+              style={{ flex: "1 1 120px", padding: "10px 12px", borderRadius: 10, border: `1.5px solid ${L("#e0e0e0")}`, background: L("#fff"), color: THEME.text, fontWeight: 700, fontSize: 13, fontFamily: THEME.body, cursor: "pointer", outline: "none" }}>
               <option value="All">All Rounds</option>
               {roundsInUse.map(round => <option key={round} value={round}>{round}</option>)}
             </select>
@@ -2274,7 +2326,7 @@ export default function App() {
         {/* ── HOME TAB ── */}
         {mode === "home" && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
-            {live && <LiveCard T={THEME} live={live} selfName={BRAND.name} onOpen={isAdmin ? () => { setLiveStartFx(null); setMode("live"); } : null} />}
+            {live && <LiveCard T={THEME} live={live} selfName={THEME.sports ? (BRAND.short || BRAND.name) : BRAND.name} badge={BRAND.badge || DEFAULT_BADGE} onOpen={isAdmin ? () => { setLiveStartFx(null); setMode("live"); } : null} />}
             {!live && isAdmin && isViewingActive && (() => {
               const td = new Date(); const iso = `${td.getFullYear()}-${String(td.getMonth() + 1).padStart(2, "0")}-${String(td.getDate()).padStart(2, "0")}`;
               const f = seasonFixtures.find(x => x.rawDate === iso && !x.played);
@@ -2290,7 +2342,7 @@ export default function App() {
             <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, marginBottom: 10 }}>Season Record</div>
             <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
               {[
-                { l: "Played", v: homeSeasonRecord.played, c: THEME.navy },
+                { l: "Played", v: homeSeasonRecord.played, c: THEME.text },
                 { l: "Won", v: homeSeasonRecord.won, c: THEME.pitch },
                 { l: "Drawn", v: homeSeasonRecord.drawn, c: THEME.amber },
                 { l: "Lost", v: homeSeasonRecord.lost, c: THEME.loss },
@@ -2302,9 +2354,9 @@ export default function App() {
               ))}
             </div>
 
-            <button onClick={() => setMode("league")} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, background: THEME.white, border: "none", borderLeft: `3px solid ${THEME.pitch}`, borderRadius: 14, padding: "12px 14px", marginBottom: 24, boxShadow: "0 2px 8px rgba(18,23,46,0.06)", cursor: "pointer", fontFamily: THEME.body, textAlign: "left" }}>
+            <button onClick={() => setMode("league")} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, background: THEME.white, border: "none", borderLeft: THEME.sports ? "none" : `3px solid ${THEME.pitch}`, borderRadius: THEME.sports ? 22 : 14, padding: "12px 14px", marginBottom: 24, boxShadow: "0 2px 8px rgba(18,23,46,0.06)", cursor: "pointer", fontFamily: THEME.body, textAlign: "left" }}>
               <span style={{ fontSize: 22 }}>📋</span>
-              <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: 14, fontWeight: 700, color: THEME.navy }}>League table</span><span style={{ display: "block", fontSize: 11, color: THEME.ink60 }}>Unofficial, from the results we've been sent</span></span>
+              <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: 14, fontWeight: 700, color: THEME.text }}>League table</span><span style={{ display: "block", fontSize: 11, color: THEME.ink60 }}>Unofficial, from the results we've been sent</span></span>
               <span style={{ color: THEME.ink30, fontSize: 18 }}>›</span>
             </button>
 
@@ -2339,7 +2391,7 @@ export default function App() {
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, background: THEME.white, borderRadius: 12, padding: "10px 12px", marginBottom: 8, boxShadow: "0 2px 8px rgba(18,23,46,0.05)" }}>
                       <div style={{ width: 30, height: 30, borderRadius: 8, background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>{meta.icon}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 12, color: THEME.navy, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.competition}</div>
+                        <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 12, color: THEME.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.competition}</div>
                         <div style={{ fontFamily: THEME.mono, fontSize: 9.5, fontWeight: 700, color: meta.color, marginTop: 2 }}>{t.placement}</div>
                       </div>
                       <span style={{ fontFamily: THEME.mono, fontSize: 9, color: THEME.ink60, flexShrink: 0 }}>{t.season.name}</span>
@@ -2395,7 +2447,7 @@ export default function App() {
                   <div style={{ fontSize: 9, letterSpacing: 1, fontFamily: THEME.mono }}>{d.toLocaleDateString("en-GB", { month: "short" }).toUpperCase()}</div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: THEME.navy, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.opposition}</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: THEME.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.opposition}</div>
                   <div style={{ fontSize: 11, color: THEME.ink60, marginTop: 2 }}>{[f.home_away === "A" ? "Away" : f.home_away === "H" ? "Home" : "", f.kickoff_time ? `KO ${f.kickoff_time}` : "", f.competition].filter(Boolean).join(" · ")}</div>
                   {missing && <div style={{ fontSize: 11, fontWeight: 700, color: "#b36b00", marginTop: 2 }}>⚠ Add {[!f.kickoff_time && "kick-off time", !f.home_away && "home/away"].filter(Boolean).join(" and ")}</div>}
                 </div>
@@ -2410,11 +2462,11 @@ export default function App() {
           return (
             <div style={{ maxWidth: 520, margin: "0 auto" }}>
               <button onClick={() => setMode("staff")} style={{ background: "none", border: "none", color: THEME.ink60, fontFamily: THEME.mono, fontSize: 11, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", padding: "0 0 12px" }}>‹ Back</button>
-              <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 16, color: THEME.navy, marginBottom: 12 }}>Fixtures · {viewingSeason?.name}</div>
+              <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 16, color: THEME.text, marginBottom: 12 }}>Fixtures · {viewingSeason?.name}</div>
               <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
                 <button onClick={() => openFixtureForm(null)} style={{ flex: 1, padding: 12, border: "none", borderRadius: 12, background: THEME.navy, color: THEME.sky, fontWeight: 800, fontSize: 13, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit" }}>+ ADD FIXTURE</button>
-                <button onClick={() => openPoster()} style={{ flex: 1, padding: 12, border: `2px solid ${THEME.navy}`, borderRadius: 12, background: "#fff", color: THEME.navy, fontWeight: 800, fontSize: 13, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit" }}>🖼 MONTH POSTER</button>
-                <button onClick={() => openPoster("single")} style={{ flex: 1, padding: 12, border: `2px solid ${THEME.navy}`, borderRadius: 12, background: "#fff", color: THEME.navy, fontWeight: 800, fontSize: 13, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit" }}>⏭ NEXT FIXTURE</button>
+                <button onClick={() => openPoster()} style={{ flex: 1, padding: 12, border: `2px solid ${THEME.navy}`, borderRadius: 12, background: L("#fff"), color: THEME.text, fontWeight: 800, fontSize: 13, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit" }}>🖼 MONTH POSTER</button>
+                <button onClick={() => openPoster("single")} style={{ flex: 1, padding: 12, border: `2px solid ${THEME.navy}`, borderRadius: 12, background: L("#fff"), color: THEME.text, fontWeight: 800, fontSize: 13, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit" }}>⏭ NEXT FIXTURE</button>
               </div>
               {up.length === 0 && <div style={{ textAlign: "center", padding: "24px 20px", color: THEME.ink60 }}>No upcoming fixtures yet.</div>}
               {up.map(row)}
@@ -2435,21 +2487,21 @@ export default function App() {
               ‹ Back
             </button>
             <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: THEME.ink60, marginBottom: 4 }}>{viewingSeason?.name}</div>
-            <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 16, color: THEME.navy, marginBottom: 18 }}>Set tournament placements</div>
+            <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 16, color: THEME.text, marginBottom: 18 }}>Set tournament placements</div>
             {competitions.filter(c => compTypeOf(c) === "tournament" || viewingSeason?.placements?.[c]).length === 0 ? (
               <div style={{ textAlign: "center", padding: "24px 20px", color: THEME.ink30 }}>No tournaments in this season yet.</div>
             ) : competitions.filter(c => compTypeOf(c) === "tournament" || viewingSeason?.placements?.[c]).map(comp => {
               const current = viewingSeason?.placements?.[comp] || null;
               return (
                 <div key={comp} style={{ background: THEME.white, borderRadius: 14, padding: 14, marginBottom: 12, boxShadow: "0 2px 8px rgba(18,23,46,0.05)" }}>
-                  <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 14, color: THEME.navy, marginBottom: 10 }}>{comp}</div>
+                  <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 14, color: THEME.text, marginBottom: 10 }}>{comp}</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                     {PLACEMENT_OPTIONS.map(opt => {
                       const meta = PLACEMENT_META[opt];
                       const selected = current === opt;
                       return (
                         <button key={opt} onClick={() => handleSetPlacement(comp, selected ? null : opt)}
-                          style={{ display: "flex", alignItems: "center", gap: 8, border: `1.5px solid ${selected ? THEME.amber : "#e0e0e0"}`, background: selected ? "#fdf6e8" : "#fff", borderRadius: 12, padding: 10, fontSize: 11, fontWeight: 700, color: selected ? THEME.navy : "#888", cursor: "pointer", fontFamily: THEME.body, textAlign: "left" }}>
+                          style={{ display: "flex", alignItems: "center", gap: 8, border: `1.5px solid ${selected ? THEME.amber : L("#e0e0e0")}`, background: selected ? L("#fdf6e8") : L("#fff"), borderRadius: 12, padding: 10, fontSize: 11, fontWeight: 700, color: selected ? THEME.text : "#888", cursor: "pointer", fontFamily: THEME.body, textAlign: "left" }}>
                           <span style={{ fontSize: 16 }}>{meta.icon}</span>{opt}
                         </button>
                       );
@@ -2504,7 +2556,7 @@ export default function App() {
                 style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, background: THEME.white, border: "none", borderLeft: `3px solid ${item.accent}`, borderRadius: 14, padding: "14px 16px", marginBottom: 10, boxShadow: "0 2px 8px rgba(18,23,46,0.05)", cursor: item.disabled ? "default" : "pointer", opacity: item.disabled ? 0.5 : 1, fontFamily: THEME.body, textAlign: "left" }}>
                 <div style={{ width: 38, height: 38, borderRadius: 10, background: THEME.navy, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{item.icon}</div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: THEME.navy }}>{item.title}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: THEME.text }}>{item.title}</div>
                   <div style={{ fontSize: 11, color: THEME.ink60, marginTop: 1 }}>{item.disabled ? "Switch to the current season first" : item.desc}</div>
                 </div>
                 <div style={{ color: THEME.ink30, fontSize: 18 }}>›</div>
@@ -2514,9 +2566,9 @@ export default function App() {
             <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, margin: "22px 0 10px" }}>Session</div>
             <button onClick={handleLockAdmin}
               style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, background: THEME.white, border: "none", borderRadius: 14, padding: "14px 16px", boxShadow: "0 2px 8px rgba(18,23,46,0.05)", cursor: "pointer", fontFamily: THEME.body, textAlign: "left" }}>
-              <div style={{ width: 38, height: 38, borderRadius: 10, background: "#f5f5f5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>🚪</div>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: L("#f5f5f5"), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>🚪</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: THEME.navy }}>Exit Admin</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: THEME.text }}>Exit Admin</div>
                 <div style={{ fontSize: 11, color: THEME.ink60, marginTop: 1 }}>Back to the public view</div>
               </div>
             </button>
@@ -2530,13 +2582,13 @@ export default function App() {
             <div>
               <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 20, flexWrap: "wrap" }}>
                 {[
-                  { label: "Played", val: filteredResults.length, color: THEME.navy },
+                  { label: "Played", val: filteredResults.length, color: THEME.text },
                   { label: "Won", val: filteredResults.filter(r => r.result === "W").length, color: "#00c853" },
                   { label: "Drawn", val: filteredResults.filter(r => r.result === "D").length, color: "#ffab00" },
                   { label: "Lost", val: filteredResults.filter(r => r.result === "L").length, color: "#d50000" },
                   { label: "Goals", val: filteredResults.reduce((a, r) => a + goalsFor(r), 0), color: THEME.sky },
                 ].map(s => (
-                  <div key={s.label} style={{ background: "#fff", borderRadius: 12, padding: "10px 18px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.07)", minWidth: 70, borderBottom: `3px solid ${s.color}` }}>
+                  <div key={s.label} style={{ background: L("#fff"), borderRadius: 12, padding: "10px 18px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.07)", minWidth: 70, borderBottom: `3px solid ${s.color}` }}>
                     <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.val}</div>
                     <div style={{ fontSize: 11, color: "#999", fontWeight: 700, letterSpacing: 1 }}>{s.label.toUpperCase()}</div>
                   </div>
@@ -2565,7 +2617,7 @@ export default function App() {
                 return (
                   <div style={{ maxWidth: 520, margin: "0 auto 16px" }}>
                     <button onClick={() => setShowTourShare(v => !v)}
-                      style={{ width: "100%", background: "#fff", border: `1.5px solid ${THEME.ink30}`, borderRadius: 12, padding: "11px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 13, color: THEME.navy, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                      style={{ width: "100%", background: L("#fff"), border: `1.5px solid ${THEME.ink30}`, borderRadius: 12, padding: "11px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 13, color: THEME.text, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                       📸 {showTourShare ? "Hide tournament summary" : "Share tournament summary"}
                     </button>
                     {showTourShare && (
@@ -2583,7 +2635,7 @@ export default function App() {
 
               <div style={{ display: "flex", justifyContent: "flex-end", maxWidth: 520, margin: "0 auto 12px" }}>
                 <button onClick={() => setSortOrder(s => s === "desc" ? "asc" : "desc")}
-                  style={{ background: "#fff", border: "1.5px solid #e0e0e0", borderRadius: 20, padding: "6px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 12, color: "#555", letterSpacing: 1 }}>
+                  style={{ background: L("#fff"), border: `1.5px solid ${L("#e0e0e0")}`, borderRadius: 20, padding: "6px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 12, color: "#555", letterSpacing: 1 }}>
                   {sortOrder === "desc" ? "↓ Newest First" : "↑ Oldest First"}
                 </button>
               </div>
@@ -2619,7 +2671,7 @@ export default function App() {
                     <ScoreCard match={m} compColor={cc} onClick={() => setSelectedMatch(isSelected ? null : m.id)} photoCount={matchPhotosFor(m.id).length} videoCount={matchVideosFor(m.id).length} />
 
                     {isSelected && (
-                      <div style={{ background: "#f8faff", borderRadius: 12, marginTop: -8, marginBottom: 4, boxShadow: "0 4px 8px rgba(0,0,0,0.06)", overflow: "hidden" }}>
+                      <div style={{ background: L("#f8faff"), borderRadius: 12, marginTop: -8, marginBottom: 4, boxShadow: "0 4px 8px rgba(0,0,0,0.06)", overflow: "hidden" }}>
                         <div style={{ padding: "14px 16px 0" }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                             <span style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: THEME.ink60 }}>
@@ -2652,7 +2704,7 @@ export default function App() {
                               </span>
                               {isAdmin && (
                                 <button onClick={() => setVideoModal({ resultId: m.id, url: "", title: "" })}
-                                  style={{ background: "#fdeceb", border: "none", borderRadius: 8, padding: "5px 10px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 11, color: "#c62828" }}>
+                                  style={{ background: L("#fdeceb"), border: "none", borderRadius: 8, padding: "5px 10px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 11, color: "#c62828" }}>
                                   + Add video
                                 </button>
                               )}
@@ -2663,7 +2715,7 @@ export default function App() {
                           </div>
                         )}
                         {isAdmin && (
-                          <div style={{ display: "flex", borderTop: "1px solid #e8eeff" }}>
+                          <div style={{ display: "flex", borderTop: `1px solid ${L("#e8eeff")}` }}>
                             <button onClick={() => {
                                 const initialGoalCounts = {};
                                 (m.scorers || []).forEach(s => {
@@ -2678,7 +2730,7 @@ export default function App() {
                                 setEditPens(hasPens(m) ? { on: true, home: m.homePens, away: m.awayPens, scorers: m.penScorers || [] } : PENS_OFF);
                                 setEditingResult({ ...m, scorers: (m.scorers || []).join(", ") });
                               }}
-                              style={{ flex: 1, padding: "12px", background: "none", border: "none", borderRight: "1px solid #e8eeff", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 13, color: THEME.navy, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                              style={{ flex: 1, padding: "12px", background: "none", border: "none", borderRight: `1px solid ${L("#e8eeff")}`, cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 13, color: THEME.text, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                               ✏️ Edit
                             </button>
                             <button onClick={() => { if (window.confirm(`Delete result vs ${m.opposition}?`)) handleDeleteResult(m.id); }}
@@ -2700,17 +2752,17 @@ export default function App() {
             {/* Edit modal */}
             {editingResult && (
               <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-                <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto" }}>
+                <div style={{ background: L("#fff"), borderRadius: 16, padding: 24, width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                    <span style={{ fontSize: 18, fontWeight: 900, color: THEME.navy, letterSpacing: 1 }}>✏️ EDIT RESULT</span>
-                    <button onClick={() => { setEditingResult(null); setEditOppLogo(null); }} style={{ background: "#f0f0f0", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
+                    <span style={{ fontSize: 18, fontWeight: 900, color: THEME.text, letterSpacing: 1 }}>✏️ EDIT RESULT</span>
+                    <button onClick={() => { setEditingResult(null); setEditOppLogo(null); }} style={{ background: L("#f0f0f0"), border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
                   </div>
                   <div style={{ marginBottom: 14 }}>
                     <label style={labelStyle}>Competition</label>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       {[...new Set([...competitions, editingResult.competition].filter(Boolean))].map(comp => (
                         <button key={comp} onClick={() => setEditingResult(r => ({ ...r, competition: comp }))}
-                          style={{ padding: "6px 12px", borderRadius: 20, border: editingResult.competition === comp ? "none" : "1.5px solid #e0e0e0", background: editingResult.competition === comp ? THEME.navy : "#fff", color: editingResult.competition === comp ? THEME.sky : "#888", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
+                          style={{ padding: "6px 12px", borderRadius: 20, border: editingResult.competition === comp ? "none" : `1.5px solid ${L("#e0e0e0")}`, background: editingResult.competition === comp ? THEME.navy : L("#fff"), color: editingResult.competition === comp ? THEME.sky : "#888", fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                           {comp}
                         </button>
                       ))}
@@ -2740,15 +2792,15 @@ export default function App() {
                         {editPlayerList().map(p => {
                           const count = editGoalCounts[p.id] || 0;
                           return (
-                            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, background: count > 0 ? "#f0f4ff" : "#f7f8fa", borderRadius: 10, padding: "8px 12px", border: count > 0 ? `1.5px solid ${THEME.sky}` : "1.5px solid #e8e8e8" }}>
+                            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, background: count > 0 ? L("#f0f4ff") : L("#f7f8fa"), borderRadius: 10, padding: "8px 12px", border: count > 0 ? `1.5px solid ${THEME.sky}` : `1.5px solid ${L("#e8e8e8")}` }}>
                               <div style={{ width: 28, height: 28, borderRadius: "50%", background: p.photo ? "transparent" : THEME.navy, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
                                 {p.photo ? <img src={p.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: THEME.sky, fontSize: 9, fontWeight: 900 }}>{p.name.slice(0,2).toUpperCase()}</span>}
                               </div>
-                              <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: THEME.navy }}>{p.name}</span>
+                              <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: THEME.text }}>{p.name}</span>
                               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                 <button onClick={() => bumpEditGoal(p.id, -1)}
-                                  style={{ width: 28, height: 28, borderRadius: "50%", border: "1.5px solid #e0e0e0", background: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#888", fontFamily: "inherit" }}>−</button>
-                                <span style={{ fontSize: 18, fontWeight: 900, color: THEME.navy, minWidth: 18, textAlign: "center" }}>{count}</span>
+                                  style={{ width: 28, height: 28, borderRadius: "50%", border: `1.5px solid ${L("#e0e0e0")}`, background: L("#fff"), fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#888", fontFamily: "inherit" }}>−</button>
+                                <span style={{ fontSize: 18, fontWeight: 900, color: THEME.text, minWidth: 18, textAlign: "center" }}>{count}</span>
                                 <button onClick={() => bumpEditGoal(p.id, 1)}
                                   style={{ width: 28, height: 28, borderRadius: "50%", border: "none", background: THEME.navy, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: THEME.sky, fontFamily: "inherit" }}>+</button>
                               </div>
@@ -2771,7 +2823,7 @@ export default function App() {
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       {[...new Set([...STAGES, editingResult.round].filter(Boolean))].map(st => (
                         <button key={st} onClick={() => setEditingResult(r => ({ ...r, round: r.round === st ? "" : st }))}
-                          style={{ padding: "6px 12px", borderRadius: 20, border: editingResult.round === st ? "none" : "1.5px solid #e0e0e0", background: editingResult.round === st ? THEME.navy : "#fff", color: editingResult.round === st ? THEME.sky : "#888", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>{st}</button>
+                          style={{ padding: "6px 12px", borderRadius: 20, border: editingResult.round === st ? "none" : `1.5px solid ${L("#e0e0e0")}`, background: editingResult.round === st ? THEME.navy : L("#fff"), color: editingResult.round === st ? THEME.sky : "#888", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>{st}</button>
                       ))}
                     </div>
                   </div>
@@ -2789,7 +2841,7 @@ export default function App() {
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
                         {editPlayerList().map(p => (
                           <button key={p.id} onClick={() => setEditingResult(r => ({ ...r, motm: r.motm === p.name ? "" : p.name }))}
-                            style={{ padding: "4px 10px", borderRadius: 16, border: editingResult.motm === p.name ? "none" : "1.5px solid #e0e0e0", background: editingResult.motm === p.name ? "#ffd700" : "#fff", color: editingResult.motm === p.name ? THEME.navy : "#888", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                            style={{ padding: "4px 10px", borderRadius: 16, border: editingResult.motm === p.name ? "none" : `1.5px solid ${L("#e0e0e0")}`, background: editingResult.motm === p.name ? L("#ffd700") : L("#fff"), color: editingResult.motm === p.name ? THEME.text : "#888", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
                             {p.name}
                           </button>
                         ))}
@@ -2803,7 +2855,7 @@ export default function App() {
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
                         {editPlayerList().map(p => (
                           <button key={p.id} onClick={() => setEditingResult(r => ({ ...r, oppMotm: r.oppMotm === p.name ? "" : p.name }))}
-                            style={{ padding: "4px 10px", borderRadius: 16, border: editingResult.oppMotm === p.name ? "none" : "1.5px solid #e0e0e0", background: editingResult.oppMotm === p.name ? "#ff7eb3" : "#fff", color: editingResult.oppMotm === p.name ? "#fff" : "#888", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                            style={{ padding: "4px 10px", borderRadius: 16, border: editingResult.oppMotm === p.name ? "none" : `1.5px solid ${L("#e0e0e0")}`, background: editingResult.oppMotm === p.name ? "#ff7eb3" : L("#fff"), color: editingResult.oppMotm === p.name ? "#fff" : "#888", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
                             {p.name}
                           </button>
                         ))}
@@ -2849,7 +2901,7 @@ export default function App() {
                     <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
                       {chips.map(c => (
                         <button key={c.key} onClick={() => setGalleryFilter(c.key)}
-                          style={{ padding: "6px 12px", borderRadius: 99, border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 11, background: galleryFilter === c.key ? THEME.navy : "#fff", color: galleryFilter === c.key ? THEME.sky : "#888", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
+                          style={{ padding: "6px 12px", borderRadius: 99, border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 11, background: galleryFilter === c.key ? THEME.navy : L("#fff"), color: galleryFilter === c.key ? THEME.sky : "#888", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
                           {c.label}
                         </button>
                       ))}
@@ -2865,7 +2917,7 @@ export default function App() {
                   {groups.map(g => (
                     <div key={g.key} style={{ marginBottom: 22 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-                        <span style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 14, color: THEME.navy }}>{g.title.toUpperCase()}</span>
+                        <span style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 14, color: THEME.text }}>{g.title.toUpperCase()}</span>
                         <span style={{ fontFamily: THEME.mono, fontSize: 10, color: THEME.ink60 }}>{g.match.date}</span>
                       </div>
                       {g.photos.length > 0 && (
@@ -2888,7 +2940,7 @@ export default function App() {
         {/* ── PLAYERS TAB ── */}
         {mode === "scorers" && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
-            <div style={{ display: "flex", background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.07)", marginBottom: 20 }}>
+            <div style={{ display: "flex", background: L("#fff"), borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.07)", marginBottom: 20 }}>
               {[{ key: "squad", label: "🏃 Squad" }, { key: "goals", label: "⚽ Goals" }, { key: "motm", label: "⭐ MOTM" }, { key: "oppmotm", label: "🏅 Opp MOTM" }].map(st => (
                 <button key={st.key} onClick={() => setScorersTab(st.key)}
                   style={{ flex: 1, padding: "12px 4px", border: "none", background: scorersTab === st.key ? THEME.navy : "none", color: scorersTab === st.key ? THEME.sky : "#999", fontWeight: 800, fontSize: 11, letterSpacing: 0.5, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
@@ -2911,14 +2963,14 @@ export default function App() {
                       const goals = goalBoard.find(g => g.name === p.name)?.count || 0;
                       return (
                         <button key={p.id} onClick={() => openPlayerProfile(p.name)}
-                          style={{ background: "#fff", border: "none", borderRadius: 14, padding: "14px 10px", textAlign: "center", boxShadow: "0 2px 8px rgba(18,23,46,0.06)", cursor: "pointer", fontFamily: "inherit" }}>
+                          style={{ background: L("#fff"), border: "none", borderRadius: 14, padding: "14px 10px", textAlign: "center", boxShadow: "0 2px 8px rgba(18,23,46,0.06)", cursor: "pointer", fontFamily: "inherit" }}>
                           <div style={{ width: 52, height: 52, borderRadius: "50%", background: THEME.navy, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px", position: "relative", overflow: "hidden" }}>
                             {p.photo
                               ? <img src={p.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={p.name} />
                               : <span style={{ color: THEME.sky, fontFamily: THEME.display, fontWeight: 600, fontSize: 16 }}>{p.name.slice(0,2).toUpperCase()}</span>}
-                            <span style={{ position: "absolute", bottom: -3, right: -3, background: "#ffd700", color: "#3a2a05", fontFamily: THEME.mono, fontSize: 9, fontWeight: 700, width: 18, height: 18, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #fff" }}>{p.squad_number || "?"}</span>
+                            <span style={{ position: "absolute", bottom: -3, right: -3, background: L("#ffd700"), color: "#3a2a05", fontFamily: THEME.mono, fontSize: 9, fontWeight: 700, width: 18, height: 18, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${L("#fff")}` }}>{p.squad_number || "?"}</span>
                           </div>
-                          <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 13, color: THEME.navy }}>{p.name}</div>
+                          <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 13, color: THEME.text }}>{p.name}</div>
                           <div style={{ fontFamily: THEME.mono, fontSize: 10, color: "#888", marginTop: 2 }}>{apps} apps{goals > 0 ? ` · ${goals} goals` : ""}</div>
                         </button>
                       );
@@ -2969,12 +3021,12 @@ export default function App() {
                     <>
                       <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 14, flexWrap: "wrap" }}>
                         {[
-                          { label: "Played", val: h2hResults.length, color: THEME.navy },
+                          { label: "Played", val: h2hResults.length, color: THEME.text },
                           { label: "Won", val: h2hResults.filter(r => r.result === "W").length, color: "#00c853" },
                           { label: "Drawn", val: h2hResults.filter(r => r.result === "D").length, color: "#ffab00" },
                           { label: "Lost", val: h2hResults.filter(r => r.result === "L").length, color: "#d50000" },
                         ].map(s => (
-                          <div key={s.label} style={{ background: "#fff", borderRadius: 12, padding: "8px 14px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.07)", borderBottom: `3px solid ${s.color}` }}>
+                          <div key={s.label} style={{ background: L("#fff"), borderRadius: 12, padding: "8px 14px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.07)", borderBottom: `3px solid ${s.color}` }}>
                             <div style={{ fontSize: 20, fontWeight: 900, color: s.color }}>{s.val}</div>
                             <div style={{ fontSize: 11, color: "#999", fontWeight: 700 }}>{s.label.toUpperCase()}</div>
                           </div>
@@ -2982,17 +3034,17 @@ export default function App() {
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         {h2hResults.map(m => (
-                          <div key={m.id} style={{ background: "#fff", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)", borderLeft: `4px solid ${m.result === "W" ? "#00c853" : m.result === "L" ? "#d50000" : "#ffab00"}` }}>
+                          <div key={m.id} style={{ background: L("#fff"), borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)", borderLeft: `4px solid ${m.result === "W" ? "#00c853" : m.result === "L" ? "#d50000" : "#ffab00"}` }}>
                             <span style={{ background: m.result === "W" ? "#00c853" : m.result === "L" ? "#d50000" : "#ffab00", color: "#fff", fontWeight: 800, fontSize: 13, borderRadius: 8, padding: "3px 8px" }}>{m.result}</span>
-                            <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: THEME.navy }}>{scoreLabel(m)}</span>
+                            <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: THEME.text }}>{scoreLabel(m)}</span>
                             <span style={{ fontSize: 12, color: "#aaa" }}>{m.date}</span>
-                            <span style={{ fontSize: 11, color: getCompColor(competitions, m.competition), fontWeight: 700, background: "#f5f5f5", borderRadius: 8, padding: "2px 8px" }}>{m.competition}</span>
+                            <span style={{ fontSize: 11, color: getCompColor(competitions, m.competition), fontWeight: 700, background: L("#f5f5f5"), borderRadius: 8, padding: "2px 8px" }}>{m.competition}</span>
                           </div>
                         ))}
                       </div>
                     </>
                   )}
-                <button onClick={() => { setH2hTeam(null); setTeamSearch(""); }} style={{ marginTop: 12, background: "none", border: "1.5px solid #e0e0e0", borderRadius: 10, padding: "10px", width: "100%", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14, color: "#888" }}>← Back to Teams</button>
+                <button onClick={() => { setH2hTeam(null); setTeamSearch(""); }} style={{ marginTop: 12, background: "none", border: `1.5px solid ${L("#e0e0e0")}`, borderRadius: 10, padding: "10px", width: "100%", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14, color: "#888" }}>← Back to Teams</button>
               </div>
             )}
 
@@ -3018,11 +3070,11 @@ export default function App() {
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
                   {teams.filter(t => t.name.toLowerCase().includes(teamSearch.toLowerCase())).map(t => (
-                    <div key={t.id} style={{ background: "#fff", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+                    <div key={t.id} style={{ background: L("#fff"), borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
                       {/* Logo — tap to upload */}
                       <button onClick={() => { setUploadingLogoForTeam(t.id); teamLogoRef.current.click(); }}
                         title="Upload logo"
-                        style={{ width: 44, height: 44, borderRadius: 10, background: "#f0f4ff", border: `1.5px dashed ${THEME.sky}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", overflow: "hidden", padding: 0 }}>
+                        style={{ width: 44, height: 44, borderRadius: 10, background: L("#f0f4ff"), border: `1.5px dashed ${THEME.sky}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", overflow: "hidden", padding: 0 }}>
                         {t.logo
                           ? <img src={t.logo} style={{ width: "100%", height: "100%", objectFit: "contain" }} alt={t.name} />
                           : <span style={{ fontSize: 20 }}>⚽</span>}
@@ -3031,24 +3083,24 @@ export default function App() {
                         <div style={{ display: "flex", gap: 6, flex: 1, alignItems: "center" }}>
                           <input autoFocus value={editingTeamNameVal} onChange={e => setEditingTeamNameVal(e.target.value)}
                             onKeyDown={e => { if (e.key === "Enter") { handleRenameTeam(t.id, editingTeamNameVal); setEditingTeam(null); } if (e.key === "Escape") setEditingTeam(null); }}
-                            style={{ flex: 1, border: `2px solid ${THEME.sky}`, borderRadius: 8, padding: "7px 10px", fontSize: 15, fontFamily: "inherit", fontWeight: 700, color: THEME.navy, outline: "none" }} />
+                            style={{ flex: 1, border: `2px solid ${THEME.sky}`, borderRadius: 8, padding: "7px 10px", fontSize: 15, fontFamily: "inherit", fontWeight: 700, color: THEME.text, outline: "none" }} />
                           <button onClick={() => { handleRenameTeam(t.id, editingTeamNameVal); setEditingTeam(null); }}
                             style={{ background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 8, padding: "7px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 13 }}>✓</button>
                           <button onClick={() => setEditingTeam(null)}
-                            style={{ background: "#f0f0f0", color: "#888", border: "none", borderRadius: 8, padding: "7px 10px", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}>✕</button>
+                            style={{ background: L("#f0f0f0"), color: "#888", border: "none", borderRadius: 8, padding: "7px 10px", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}>✕</button>
                         </div>
                       ) : (
                         <>
-                          <span style={{ flex: 1, fontSize: 16, fontWeight: 800, color: THEME.navy }}>{t.name}</span>
+                          <span style={{ flex: 1, fontSize: 16, fontWeight: 800, color: THEME.text }}>{t.name}</span>
                           {t.logo ? <button title="Remove white background from badge" onClick={async () => {
                             const cut = await cutWhite(t.logo);
                             if (!cut) { showToast("No white background found to remove"); return; }
                             const updated = { ...t, logo: cut };
                             try { await updateTeam(updated); setTeams(prev => prev.map(x => x.id === t.id ? updated : x)); showToast("✅ Background removed"); }
                             catch (e) { showToast("❌ Couldn't save the badge"); }
-                          }} style={{ background: "#f0f4ff", border: "none", borderRadius: 8, padding: "6px 9px", cursor: "pointer", fontSize: 13 }}>✂️</button> : null}
+                          }} style={{ background: L("#f0f4ff"), border: "none", borderRadius: 8, padding: "6px 9px", cursor: "pointer", fontSize: 13 }}>✂️</button> : null}
                           <button onClick={() => { setH2hTeam(t.name); setTeamSearch(t.name); }}
-                            style={{ background: "#f0f4ff", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: THEME.sky }}>H2H</button>
+                            style={{ background: L("#f0f4ff"), border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: THEME.sky }}>H2H</button>
                           <button onClick={() => { setEditingTeam(t); setEditingTeamNameVal(t.name); }}
                             style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#aaa" }}>✏️</button>
                           <button onClick={() => { if (window.confirm(`Remove ${t.name}?`)) handleDeleteTeam(t.id); }}
@@ -3074,11 +3126,11 @@ export default function App() {
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
             {!newResult ? (
               <div style={{ ...cardStyle }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: THEME.navy, marginBottom: 20, letterSpacing: 1 }}>🏆 POST A RESULT</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: THEME.text, marginBottom: 20, letterSpacing: 1 }}>🏆 POST A RESULT</div>
 
                 <div style={{ marginBottom: 16 }}>
                   <label style={labelStyle}>What kind of game?</label>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", background: "#f0f2f6", borderRadius: 12, padding: 4, gap: 3 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", background: L("#f0f2f6"), borderRadius: 12, padding: 4, gap: 3 }}>
                     {COMP_TYPES.map(t => (
                       <button key={t.key} onClick={() => chooseLogType(t.key)}
                         style={{ border: "none", borderRadius: 9, padding: "9px 2px", background: logType === t.key ? THEME.navy : "none", color: logType === t.key ? "#fff" : "#8a90a3", fontWeight: 800, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit" }}>
@@ -3095,19 +3147,19 @@ export default function App() {
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                     {compsOfType(logType).map(comp => (
                       <button key={comp} onClick={() => setForm(f => ({ ...f, competition: comp }))}
-                        style={{ padding: "7px 14px", borderRadius: 20, border: form.competition === comp ? "none" : "1.5px solid #e0e0e0", background: form.competition === comp ? THEME.navy : "#fff", color: form.competition === comp ? THEME.sky : "#888", fontWeight: 800, fontSize: 12, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
+                        style={{ padding: "7px 14px", borderRadius: 20, border: form.competition === comp ? "none" : `1.5px solid ${L("#e0e0e0")}`, background: form.competition === comp ? THEME.navy : L("#fff"), color: form.competition === comp ? THEME.sky : "#888", fontWeight: 800, fontSize: 12, letterSpacing: 1, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                         {comp}
                       </button>
                     ))}
                     {!addingComp && (
-                      <button onClick={() => setAddingComp(true)} style={{ padding: "7px 14px", borderRadius: 20, border: `1.5px dashed ${THEME.sky}`, background: "#fff", color: THEME.skyInk, fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>+ New</button>
+                      <button onClick={() => setAddingComp(true)} style={{ padding: "7px 14px", borderRadius: 20, border: `1.5px dashed ${THEME.sky}`, background: L("#fff"), color: THEME.skyInk, fontWeight: 800, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>+ New</button>
                     )}
                   </div>
                   {addingComp && (
                     <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
                       <input autoFocus placeholder="Competition name..." value={newCompName} onChange={e => setNewCompName(e.target.value)} onKeyDown={e => { if (e.key === "Enter") handleAddComp(); if (e.key === "Escape") setAddingComp(false); }} style={{ ...inputStyle, flex: 1, padding: "10px 14px" }} />
                       <button onClick={handleAddComp} style={{ background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontWeight: 800, fontFamily: "inherit", fontSize: 13 }}>Add</button>
-                      <button onClick={() => setAddingComp(false)} style={{ background: "#f0f0f0", color: "#888", border: "none", borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}>✕</button>
+                      <button onClick={() => setAddingComp(false)} style={{ background: L("#f0f0f0"), color: "#888", border: "none", borderRadius: 10, padding: "10px 16px", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}>✕</button>
                     </div>
                   )}
                 </div>
@@ -3128,7 +3180,7 @@ export default function App() {
                     <label style={labelStyle}>{BRAND.short} Score</label>
                     {scoreFromScorers ? (
                       <>
-                        <div style={{ ...inputStyle, display: "flex", alignItems: "center", background: "#f0f2f6", color: THEME.navy, fontWeight: 800, fontSize: 20 }}>{leonGoals}</div>
+                        <div style={{ ...inputStyle, display: "flex", alignItems: "center", background: L("#f0f2f6"), color: THEME.text, fontWeight: 800, fontSize: 20 }}>{leonGoals}</div>
                         <div style={{ fontSize: 10, color: THEME.ink60, marginTop: 4 }}>Counted from goal scorers below</div>
                       </>
                     ) : (
@@ -3147,7 +3199,7 @@ export default function App() {
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       {STAGES.filter(x => x !== "Group stage").map(st => (
                         <button key={st} onClick={() => setForm(f => ({ ...f, round: f.round === st ? "" : st }))}
-                          style={{ padding: "7px 14px", borderRadius: 20, border: form.round === st ? "none" : "1.5px solid #e0e0e0", background: form.round === st ? THEME.navy : "#fff", color: form.round === st ? THEME.sky : "#888", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>{st}</button>
+                          style={{ padding: "7px 14px", borderRadius: 20, border: form.round === st ? "none" : `1.5px solid ${L("#e0e0e0")}`, background: form.round === st ? THEME.navy : L("#fff"), color: form.round === st ? THEME.sky : "#888", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>{st}</button>
                       ))}
                     </div>
                   </div>
@@ -3178,7 +3230,7 @@ export default function App() {
                                 if (oppMotmPlayerId === p.id) setOppMotmPlayerId(null);
                               }
                             }}
-                              style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 20, border: selected ? "none" : "1.5px solid #e0e0e0", background: selected ? THEME.navy : "#fff", color: selected ? THEME.sky : "#888", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                              style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 20, border: selected ? "none" : `1.5px solid ${L("#e0e0e0")}`, background: selected ? THEME.navy : L("#fff"), color: selected ? THEME.sky : "#888", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                               <span style={{ fontWeight: 900, fontSize: 11, color: selected ? THEME.sky : "#aaa" }}>#{p.squad_number || "?"}</span>
                               {p.name}
                             </button>
@@ -3197,15 +3249,15 @@ export default function App() {
                             if (!p) return null;
                             const count = goalCounts[pid] || 0;
                             return (
-                              <div key={pid} style={{ display: "flex", alignItems: "center", gap: 12, background: count > 0 ? "#f0f4ff" : "#f7f8fa", borderRadius: 10, padding: "10px 14px", border: count > 0 ? `1.5px solid ${THEME.sky}` : "1.5px solid #e8e8e8" }}>
+                              <div key={pid} style={{ display: "flex", alignItems: "center", gap: 12, background: count > 0 ? L("#f0f4ff") : L("#f7f8fa"), borderRadius: 10, padding: "10px 14px", border: count > 0 ? `1.5px solid ${THEME.sky}` : `1.5px solid ${L("#e8e8e8")}` }}>
                                 <div style={{ width: 32, height: 32, borderRadius: "50%", background: p.photo ? "transparent" : THEME.navy, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
                                   {p.photo ? <img src={p.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: THEME.sky, fontSize: 10, fontWeight: 900 }}>{p.name.slice(0,2).toUpperCase()}</span>}
                                 </div>
-                                <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: THEME.navy }}>{p.name}</span>
+                                <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: THEME.text }}>{p.name}</span>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                   <button onClick={() => setGoalCounts(prev => ({ ...prev, [pid]: Math.max(0, (prev[pid] || 0) - 1) }))}
-                                    style={{ width: 32, height: 32, borderRadius: "50%", border: "1.5px solid #e0e0e0", background: "#fff", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#888", fontFamily: "inherit" }}>−</button>
-                                  <span style={{ fontSize: 20, fontWeight: 900, color: THEME.navy, minWidth: 20, textAlign: "center" }}>{count}</span>
+                                    style={{ width: 32, height: 32, borderRadius: "50%", border: `1.5px solid ${L("#e0e0e0")}`, background: L("#fff"), fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#888", fontFamily: "inherit" }}>−</button>
+                                  <span style={{ fontSize: 20, fontWeight: 900, color: THEME.text, minWidth: 20, textAlign: "center" }}>{count}</span>
                                   <button onClick={() => setGoalCounts(prev => ({ ...prev, [pid]: (prev[pid] || 0) + 1 }))}
                                     style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: THEME.navy, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: THEME.sky, fontFamily: "inherit" }}>+</button>
                                 </div>
@@ -3227,7 +3279,7 @@ export default function App() {
                             const selected = motmPlayerId === pid;
                             return (
                               <button key={pid} onClick={() => setMotmPlayerId(selected ? null : pid)}
-                                style={{ padding: "6px 14px", borderRadius: 20, border: selected ? "none" : "1.5px solid #e0e0e0", background: selected ? "#ffd700" : "#fff", color: selected ? THEME.navy : "#888", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                                style={{ padding: "6px 14px", borderRadius: 20, border: selected ? "none" : `1.5px solid ${L("#e0e0e0")}`, background: selected ? L("#ffd700") : L("#fff"), color: selected ? THEME.text : "#888", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                                 {selected ? "⭐ " : ""}{p.name}
                               </button>
                             );
@@ -3247,7 +3299,7 @@ export default function App() {
                             const selected = oppMotmPlayerId === pid;
                             return (
                               <button key={pid} onClick={() => setOppMotmPlayerId(selected ? null : pid)}
-                                style={{ padding: "6px 14px", borderRadius: 20, border: selected ? "none" : "1.5px solid #e0e0e0", background: selected ? "#ff7eb3" : "#fff", color: selected ? "#fff" : "#888", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+                                style={{ padding: "6px 14px", borderRadius: 20, border: selected ? "none" : `1.5px solid ${L("#e0e0e0")}`, background: selected ? "#ff7eb3" : L("#fff"), color: selected ? "#fff" : "#888", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                                 {selected ? "🏅 " : ""}{p.name}
                               </button>
                             );
@@ -3289,7 +3341,7 @@ export default function App() {
               <div>
                 <ResultCard match={newResult} teamName={viewingSeason?.age_group} compColor={getCompColor(competitions, newResult.competition)} players={players} teams={teams} />
                 <button onClick={() => { setNewResult(null); setPens(PENS_OFF); setOppLogo(null); setSelectedSquad([]); setGoalCounts({}); setMotmPlayerId(null); setOppMotmPlayerId(null); setForm({ date: "", opposition: "", homeScore: "", awayScore: "", scorers: "", competition: form.competition, motm: "", oppMotm: "", round: "", season_id: activeSeason?.id || null }); }}
-                  style={{ marginTop: 16, width: "100%", padding: "14px", background: "#fff", color: THEME.navy, border: "2px solid #e8e8e8", borderRadius: 12, fontSize: 15, fontWeight: 800, letterSpacing: 2, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
+                  style={{ marginTop: 16, width: "100%", padding: "14px", background: L("#fff"), color: THEME.text, border: `2px solid ${L("#e8e8e8")}`, borderRadius: 12, fontSize: 15, fontWeight: 800, letterSpacing: 2, cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase" }}>
                   ← Add Another Result
                 </button>
               </div>
@@ -3311,18 +3363,18 @@ export default function App() {
                 const goals = goalBoard.find(g => g.name === p.name)?.count || 0;
                 const motms = motmBoard.find(m => m.name === p.name)?.count || 0;
                 return (
-                  <div key={p.id} style={{ background: "#fff", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.06)", opacity: inactive ? 0.55 : 1 }}>
+                  <div key={p.id} style={{ background: L("#fff"), borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.06)", opacity: inactive ? 0.55 : 1 }}>
                     <div style={{ width: 44, height: 44, borderRadius: "50%", background: p.photo ? "transparent" : THEME.navy, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                       {p.photo
                         ? <img src={p.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={p.name} />
                         : <span style={{ color: THEME.sky, fontSize: 14, fontWeight: 900 }}>{p.name.slice(0,2).toUpperCase()}</span>
                       }
                     </div>
-                    <div style={{ width: 28, height: 28, borderRadius: 6, background: "#f0f4ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <span style={{ fontSize: 12, fontWeight: 900, color: THEME.navy }}>{p.squad_number || "—"}</span>
+                    <div style={{ width: 28, height: 28, borderRadius: 6, background: L("#f0f4ff"), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <span style={{ fontSize: 12, fontWeight: 900, color: THEME.text }}>{p.squad_number || "—"}</span>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: THEME.navy }}>{p.name}</div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: THEME.text }}>{p.name}</div>
                       <div style={{ display: "flex", gap: 10, marginTop: 3, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 11, color: "#888" }}>📅 {apps} apps</span>
                         {goals > 0 && <span style={{ fontSize: 11, color: THEME.skyInk }}>⚽ {goals} goals</span>}
@@ -3375,15 +3427,15 @@ export default function App() {
             {/* Player modal */}
             {showPlayerModal && (
               <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-                <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 400 }}>
+                <div style={{ background: L("#fff"), borderRadius: 16, padding: 24, width: "100%", maxWidth: 400 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                    <span style={{ fontSize: 18, fontWeight: 900, color: THEME.navy }}>{editingPlayer ? "✏️ EDIT PLAYER" : "➕ ADD PLAYER"}</span>
-                    <button onClick={() => { setShowPlayerModal(false); setEditingPlayer(null); }} style={{ background: "#f0f0f0", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
+                    <span style={{ fontSize: 18, fontWeight: 900, color: THEME.text }}>{editingPlayer ? "✏️ EDIT PLAYER" : "➕ ADD PLAYER"}</span>
+                    <button onClick={() => { setShowPlayerModal(false); setEditingPlayer(null); }} style={{ background: L("#f0f0f0"), border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
                   </div>
 
                   {/* Photo */}
                   <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
-                    <div style={{ width: 64, height: 64, borderRadius: "50%", background: playerForm.photo ? "transparent" : "#f0f4ff", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, border: `2px dashed ${THEME.sky}` }}>
+                    <div style={{ width: 64, height: 64, borderRadius: "50%", background: playerForm.photo ? "transparent" : L("#f0f4ff"), display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, border: `2px dashed ${THEME.sky}` }}>
                       {playerForm.photo
                         ? <img src={playerForm.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" />
                         : <span style={{ fontSize: 24 }}>📷</span>
@@ -3403,7 +3455,7 @@ export default function App() {
                         e.target.value = "";
                       }} />
                       <button onClick={() => playerPhotoRef.current.click()} disabled={uploadingPlayerPhoto}
-                        style={{ background: "#f0f4ff", border: `1.5px solid ${THEME.sky}`, borderRadius: 8, padding: "6px 14px", cursor: uploadingPlayerPhoto ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: THEME.sky, display: "block", marginBottom: 6, opacity: uploadingPlayerPhoto ? 0.6 : 1 }}>
+                        style={{ background: L("#f0f4ff"), border: `1.5px solid ${THEME.sky}`, borderRadius: 8, padding: "6px 14px", cursor: uploadingPlayerPhoto ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: THEME.sky, display: "block", marginBottom: 6, opacity: uploadingPlayerPhoto ? 0.6 : 1 }}>
                         {uploadingPlayerPhoto ? "Uploading..." : playerForm.photo ? "Change photo" : "Add photo (optional)"}
                       </button>
                       {playerForm.photo && !uploadingPlayerPhoto && <button onClick={() => setPlayerForm(f => ({ ...f, photo: null }))} style={{ background: "none", border: "none", color: "#d50000", fontSize: 11, cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>✕ Remove</button>}
@@ -3413,13 +3465,13 @@ export default function App() {
                   <div style={{ marginBottom: 14 }}>
                     <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: THEME.skyInk, letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>Player Name</label>
                     <input type="text" placeholder="e.g. Grayson" value={playerForm.name} onChange={e => setPlayerForm(f => ({ ...f, name: e.target.value }))}
-                      style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: THEME.navy, outline: "none", boxSizing: "border-box" }} />
+                      style={{ width: "100%", padding: "12px 14px", border: `2px solid ${L("#e8e8e8")}`, borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: THEME.text, outline: "none", boxSizing: "border-box" }} />
                   </div>
 
                   <div style={{ marginBottom: 20 }}>
                     <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: THEME.skyInk, letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>Squad Number</label>
                     <input type="number" placeholder="e.g. 7" value={playerForm.squad_number} onChange={e => setPlayerForm(f => ({ ...f, squad_number: e.target.value }))}
-                      style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: THEME.navy, outline: "none", boxSizing: "border-box" }} />
+                      style={{ width: "100%", padding: "12px 14px", border: `2px solid ${L("#e8e8e8")}`, borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: THEME.text, outline: "none", boxSizing: "border-box" }} />
                   </div>
 
                   <button onClick={handleSavePlayer} disabled={!playerForm.name.trim()}
@@ -3458,7 +3510,7 @@ export default function App() {
                   <div style={{ color: THEME.sky, fontSize: 11, letterSpacing: 2, marginTop: 2 }}>{viewingSeason?.age_group ? `${viewingSeason.age_group.toUpperCase()} · ` : ""}SEASON REPORT</div>
                 </div>
 
-                <div style={{ background: "#f0f2f5", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ background: L("#f0f2f5"), padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
 
                   {/* Overall record */}
                   <div style={{ background: THEME.navy, borderRadius: 14, padding: 16 }}>
@@ -3477,12 +3529,12 @@ export default function App() {
                   {compBreakdown.length > 0 && (
                     <div style={{ display: "grid", gridTemplateColumns: compBreakdown.length > 1 ? "1fr 1fr" : "1fr", gap: 8 }}>
                       {compBreakdown.map((c, i) => (
-                        <div key={c.comp} style={{ background: "#fff", borderRadius: 12, padding: 12, borderLeft: `4px solid ${COMP_COLORS[i % COMP_COLORS.length]}` }}>
+                        <div key={c.comp} style={{ background: L("#fff"), borderRadius: 12, padding: 12, borderLeft: `4px solid ${COMP_COLORS[i % COMP_COLORS.length]}` }}>
                           <div style={{ fontSize: 9, fontWeight: 700, color: COMP_COLORS[i % COMP_COLORS.length], letterSpacing: 1, marginBottom: 6, textTransform: "uppercase" }}>{c.comp}</div>
                           <div style={{ display: "flex", justifyContent: "space-between", textAlign: "center" }}>
                             {[{ l: "P", v: c.p }, { l: "W", v: c.w, col: "#00c853" }, { l: "D", v: c.d, col: "#ffab00" }, { l: "L", v: c.l, col: "#d50000" }, { l: "GF", v: c.gf, col: THEME.sky }].map(x => (
                               <div key={x.l}>
-                                <div style={{ fontSize: 16, fontWeight: 900, color: x.col || THEME.navy }}>{x.v}</div>
+                                <div style={{ fontSize: 16, fontWeight: 900, color: x.col || THEME.text }}>{x.v}</div>
                                 <div style={{ fontSize: 8, color: "#aaa", fontWeight: 700 }}>{x.l}</div>
                               </div>
                             ))}
@@ -3494,7 +3546,7 @@ export default function App() {
 
                   {/* Top scorers */}
                   {goalBoard.length > 0 && (
-                    <div style={{ background: "#fff", borderRadius: 12, padding: 14 }}>
+                    <div style={{ background: L("#fff"), borderRadius: 12, padding: 14 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: THEME.skyInk, letterSpacing: 2, marginBottom: 10 }}>TOP GOAL SCORERS</div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         {goalBoard.map((g, i) => {
@@ -3505,9 +3557,9 @@ export default function App() {
                               <div style={{ width: 32, height: 32, borderRadius: "50%", background: player?.photo ? "transparent" : THEME.navy, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
                                 {player?.photo ? <img src={player.photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" /> : <span style={{ color: THEME.sky, fontSize: 10, fontWeight: 900 }}>{g.name.slice(0,2).toUpperCase()}</span>}
                               </div>
-                              <span style={{ flex: 1, fontSize: 15, fontWeight: 800, color: THEME.navy }}>{g.name}</span>
+                              <span style={{ flex: 1, fontSize: 15, fontWeight: 800, color: THEME.text }}>{g.name}</span>
                               <div style={{ textAlign: "right" }}>
-                                <div style={{ fontSize: 20, fontWeight: 900, color: THEME.navy }}>{g.count}</div>
+                                <div style={{ fontSize: 20, fontWeight: 900, color: THEME.text }}>{g.count}</div>
                                 <div style={{ fontSize: 8, color: "#aaa", fontWeight: 700 }}>GOALS</div>
                               </div>
                             </div>
@@ -3572,20 +3624,20 @@ export default function App() {
               const goals = sResults.reduce((a, r) => a + goalsFor(r), 0);
               const comps = [...new Set(sResults.map(r => r.competition))].filter(Boolean);
               return (
-                <div key={s.id} style={{ background: "#fff", borderRadius: 16, padding: 20, marginBottom: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.08)", borderLeft: `4px solid ${s.is_active ? THEME.sky : "#e0e0e0"}` }}>
+                <div key={s.id} style={{ background: L("#fff"), borderRadius: 16, padding: 20, marginBottom: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.08)", borderLeft: `4px solid ${s.is_active ? THEME.sky : L("#e0e0e0")}` }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                     <div>
-                      <div style={{ fontSize: 18, fontWeight: 900, color: THEME.navy }}>{s.name}</div>
+                      <div style={{ fontSize: 18, fontWeight: 900, color: THEME.text }}>{s.name}</div>
                       <div style={{ fontSize: 12, color: THEME.skyInk, fontWeight: 700, letterSpacing: 1 }}>{s.age_group}</div>
                     </div>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      {s.is_active && <span style={{ background: THEME.sky, color: THEME.navy, fontSize: 9, fontWeight: 800, padding: "3px 8px", borderRadius: 10, letterSpacing: 1 }}>CURRENT</span>}
-                      <button onClick={() => { setViewingSeason(s); setMode("history"); setFilterComp("All"); setCompetitions(s.competitions || []); }} style={{ background: "#f0f4ff", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: THEME.navy }}>View →</button>
+                      {s.is_active && <span style={{ background: THEME.sky, color: THEME.text, fontSize: 9, fontWeight: 800, padding: "3px 8px", borderRadius: 10, letterSpacing: 1 }}>CURRENT</span>}
+                      <button onClick={() => { setViewingSeason(s); setMode("history"); setFilterComp("All"); setCompetitions(s.competitions || []); }} style={{ background: L("#f0f4ff"), border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, color: THEME.text }}>View →</button>
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-                    {[{ l: "P", v: sResults.length, c: THEME.navy }, { l: "W", v: wins, c: "#00c853" }, { l: "D", v: drawn, c: "#ffab00" }, { l: "L", v: lost, c: "#d50000" }, { l: "GF", v: goals, c: THEME.sky }].map(x => (
-                      <div key={x.l} style={{ background: "#f7f8fa", borderRadius: 8, padding: "6px 10px", textAlign: "center", borderBottom: `2px solid ${x.c}` }}>
+                    {[{ l: "P", v: sResults.length, c: THEME.text }, { l: "W", v: wins, c: "#00c853" }, { l: "D", v: drawn, c: "#ffab00" }, { l: "L", v: lost, c: "#d50000" }, { l: "GF", v: goals, c: THEME.sky }].map(x => (
+                      <div key={x.l} style={{ background: L("#f7f8fa"), borderRadius: 8, padding: "6px 10px", textAlign: "center", borderBottom: `2px solid ${x.c}` }}>
                         <div style={{ fontSize: 16, fontWeight: 900, color: x.c }}>{x.v}</div>
                         <div style={{ fontSize: 9, color: "#aaa", fontWeight: 700 }}>{x.l}</div>
                       </div>
@@ -3593,7 +3645,7 @@ export default function App() {
                   </div>
                   {comps.length > 0 && (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {comps.map(c => <span key={c} style={{ background: "#f0f4ff", color: THEME.skyInk, fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 8 }}>{c}</span>)}
+                      {comps.map(c => <span key={c} style={{ background: L("#f0f4ff"), color: THEME.skyInk, fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 8 }}>{c}</span>)}
                     </div>
                   )}
                 </div>
@@ -3607,19 +3659,19 @@ export default function App() {
       {/* ── NEW SEASON MODAL ── */}
       {showSeasonModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 400 }}>
-            <div style={{ fontSize: 18, fontWeight: 900, color: THEME.navy, marginBottom: 6, letterSpacing: 1 }}>🗓 START NEW SEASON</div>
+          <div style={{ background: L("#fff"), borderRadius: 16, padding: 24, width: "100%", maxWidth: 400 }}>
+            <div style={{ fontSize: 18, fontWeight: 900, color: THEME.text, marginBottom: 6, letterSpacing: 1 }}>🗓 START NEW SEASON</div>
             <p style={{ fontSize: 13, color: "#888", marginBottom: 20, lineHeight: 1.5 }}>This creates a new season with fresh results. All previous data is preserved in Season History.</p>
             <div style={{ marginBottom: 14 }}>
               <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: THEME.skyInk, letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>Season Name</label>
-              <input type="text" placeholder="e.g. 2026/27" value={newSeasonForm.name} onChange={e => setNewSeasonForm(f => ({ ...f, name: e.target.value }))} style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: THEME.navy, outline: "none", boxSizing: "border-box" }} />
+              <input type="text" placeholder="e.g. 2026/27" value={newSeasonForm.name} onChange={e => setNewSeasonForm(f => ({ ...f, name: e.target.value }))} style={{ width: "100%", padding: "12px 14px", border: `2px solid ${L("#e8e8e8")}`, borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: THEME.text, outline: "none", boxSizing: "border-box" }} />
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: THEME.skyInk, letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>Age Group</label>
-              <input type="text" placeholder="Age group (optional)" value={newSeasonForm.age_group} onChange={e => setNewSeasonForm(f => ({ ...f, age_group: e.target.value }))} style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: THEME.navy, outline: "none", boxSizing: "border-box" }} />
+              <input type="text" placeholder="Age group (optional)" value={newSeasonForm.age_group} onChange={e => setNewSeasonForm(f => ({ ...f, age_group: e.target.value }))} style={{ width: "100%", padding: "12px 14px", border: `2px solid ${L("#e8e8e8")}`, borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: THEME.text, outline: "none", boxSizing: "border-box" }} />
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => { setShowSeasonModal(false); setNewSeasonForm({ name: "", age_group: "" }); }} style={{ flex: 1, padding: "14px", background: "#f0f0f0", color: "#888", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+              <button onClick={() => { setShowSeasonModal(false); setNewSeasonForm({ name: "", age_group: "" }); }} style={{ flex: 1, padding: "14px", background: L("#f0f0f0"), color: "#888", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
               <button onClick={handleStartNewSeason} disabled={!newSeasonForm.name}
                 style={{ flex: 2, padding: "14px", background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 12, fontSize: 15, fontWeight: 900, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", opacity: !newSeasonForm.name || !newSeasonForm.age_group ? 0.5 : 1 }}>
                 Start New Season
@@ -3635,12 +3687,12 @@ export default function App() {
           onClick={() => { setShowPinGate(false); setPinInput(""); setPinError(false); }}>
           <div onClick={e => e.stopPropagation()} style={{ background: THEME.white, borderRadius: 20, padding: "28px 24px", width: "100%", maxWidth: 320, textAlign: "center" }}>
             <div style={{ fontSize: 30, marginBottom: 8 }}>🔒</div>
-            <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 18, color: THEME.navy, marginBottom: 4 }}>Staff Room</div>
+            <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 18, color: THEME.text, marginBottom: 4 }}>Staff Room</div>
             <div style={{ fontSize: 12, color: THEME.ink60, marginBottom: 18 }}>Enter the admin PIN to manage results, squad and teams.</div>
             <input autoFocus type="password" inputMode="numeric" value={pinInput}
               onChange={e => { setPinInput(e.target.value); setPinError(false); }}
               onKeyDown={e => { if (e.key === "Enter") handleUnlockAdmin(); }}
-              style={{ width: "100%", textAlign: "center", letterSpacing: 8, fontSize: 22, fontFamily: THEME.mono, padding: "12px 14px", border: `2px solid ${pinError ? THEME.loss : "#e8e8e8"}`, borderRadius: 12, outline: "none", boxSizing: "border-box", marginBottom: pinError ? 6 : 16 }} />
+              style={{ width: "100%", textAlign: "center", letterSpacing: 8, fontSize: 22, fontFamily: THEME.mono, padding: "12px 14px", border: `2px solid ${pinError ? THEME.loss : L("#e8e8e8")}`, borderRadius: 12, outline: "none", boxSizing: "border-box", marginBottom: pinError ? 6 : 16 }} />
             {pinError && <div style={{ color: THEME.loss, fontSize: 12, fontWeight: 600, marginBottom: 12 }}>Incorrect PIN — try again</div>}
             <button onClick={handleUnlockAdmin} style={{ width: "100%", padding: "13px", background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", fontFamily: THEME.body }}>
               Unlock
@@ -3653,16 +3705,16 @@ export default function App() {
         <div style={{ position: "fixed", left: 12, right: 12, bottom: 84, background: THEME.navy, borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 6px 20px rgba(0,0,0,0.28)", zIndex: 70 }}>
           <span style={{ fontSize: 24, flexShrink: 0 }}>📲</span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ color: THEME.white, fontFamily: THEME.display, fontWeight: 600, fontSize: 13 }}>Add {BRAND.short} to your home screen</div>
+            <div style={{ color: "#ffffff", fontFamily: THEME.display, fontWeight: 600, fontSize: 13 }}>Add {BRAND.short} to your home screen</div>
             <div style={{ color: THEME.ink30, fontSize: 11, marginTop: 1 }}>Quick access, just like an app</div>
           </div>
           <button onClick={handleDismissInstall} style={{ background: "none", border: "none", color: THEME.ink30, fontSize: 12, fontWeight: 600, padding: "6px 4px", cursor: "pointer", fontFamily: THEME.body, flexShrink: 0 }}>Not now</button>
-          <button onClick={handleInstallClick} style={{ background: THEME.sky, border: "none", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 12, color: THEME.navy, cursor: "pointer", fontFamily: THEME.body, flexShrink: 0 }}>Install</button>
+          <button onClick={handleInstallClick} style={{ background: THEME.sky, border: "none", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 12, color: THEME.text, cursor: "pointer", fontFamily: THEME.body, flexShrink: 0 }}>Install</button>
         </div>
       )}
 
       {/* ── BOTTOM TAB BAR ── */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(255,255,255,0.96)", backdropFilter: "blur(10px)", borderTop: "1px solid #e6e8ee", display: "flex", padding: "8px 6px calc(8px + env(safe-area-inset-bottom))", zIndex: 60 }}>
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: THEME.sports ? "rgba(0,0,0,0.88)" : "rgba(255,255,255,0.96)", backdropFilter: "blur(10px)", borderTop: `1px solid ${L("#e6e8ee")}`, display: "flex", padding: "8px 6px calc(8px + env(safe-area-inset-bottom))", zIndex: 60 }}>
         {[
           { key: "home", label: "Home", icon: "🏠" },
           { key: "history", label: "Results", icon: "📋" },
@@ -3670,13 +3722,13 @@ export default function App() {
           { key: "scorers", label: "Players", icon: "⭐" },
         ].map(tab => (
           <button key={tab.key} onClick={() => { setMode(tab.key); setNewResult(null); setOppLogo(null); setH2hTeam(null); }}
-            style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: 9, letterSpacing: 0.5, textTransform: "uppercase", color: mode === tab.key ? THEME.navy : THEME.ink60, fontWeight: mode === tab.key ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
+            style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: 9, letterSpacing: 0.5, textTransform: "uppercase", color: mode === tab.key ? THEME.text : THEME.ink60, fontWeight: mode === tab.key ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
             <span style={{ fontSize: 18 }}>{tab.icon}</span>
             {tab.label}
           </button>
         ))}
         <button onClick={() => isAdmin ? setMode("staff") : setShowPinGate(true)}
-          style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: 9, letterSpacing: 0.5, textTransform: "uppercase", color: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league","live"].includes(mode)) ? THEME.navy : THEME.ink60, fontWeight: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league","live"].includes(mode)) ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
+          style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: 9, letterSpacing: 0.5, textTransform: "uppercase", color: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league","live"].includes(mode)) ? THEME.text : THEME.ink60, fontWeight: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league","live"].includes(mode)) ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
           <span style={{ fontSize: 18 }}>{isAdmin ? "🔓" : "🔒"}</span>
           Admin
         </button>
@@ -3689,15 +3741,15 @@ export default function App() {
       {/* Photo lightbox */}
       {fixtureModal && (() => {
         const m = fixtureModal;
-        const inp = { width: "100%", padding: "11px 12px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", color: THEME.navy, outline: "none", boxSizing: "border-box" };
+        const inp = { width: "100%", padding: "11px 12px", border: `2px solid ${L("#e8e8e8")}`, borderRadius: 10, fontSize: 16, fontFamily: "inherit", color: THEME.text, outline: "none", boxSizing: "border-box" };
         const lab = { display: "block", fontSize: 11, fontWeight: 700, color: THEME.skyInk, letterSpacing: 2, margin: "12px 0 5px", textTransform: "uppercase" };
         const set = (k, v) => setFixtureModal(x => ({ ...x, [k]: v }));
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 14 }}>
-            <div style={{ background: "#fff", borderRadius: 16, padding: 20, width: "100%", maxWidth: 420, maxHeight: "92vh", overflowY: "auto" }}>
+            <div style={{ background: L("#fff"), borderRadius: 16, padding: 20, width: "100%", maxWidth: 420, maxHeight: "92vh", overflowY: "auto" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 17, fontWeight: 900, color: THEME.navy }}>📅 {m.id ? "EDIT FIXTURE" : "ADD FIXTURE"}</span>
-                <button onClick={() => setFixtureModal(null)} style={{ background: "#f0f0f0", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
+                <span style={{ fontSize: 17, fontWeight: 900, color: THEME.text }}>📅 {m.id ? "EDIT FIXTURE" : "ADD FIXTURE"}</span>
+                <button onClick={() => setFixtureModal(null)} style={{ background: L("#f0f0f0"), border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
               </div>
               <label style={lab}>Opposition</label>
               {(() => {
@@ -3719,7 +3771,7 @@ export default function App() {
               <label style={lab}>Home or away</label>
               <div style={{ display: "flex", gap: 8 }}>
                 {[["H", "Home"], ["A", "Away"]].map(([k, t]) => (
-                  <button key={k} onClick={() => set("ha", k)} style={{ flex: 1, padding: 11, borderRadius: 10, border: `2px solid ${m.ha === k ? THEME.navy : "#e8e8e8"}`, background: m.ha === k ? THEME.navy : "#fff", color: m.ha === k ? THEME.sky : THEME.navy, fontWeight: 800, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>{t}</button>
+                  <button key={k} onClick={() => set("ha", k)} style={{ flex: 1, padding: 11, borderRadius: 10, border: `2px solid ${m.ha === k ? THEME.navy : L("#e8e8e8")}`, background: m.ha === k ? THEME.navy : L("#fff"), color: m.ha === k ? THEME.sky : THEME.text, fontWeight: 800, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>{t}</button>
                 ))}
               </div>
               <label style={lab}>Competition</label>
@@ -3740,14 +3792,14 @@ export default function App() {
         const set = (k, v) => setPosterModal(x => ({ ...x, [k]: v }));
         const missing = d.fixtures.filter(f => !f.time || !f.ha).length;
         const lab = { display: "block", fontSize: 11, fontWeight: 700, color: THEME.skyInk, letterSpacing: 2, margin: "10px 0 5px", textTransform: "uppercase" };
-        const inp = { width: "100%", padding: "10px 12px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 15, fontFamily: "inherit", color: THEME.navy, outline: "none", boxSizing: "border-box" };
+        const inp = { width: "100%", padding: "10px 12px", border: `2px solid ${L("#e8e8e8")}`, borderRadius: 10, fontSize: 15, fontFamily: "inherit", color: THEME.text, outline: "none", boxSizing: "border-box" };
         const W = Math.min(340, (typeof window !== "undefined" ? window.innerWidth : 390) - 64), sc = W / POSTER_W;
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 100, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 12, overflowY: "auto" }}>
-            <div style={{ background: "#fff", borderRadius: 16, padding: 18, width: "100%", maxWidth: 420 }}>
+            <div style={{ background: L("#fff"), borderRadius: 16, padding: 18, width: "100%", maxWidth: 420 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 17, fontWeight: 900, color: THEME.navy }}>🖼 MAKE POSTER</span>
-                <button onClick={() => setPosterModal(null)} style={{ background: "#f0f0f0", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
+                <span style={{ fontSize: 17, fontWeight: 900, color: THEME.text }}>🖼 MAKE POSTER</span>
+                <button onClick={() => setPosterModal(null)} style={{ background: L("#f0f0f0"), border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
               </div>
               <div style={{ display: "flex", gap: 10 }}>
                 {m.mode !== "single" && <div style={{ flex: 1 }}>
@@ -3787,7 +3839,7 @@ export default function App() {
 
       {tableModal && (() => {
         const m = tableModal;
-        const inp = { padding: "9px 2px", border: "2px solid #e8e8e8", borderRadius: 8, fontSize: 15, fontFamily: "inherit", fontWeight: 700, color: THEME.navy, outline: "none", boxSizing: "border-box", textAlign: "center", width: "100%", minWidth: 0 };
+        const inp = { padding: "9px 2px", border: `2px solid ${L("#e8e8e8")}`, borderRadius: 8, fontSize: 15, fontFamily: "inherit", fontWeight: 700, color: THEME.text, outline: "none", boxSizing: "border-box", textAlign: "center", width: "100%", minWidth: 0 };
         const mine = (() => {
           const gs = results.filter(r => r.competition === m.competition && r.date === m.date);
           return { w: gs.filter(g => g.result === "W").length, d: gs.filter(g => g.result === "D").length, l: gs.filter(g => g.result === "L").length, f: gs.reduce((a, g) => a + (Number(g.homeScore) || 0), 0), a: gs.reduce((a, g) => a + (Number(g.awayScore) || 0), 0) };
@@ -3796,10 +3848,10 @@ export default function App() {
         const nextOnDigit = (e) => { if (e.target.value.length >= 1) { const inputs = Array.from(e.currentTarget.closest("[data-trow]").querySelectorAll("input")); const i = inputs.indexOf(e.currentTarget); inputs[i + 1]?.focus(); inputs[i + 1]?.select?.(); } };
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
-            <div style={{ background: "#fff", borderRadius: 16, padding: 18, width: "100%", maxWidth: 440, maxHeight: "92vh", overflowY: "auto" }}>
+            <div style={{ background: L("#fff"), borderRadius: 16, padding: 18, width: "100%", maxWidth: 440, maxHeight: "92vh", overflowY: "auto" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                <span style={{ fontSize: 17, fontWeight: 900, color: THEME.navy }}>🏆 LEAGUE TABLE</span>
-                <button onClick={() => setTableModal(null)} style={{ background: "#f0f0f0", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
+                <span style={{ fontSize: 17, fontWeight: 900, color: THEME.text }}>🏆 LEAGUE TABLE</span>
+                <button onClick={() => setTableModal(null)} style={{ background: L("#f0f0f0"), border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
               </div>
               <div style={{ fontSize: 12, color: THEME.ink60, marginBottom: 12 }}>{m.competition} · {m.date}</div>
 
@@ -3816,7 +3868,7 @@ export default function App() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr repeat(5, 32px) 16px", gap: 4, alignItems: "center", fontFamily: THEME.mono, fontSize: 9.5, fontWeight: 700, color: THEME.ink60, textAlign: "center", marginBottom: 4 }}>
                 <span style={{ textAlign: "left" }}>TEAM</span><span>W</span><span>D</span><span>L</span><span>F</span><span>A</span>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr repeat(5, 32px) 16px", gap: 4, alignItems: "center", marginBottom: 6, padding: "6px 8px", background: "#eaf5fb", borderRadius: 8, fontSize: 13, fontWeight: 800, color: THEME.navy, textAlign: "center" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr repeat(5, 32px) 16px", gap: 4, alignItems: "center", marginBottom: 6, padding: "6px 8px", background: L("#eaf5fb"), borderRadius: 8, fontSize: 13, fontWeight: 800, color: THEME.text, textAlign: "center" }}>
                 <span style={{ textAlign: "left" }}>★ {BRAND.short}</span><span>{mine.w}</span><span>{mine.d}</span><span>{mine.l}</span><span>{mine.f}</span><span>{mine.a}</span>
               </div>
               <div style={{ fontSize: 10.5, color: THEME.ink60, margin: "0 0 8px 2px" }}>Worked out from your games — nothing to type.</div>
@@ -3855,14 +3907,14 @@ export default function App() {
         const hasText = videoModal.url.trim().length > 0;
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-            <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 400 }}>
+            <div style={{ background: L("#fff"), borderRadius: 16, padding: 24, width: "100%", maxWidth: 400 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <span style={{ fontSize: 18, fontWeight: 900, color: THEME.navy }}>▶ ADD A VIDEO</span>
-                <button onClick={() => setVideoModal(null)} style={{ background: "#f0f0f0", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
+                <span style={{ fontSize: 18, fontWeight: 900, color: THEME.text }}>▶ ADD A VIDEO</span>
+                <button onClick={() => setVideoModal(null)} style={{ background: L("#f0f0f0"), border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
               </div>
               <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: THEME.skyInk, letterSpacing: 2, marginBottom: 6, textTransform: "uppercase" }}>YouTube link</label>
               <input type="url" inputMode="url" autoFocus placeholder="Paste the link here" value={videoModal.url} onChange={e => setVideoModal(v => ({ ...v, url: e.target.value }))}
-                style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", color: THEME.navy, outline: "none", boxSizing: "border-box" }} />
+                style={{ width: "100%", padding: "12px 14px", border: `2px solid ${L("#e8e8e8")}`, borderRadius: 10, fontSize: 16, fontFamily: "inherit", color: THEME.text, outline: "none", boxSizing: "border-box" }} />
               {hasText && (
                 <div style={{ fontSize: 12, fontWeight: 700, margin: "6px 0 0", color: vid ? THEME.pitch : THEME.loss }}>
                   {vid ? "✓ YouTube link recognised" : "That doesn't look like a YouTube link"}
@@ -3871,7 +3923,7 @@ export default function App() {
               {vid && <VideoCard video={{ video_id: vid, title: videoModal.title.trim() || "(preview)" }} bg={THEME.chalk} />}
               <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: THEME.skyInk, letterSpacing: 2, margin: "14px 0 6px", textTransform: "uppercase" }}>Title (optional)</label>
               <input type="text" placeholder="e.g. Full match highlights" value={videoModal.title} onChange={e => setVideoModal(v => ({ ...v, title: e.target.value }))}
-                style={{ width: "100%", padding: "12px 14px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: THEME.navy, outline: "none", boxSizing: "border-box" }} />
+                style={{ width: "100%", padding: "12px 14px", border: `2px solid ${L("#e8e8e8")}`, borderRadius: 10, fontSize: 16, fontFamily: "inherit", fontWeight: 600, color: THEME.text, outline: "none", boxSizing: "border-box" }} />
               <button onClick={handleSaveVideo} disabled={!vid || savingVideo}
                 style={{ width: "100%", marginTop: 18, padding: 14, border: "none", borderRadius: 11, background: THEME.navy, color: THEME.sky, fontWeight: 800, fontSize: 14, letterSpacing: 1, fontFamily: "inherit", cursor: !vid || savingVideo ? "default" : "pointer", opacity: !vid || savingVideo ? 0.45 : 1 }}>
                 {savingVideo ? "SAVING..." : "SAVE VIDEO"}

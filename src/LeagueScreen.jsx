@@ -1,4 +1,6 @@
 // Unofficial league table screen: view the table, add results by pasting messages (primary) or typing them in (backup).
+import { L } from "./branding.js";
+import { SBadge } from "./sportsUI.jsx";
 import { useState, useMemo, useRef, useEffect } from "react";
 import { parsePaste, matchTeam, computeTable, normName, toISO, checkTableRows } from "./leagueTable.js";
 import { PosterCanvas, POSTER_W, POSTER_H, findTeamLogo } from "./Poster.jsx";
@@ -60,8 +62,8 @@ export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfNam
   };
 
   const card = { background: T.white, borderRadius: 14, padding: 14, boxShadow: "0 2px 8px rgba(18,23,46,0.06)", marginBottom: 12 };
-  const inp = { width: "100%", padding: "10px 12px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 15, fontFamily: "inherit", color: T.navy, outline: "none", boxSizing: "border-box" };
-  const btn = (primary, off) => ({ padding: "12px 16px", border: primary ? "none" : `1.5px solid ${T.ink30}`, borderRadius: 11, background: primary ? T.navy : "#fff", color: primary ? T.sky : T.ink60, fontWeight: 800, fontSize: 13, letterSpacing: 0.5, fontFamily: "inherit", cursor: off ? "default" : "pointer", opacity: off ? 0.45 : 1 });
+  const inp = { width: "100%", padding: "10px 12px", border: `2px solid ${L("#e8e8e8")}`, borderRadius: 10, fontSize: 15, fontFamily: "inherit", color: T.text, outline: "none", boxSizing: "border-box" };
+  const btn = (primary, off) => ({ padding: "12px 16px", border: primary ? "none" : `1.5px solid ${T.ink30}`, borderRadius: 11, background: primary ? T.navy : L("#fff"), color: primary ? T.sky : T.ink60, fontWeight: 800, fontSize: 13, letterSpacing: 0.5, fontFamily: "inherit", cursor: off ? "default" : "pointer", opacity: off ? 0.45 : 1 });
   const tabBtn = (k, label) => (
     <button key={k} onClick={() => setTab(k)} style={{ flex: 1, padding: "9px 4px", border: "none", borderRadius: 9, background: tab === k ? T.navy : "transparent", color: tab === k ? T.sky : T.ink60, fontWeight: 800, fontSize: 12, fontFamily: "inherit", cursor: "pointer" }}>{label}</button>
   );
@@ -145,7 +147,7 @@ export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfNam
   };
 
   const th = { padding: "8px 3px", fontFamily: T.mono, fontSize: 10, fontWeight: 700, color: T.ink60, textAlign: "center" };
-  const td = { padding: "9px 3px", fontFamily: T.mono, fontSize: 13, textAlign: "center", color: T.navy };
+  const td = { padding: "9px 3px", fontFamily: T.mono, fontSize: 13, textAlign: "center", color: T.text };
   const chip = (txt, bg, col) => <span style={{ fontSize: 10, fontWeight: 800, background: bg, color: col, borderRadius: 6, padding: "2px 6px", marginLeft: 6 }}>{txt}</span>;
   const statusChip = (st, who) => st === "ambiguous" ? chip("PICK ONE", "#fde8c8", "#a35a00") : st === "new" ? chip("NEW TEAM", "#e6eefc", "#2b5aa8") : st === "close" ? chip("MATCHED", "#e3f4ea", "#1f7a46") : null;
 
@@ -155,13 +157,13 @@ export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfNam
     <div style={{ maxWidth: 520, margin: "0 auto" }}>
       <button onClick={onBack} style={{ background: "none", border: "none", color: T.ink60, fontFamily: T.mono, fontSize: 11, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", padding: "0 0 12px" }}>‹ Back</button>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-        <div style={{ fontFamily: T.display, fontWeight: 700, fontSize: 20, color: T.navy }}>League table</div>
-        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1.5, background: "#fde8c8", color: "#a35a00", borderRadius: 6, padding: "3px 8px" }}>UNOFFICIAL</span>
+        <div style={{ fontFamily: T.display, fontWeight: 700, fontSize: 20, color: T.text }}>League table</div>
+        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1.5, background: L("#fde8c8"), color: "#a35a00", borderRadius: 6, padding: "3px 8px" }}>UNOFFICIAL</span>
       </div>
       <div style={{ fontSize: 12, color: T.ink60, marginBottom: 12 }}>{[branding.league_name, seasonName].filter(Boolean).join(" · ")} · {tableAsOf ? `Table as at ${niceDate(tableAsOf)}${sinceCount ? ` + ${sinceCount} result${sinceCount === 1 ? "" : "s"} since` : ""}` : `based on results we've been sent${lastDate ? `, up to ${niceDate(lastDate)}` : ""}`}</div>
 
       {isAdmin && (
-        <div style={{ display: "flex", gap: 4, background: "#eef0f5", borderRadius: 11, padding: 4, marginBottom: 12 }}>
+        <div style={{ display: "flex", gap: 4, background: L("#eef0f5"), borderRadius: 11, padding: 4, marginBottom: 12 }}>
           {tabBtn("table", "Table")}{tabBtn("paste", "Paste")}{tabBtn("manual", "Type one")}{tabBtn("entry", "From table")}{tabBtn("list", "Added")}
         </div>
       )}
@@ -171,11 +173,35 @@ export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfNam
           {table.length === 0 ? (
             <div style={{ textAlign: "center", padding: "28px 12px", color: T.ink60, fontSize: 13 }}>No results yet.{isAdmin ? " Use Paste to add the scores people send you, or From table if you only have the table." : ""}</div>
           ) : (
+            T.sports ? (
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 10px 8px", fontSize: 11, fontWeight: 700, color: T.ink60 }}>
+                  <span style={{ width: 20 }} /><span style={{ width: 28 }} /><span style={{ flex: 1 }}>Team</span>
+                  {["P", "GD", "Pts"].map(h => <span key={h} style={{ width: h === "P" ? 22 : 34, textAlign: "center" }}>{h}</span>)}
+                </div>
+                {table.map((r, i) => {
+                  const logo = findTeamLogo(teams, r.team);
+                  return (
+                    <div key={r.team} style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 10px", minHeight: 46, boxSizing: "border-box", background: r.self ? T.navy : "transparent", borderRadius: r.self ? 14 : 0, borderBottom: r.self ? "none" : `1px solid ${T.ink30}`, boxShadow: r.self ? `inset 3px 0 0 ${T.sky}` : "none" }}>
+                      <span style={{ width: 20, textAlign: "center", fontSize: 14, fontWeight: 700, color: r.self ? T.sky : T.ink60 }}>{i + 1}</span>
+                      <SBadge src={r.self ? (posterBase && posterBase.crest) : logo} name={r.team} size={28} ours={r.self} />
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: "block", fontSize: 14, fontWeight: r.self ? 800 : 600, color: "#fff", lineHeight: 1.15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.team}</span>
+                        <span style={{ display: "block", fontSize: 11, color: T.ink60, marginTop: 1 }}>W{r.w} · D{r.d} · L{r.l} · {r.gf}–{r.ga}</span>
+                      </span>
+                      {[r.p, (r.gd > 0 ? "+" : "") + r.gd, r.pts].map((v, j) => (
+                        <span key={j} style={{ width: j === 0 ? 22 : 34, textAlign: "center", fontSize: j === 2 ? 17 : 14, fontWeight: j === 2 ? 800 : 500, color: j === 2 ? "#fff" : "#aeaeb2", fontVariantNumeric: "tabular-nums" }}>{v}</span>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead><tr><th style={{ ...th, width: 22 }}>#</th><th style={{ ...th, textAlign: "left" }}>TEAM</th>{["P", "W", "D", "L", "F", "A", "GD", "PTS"].map(h => <th key={h} style={{ ...th, width: h === "GD" || h === "PTS" ? 32 : 22 }}>{h}</th>)}</tr></thead>
               <tbody>
                 {table.map((r, i) => (
-                  <tr key={r.team} style={{ background: r.self ? `${T.sky}33` : i % 2 ? "transparent" : "#f6f7fb", borderBottom: "1px solid #eef0f5" }}>
+                  <tr key={r.team} style={{ background: r.self ? `${T.sky}33` : i % 2 ? "transparent" : L("#f6f7fb"), borderBottom: `1px solid ${L("#eef0f5")}` }}>
                     <td style={{ ...td, fontWeight: 700, color: T.ink60 }}>{i + 1}</td>
                     <td style={{ ...td, textAlign: "left", fontFamily: T.body, fontWeight: r.self ? 800 : 600, fontSize: 13 }}>{r.team}</td>
                     <td style={td}>{r.p}</td><td style={td}>{r.w}</td><td style={td}>{r.d}</td><td style={td}>{r.l}</td><td style={td}>{r.gf}</td><td style={td}>{r.ga}</td>
@@ -184,6 +210,7 @@ export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfNam
                 ))}
               </tbody>
             </table>
+            )
           )}
         </div>
       )}
@@ -204,7 +231,7 @@ export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfNam
               {preview.rows.map((r, i) => {
                 const issue = rowIssue(r);
                 return (
-                  <div key={i} style={{ border: `1.5px solid ${issue ? "#f0d9b5" : "#e8e8e8"}`, borderRadius: 11, padding: 9, marginBottom: 8, opacity: r.use ? 1 : 0.5 }}>
+                  <div key={i} style={{ border: `1.5px solid ${issue ? L("#f0d9b5") : L("#e8e8e8")}`, borderRadius: 11, padding: 9, marginBottom: 8, opacity: r.use ? 1 : 0.5 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <input type="checkbox" checked={r.use} onChange={e => setRow(i, { use: e.target.checked })} style={{ width: 20, height: 20, flexShrink: 0 }} />
                       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -219,8 +246,8 @@ export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfNam
                       </div>
                     </div>
                     <div style={{ fontSize: 11, marginTop: 5, color: T.ink60 }}>
-                      {r.homeStatus === "ambiguous" && r.homeCands.map(c => <button key={c} onClick={() => setRow(i, { home: c, homeStatus: "exact" })} style={{ marginRight: 6, marginBottom: 3, fontSize: 11, border: `1px solid ${T.ink30}`, background: "#fff", borderRadius: 8, padding: "3px 8px", cursor: "pointer", fontFamily: "inherit" }}>{c}</button>)}
-                      {r.awayStatus === "ambiguous" && r.awayCands.map(c => <button key={c} onClick={() => setRow(i, { away: c, awayStatus: "exact" })} style={{ marginRight: 6, marginBottom: 3, fontSize: 11, border: `1px solid ${T.ink30}`, background: "#fff", borderRadius: 8, padding: "3px 8px", cursor: "pointer", fontFamily: "inherit" }}>{c}</button>)}
+                      {r.homeStatus === "ambiguous" && r.homeCands.map(c => <button key={c} onClick={() => setRow(i, { home: c, homeStatus: "exact" })} style={{ marginRight: 6, marginBottom: 3, fontSize: 11, border: `1px solid ${T.ink30}`, background: L("#fff"), borderRadius: 8, padding: "3px 8px", cursor: "pointer", fontFamily: "inherit" }}>{c}</button>)}
+                      {r.awayStatus === "ambiguous" && r.awayCands.map(c => <button key={c} onClick={() => setRow(i, { away: c, awayStatus: "exact" })} style={{ marginRight: 6, marginBottom: 3, fontSize: 11, border: `1px solid ${T.ink30}`, background: L("#fff"), borderRadius: 8, padding: "3px 8px", cursor: "pointer", fontFamily: "inherit" }}>{c}</button>)}
                       {statusChip(r.homeStatus)}{statusChip(r.awayStatus)}
                       {issue === "own" && <span style={{ color: "#a35a00", fontWeight: 700 }}> Your own game: skipped (counted from your logged results)</span>}
                       {issue === "dup" && <span style={{ color: "#a35a00", fontWeight: 700 }}> Already added for this date</span>}
@@ -271,16 +298,16 @@ export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfNam
           {entryRows.map((r, i) => {
             const n = v => (v === "" ? 0 : +v);
             const bad = n(r.w) + n(r.d) + n(r.l) !== n(r.p);
-            const cell = (c) => <input key={c} type="text" inputMode="numeric" value={r[c]} onChange={e => setCell(i, c, e.target.value)} onFocus={e => e.target.select()} aria-label={`${r.team} ${c}`} style={{ width: 0, flex: 1, minWidth: 0, padding: "9px 0", border: `1.5px solid ${bad && ["p", "w", "d", "l"].includes(c) ? "#e0a050" : "#d5dbe6"}`, borderRadius: 8, textAlign: "center", fontFamily: T.mono, fontSize: 14, fontWeight: 700, color: T.navy, background: "#fff", outline: "none", boxSizing: "border-box" }} />;
+            const cell = (c) => <input key={c} type="text" inputMode="numeric" value={r[c]} onChange={e => setCell(i, c, e.target.value)} onFocus={e => e.target.select()} aria-label={`${r.team} ${c}`} style={{ width: 0, flex: 1, minWidth: 0, padding: "9px 0", border: `1.5px solid ${bad && ["p", "w", "d", "l"].includes(c) ? "#e0a050" : L("#d5dbe6")}`, borderRadius: 8, textAlign: "center", fontFamily: T.mono, fontSize: 14, fontWeight: 700, color: T.text, background: L("#fff"), outline: "none", boxSizing: "border-box" }} />;
             return (
-              <div key={r.team} style={{ padding: "8px 0", borderBottom: "1px solid #eef0f5" }}>
+              <div key={r.team} style={{ padding: "8px 0", borderBottom: `1px solid ${L("#eef0f5")}` }}>
                 <div style={{ display: "flex", alignItems: "center", marginBottom: 5 }}>
-                  <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: T.navy }}>{r.team}</div>
+                  <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: T.text }}>{r.team}</div>
                   <button onClick={() => setEntryRows(rs => rs.filter((_, j) => j !== i))} aria-label={`Remove ${r.team}`} style={{ background: "none", border: "none", color: T.ink60, fontSize: 16, cursor: "pointer", padding: "0 4px", lineHeight: 1 }}>×</button>
                 </div>
                 <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                   {["p", "w", "d", "l", "f", "a"].map(cell)}
-                  <div style={{ width: 34, textAlign: "center", fontFamily: T.mono, fontWeight: 800, fontSize: 14, color: T.navy }}>{n(r.w) * 3 + n(r.d)}</div>
+                  <div style={{ width: 34, textAlign: "center", fontFamily: T.mono, fontWeight: 800, fontSize: 14, color: T.text }}>{n(r.w) * 3 + n(r.d)}</div>
                 </div>
               </div>
             );
@@ -290,9 +317,9 @@ export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfNam
             <button onClick={addEntryTeam} style={btn(false)}>ADD</button>
           </div>
           <div style={{ marginTop: 14 }}>
-            {entryRows.length > 0 && entryCheck.errors.length === 0 && <div style={{ background: "#e4f5ea", border: "1.5px solid #1f8f55", color: "#14583a", borderRadius: 10, padding: "8px 10px", fontSize: 12, marginBottom: 8 }}>✓ {entryRows.length} team{entryRows.length === 1 ? "" : "s"} · every row adds up</div>}
-            {entryCheck.errors.length > 0 && <div style={{ background: "#fde8c8", border: "1.5px solid #e0a050", color: "#7a4300", borderRadius: 10, padding: "8px 10px", fontSize: 12, marginBottom: 8 }}>{entryCheck.errors.map((e, i) => <div key={i}>⚠ {e}</div>)}</div>}
-            {entryCheck.warnings.length > 0 && <div style={{ background: "#fdf3d8", border: "1.5px solid #b8860b", color: "#5c4400", borderRadius: 10, padding: "8px 10px", fontSize: 12, marginBottom: 8 }}>{entryCheck.warnings.map((e, i) => <div key={i}>ℹ {e}</div>)}</div>}
+            {entryRows.length > 0 && entryCheck.errors.length === 0 && <div style={{ background: L("#e4f5ea"), border: "1.5px solid #1f8f55", color: "#14583a", borderRadius: 10, padding: "8px 10px", fontSize: 12, marginBottom: 8 }}>✓ {entryRows.length} team{entryRows.length === 1 ? "" : "s"} · every row adds up</div>}
+            {entryCheck.errors.length > 0 && <div style={{ background: L("#fde8c8"), border: "1.5px solid #e0a050", color: "#7a4300", borderRadius: 10, padding: "8px 10px", fontSize: 12, marginBottom: 8 }}>{entryCheck.errors.map((e, i) => <div key={i}>⚠ {e}</div>)}</div>}
+            {entryCheck.warnings.length > 0 && <div style={{ background: L("#fdf3d8"), border: "1.5px solid #b8860b", color: "#5c4400", borderRadius: 10, padding: "8px 10px", fontSize: 12, marginBottom: 8 }}>{entryCheck.warnings.map((e, i) => <div key={i}>ℹ {e}</div>)}</div>}
           </div>
           <button onClick={saveEntry} disabled={busy || entryCheck.errors.length > 0 || !entryRows.length} style={{ ...btn(true, busy || entryCheck.errors.length > 0 || !entryRows.length), width: "100%" }}>{busy ? "SAVING..." : "SAVE TABLE"}</button>
           <div style={{ fontSize: 11, color: T.ink60, textAlign: "center", marginTop: 8 }}>Replaces each team's record as at {niceDate(entryDate)}. Nothing changes until you tap Save.</div>
@@ -305,9 +332,9 @@ export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfNam
             <div style={{ marginBottom: 12 }}>
               <div style={{ fontFamily: T.mono, fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: T.skyInk, marginBottom: 4 }}>TABLES TYPED IN</div>
               {snapshots.map(([d, rows]) => (
-                <div key={d} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid #eef0f5" }}>
+                <div key={d} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: `1px solid ${L("#eef0f5")}` }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: T.navy }}>Table as at {d ? niceDate(d) : "(no date)"}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Table as at {d ? niceDate(d) : "(no date)"}</div>
                     <div style={{ fontSize: 11, color: T.ink60 }}>{rows.length} teams{d === tableAsOf ? " · the one in use" : ""}</div>
                   </div>
                   <button onClick={() => { if (window.confirm(`Remove the table as at ${d ? niceDate(d) : "(no date)"}? The table goes back to the one before it, or to results only.`)) onDeleteTable(rows.map(r => r.id)); }} style={{ background: "none", border: "none", color: T.loss, fontWeight: 800, cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>Delete</button>
@@ -318,9 +345,9 @@ export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfNam
           )}
           {matches.length === 0 && <div style={{ fontSize: 13, color: T.ink60, textAlign: "center", padding: 16 }}>No results added yet.</div>}
           {matches.map(m => (
-            <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid #eef0f5" }}>
+            <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: `1px solid ${L("#eef0f5")}` }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: T.navy }}>{m.home} {m.home_goals} - {m.away_goals} {m.away}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{m.home} {m.home_goals} - {m.away_goals} {m.away}</div>
                 <div style={{ fontSize: 11, color: T.ink60 }}>{niceDate(m.date)}</div>
               </div>
               <button onClick={() => { if (window.confirm(`Remove ${m.home} ${m.home_goals}-${m.away_goals} ${m.away}?`)) onDelete(m.id); }} style={{ background: "none", border: "none", color: T.loss, fontWeight: 800, cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>Delete</button>
@@ -333,10 +360,10 @@ export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfNam
         const d = posterData();
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 100, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 12, overflowY: "auto" }}>
-            <div style={{ background: "#fff", borderRadius: 16, padding: 18, width: "100%", maxWidth: 420 }}>
+            <div style={{ background: L("#fff"), borderRadius: 16, padding: 18, width: "100%", maxWidth: 420 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 17, fontWeight: 900, color: T.navy }}>🖼 LEAGUE TABLE</span>
-                <button onClick={() => setPoster(false)} style={{ background: "#f0f0f0", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
+                <span style={{ fontSize: 17, fontWeight: 900, color: T.text }}>🖼 LEAGUE TABLE</span>
+                <button onClick={() => setPoster(false)} style={{ background: L("#f0f0f0"), border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 800, fontSize: 14, color: "#888", fontFamily: "inherit" }}>✕</button>
               </div>
               {table.length > 14 && <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: "#b36b00" }}>Only the top 14 teams fit on the picture.</div>}
               <div style={{ margin: "14px auto 0", width: W, height: POSTER_H * sc, overflow: "hidden", borderRadius: 8, boxShadow: "0 2px 10px rgba(0,0,0,0.25)" }}>

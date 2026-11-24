@@ -1,4 +1,6 @@
 // Live match screen: set up the game, run the clock, record goals with their minute, and finish by saving the result.
+import { L } from "./branding.js";
+import { SBadge } from "./sportsUI.jsx";
 import { useState, useEffect } from "react";
 import { clockText, minuteOf, PHASE_LABEL, pauseForHalfTime, startSecondHalf, goalsOf, scoreOf, newGoalId, sortedGoals } from "./liveMatch.js";
 
@@ -20,8 +22,8 @@ export default function LiveScreen({ T, live, players, fixtures, competitions, s
 
   const card = { background: T.white, borderRadius: 14, padding: 14, boxShadow: "0 2px 8px rgba(18,23,46,0.06)", marginBottom: 12 };
   const lab = { display: "block", fontSize: 11, fontWeight: 700, color: T.skyInk, letterSpacing: 2, margin: "12px 0 6px", textTransform: "uppercase" };
-  const inp = { width: "100%", padding: "10px 12px", border: "2px solid #e8e8e8", borderRadius: 10, fontSize: 15, fontFamily: "inherit", color: T.navy, outline: "none", boxSizing: "border-box", background: "#fff" };
-  const btn = (bg, color, off) => ({ display: "block", width: "100%", padding: 14, border: bg === "#fff" ? `1.5px solid ${T.ink30}` : "none", borderRadius: 12, background: bg, color, fontWeight: 800, fontSize: 14, letterSpacing: 1, fontFamily: "inherit", cursor: off ? "default" : "pointer", opacity: off ? 0.45 : 1 });
+  const inp = { width: "100%", padding: "10px 12px", border: `2px solid ${L("#e8e8e8")}`, borderRadius: 10, fontSize: 15, fontFamily: "inherit", color: T.text, outline: "none", boxSizing: "border-box", background: L("#fff") };
+  const btn = (bg, color, off) => ({ display: "block", width: "100%", padding: 14, border: bg === "#fff" ? `1.5px solid ${T.ink30}` : "none", borderRadius: 12, background: bg === "#fff" ? L("#fff") : bg, color, fontWeight: 800, fontSize: 14, letterSpacing: 1, fontFamily: "inherit", cursor: off ? "default" : "pointer", opacity: off ? 0.45 : 1 });
 
   // ── 1. nothing live yet: choose the game and the squad ──
   if (!live) {
@@ -38,16 +40,16 @@ export default function LiveScreen({ T, live, players, fixtures, competitions, s
     return (
       <div style={{ maxWidth: 520, margin: "0 auto" }}>
         <button onClick={onBack} style={{ background: "none", border: "none", color: T.ink60, fontFamily: T.mono, fontSize: 11, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", padding: "0 0 12px" }}>‹ Back</button>
-        <div style={{ fontFamily: T.display, fontWeight: 700, fontSize: 20, color: T.navy, marginBottom: 10 }}>Live match</div>
+        <div style={{ fontFamily: T.display, fontWeight: 700, fontSize: 20, color: T.text, marginBottom: 10 }}>Live match</div>
         <div style={card}>
           <span style={{ ...lab, marginTop: 0 }}>Which game?</span>
           {upcoming.map(f => (
-            <button key={f.id} onClick={() => setPick(f.id)} style={{ width: "100%", textAlign: "left", display: "block", padding: "10px 12px", marginBottom: 6, borderRadius: 10, border: `2px solid ${pick === f.id ? T.navy : "#e8e8e8"}`, background: pick === f.id ? `${T.sky}22` : "#fff", fontFamily: "inherit", cursor: "pointer" }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: T.navy }}>{f.home_away === "A" ? "Away" : "Home"} · {f.opposition}</div>
+            <button key={f.id} onClick={() => setPick(f.id)} style={{ width: "100%", textAlign: "left", display: "block", padding: "10px 12px", marginBottom: 6, borderRadius: 10, border: `2px solid ${pick === f.id ? T.navy : L("#e8e8e8")}`, background: pick === f.id ? `${T.sky}22` : L("#fff"), fontFamily: "inherit", cursor: "pointer" }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: T.text }}>{f.home_away === "A" ? "Away" : "Home"} · {f.opposition}</div>
               <div style={{ fontSize: 11, color: T.ink60 }}>{[new Date(f.rawDate + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }), f.kickoff_time && `KO ${f.kickoff_time}`, f.competition].filter(Boolean).join(" · ")}</div>
             </button>
           ))}
-          <button onClick={() => setPick("other")} style={{ width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 10, border: `2px dashed ${pick === "other" ? T.navy : T.ink30}`, background: pick === "other" ? `${T.sky}22` : "#fff", fontWeight: 700, fontSize: 14, color: T.navy, fontFamily: "inherit", cursor: "pointer" }}>Another game (not in Fixtures)</button>
+          <button onClick={() => setPick("other")} style={{ width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 10, border: `2px dashed ${pick === "other" ? T.navy : T.ink30}`, background: pick === "other" ? `${T.sky}22` : L("#fff"), fontWeight: 700, fontSize: 14, color: T.text, fontFamily: "inherit", cursor: "pointer" }}>Another game (not in Fixtures)</button>
           {pick === "other" && (
             <>
               <span style={lab}>Opposition</span>
@@ -55,7 +57,7 @@ export default function LiveScreen({ T, live, players, fixtures, competitions, s
               <span style={lab}>Competition</span>
               <select value={comp} onChange={e => setComp(e.target.value)} style={inp}><option value="">Choose…</option>{competitions.map(c => <option key={c} value={c}>{c}</option>)}</select>
               <span style={lab}>Home or away</span>
-              <div style={{ display: "flex", gap: 8 }}>{[["H", "Home"], ["A", "Away"]].map(([k, l]) => <button key={k} onClick={() => setHa(k)} style={{ flex: 1, padding: 10, borderRadius: 10, border: `2px solid ${ha === k ? T.navy : "#e8e8e8"}`, background: ha === k ? T.navy : "#fff", color: ha === k ? T.sky : T.navy, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>{l}</button>)}</div>
+              <div style={{ display: "flex", gap: 8 }}>{[["H", "Home"], ["A", "Away"]].map(([k, l]) => <button key={k} onClick={() => setHa(k)} style={{ flex: 1, padding: 10, borderRadius: 10, border: `2px solid ${ha === k ? T.navy : L("#e8e8e8")}`, background: ha === k ? T.navy : L("#fff"), color: ha === k ? T.sky : T.text, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>{l}</button>)}</div>
             </>
           )}
         </div>
@@ -63,7 +65,7 @@ export default function LiveScreen({ T, live, players, fixtures, competitions, s
           <span style={{ ...lab, marginTop: 0 }}>Who's playing?</span>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             {players.map(p => { const on = squad.includes(p.id); return (
-              <button key={p.id} onClick={() => setSquad(s => on ? s.filter(x => x !== p.id) : [...s, p.id])} style={{ padding: "10px 6px", borderRadius: 10, border: `2px solid ${on ? T.navy : "#e8e8e8"}`, background: on ? T.navy : "#fff", color: on ? T.sky : T.ink60, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer" }}>{p.squad_number ? `${p.squad_number} · ` : ""}{p.name}</button>
+              <button key={p.id} onClick={() => setSquad(s => on ? s.filter(x => x !== p.id) : [...s, p.id])} style={{ padding: "10px 6px", borderRadius: 10, border: `2px solid ${on ? T.navy : L("#e8e8e8")}`, background: on ? T.navy : L("#fff"), color: on ? T.sky : T.ink60, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer" }}>{p.squad_number ? `${p.squad_number} · ` : ""}{p.name}</button>
             ); })}
           </div>
         </div>
@@ -106,7 +108,7 @@ export default function LiveScreen({ T, live, players, fixtures, competitions, s
     try { await onEnd(); } catch (e) { showToast("❌ Couldn't save the result, try again"); }
     setBusy(false);
   };
-  const stepBtn = { width: 44, height: 44, borderRadius: "50%", border: `1.5px solid ${T.ink30}`, background: "#fff", fontSize: 22, color: T.navy, cursor: "pointer", fontFamily: "inherit" };
+  const stepBtn = { width: 44, height: 44, borderRadius: "50%", border: `1.5px solid ${T.ink30}`, background: L("#fff"), fontSize: 22, color: T.text, cursor: "pointer", fontFamily: "inherit" };
 
   return (
     <div style={{ maxWidth: 520, margin: "0 auto" }}>
@@ -141,8 +143,8 @@ export default function LiveScreen({ T, live, players, fixtures, competitions, s
       <div style={{ ...card, padding: 0, overflow: "hidden" }}>
         {goals.length === 0 && <div style={{ padding: 16, textAlign: "center", fontSize: 13, color: T.ink60 }}>No goals yet.</div>}
         {goals.map(g => (
-          <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderBottom: "1px solid #eef0f5", color: g.side === "them" ? T.ink60 : T.navy, fontWeight: 600, fontSize: 14 }}>
-            <span style={{ fontFamily: T.mono, fontWeight: 700, fontSize: 13, background: g.side === "them" ? "#e9ebf2" : T.navy, color: g.side === "them" ? T.ink60 : T.sky, borderRadius: 6, padding: "3px 7px", minWidth: 42, textAlign: "center" }}>{g.min}'</span>
+          <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderBottom: `1px solid ${L("#eef0f5")}`, color: g.side === "them" ? T.ink60 : T.text, fontWeight: 600, fontSize: 14 }}>
+            <span style={{ fontFamily: T.mono, fontWeight: 700, fontSize: 13, background: g.side === "them" ? L("#e9ebf2") : T.navy, color: g.side === "them" ? T.ink60 : T.sky, borderRadius: 6, padding: "3px 7px", minWidth: 42, textAlign: "center" }}>{g.min}'</span>
             {label(g)}
             <button onClick={() => setSheet({ id: g.id, side: g.side, min: g.min, name: g.name || null, pid: g.pid, own: !!g.own })} style={{ marginLeft: "auto", background: "none", border: "none", color: T.skyInk, fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>edit</button>
           </div>
@@ -152,17 +154,17 @@ export default function LiveScreen({ T, live, players, fixtures, competitions, s
 
       {sheet && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => setSheet(null)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "22px 22px 0 0", width: "100%", maxWidth: 520, maxHeight: "86vh", display: "flex", flexDirection: "column" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: L("#fff"), borderRadius: "22px 22px 0 0", width: "100%", maxWidth: 520, maxHeight: "86vh", display: "flex", flexDirection: "column" }}>
             {/* The list scrolls; the buttons stay fixed at the bottom so Save is never pushed off the screen on a phone. */}
             <div style={{ overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "16px 16px 8px", flex: "1 1 auto", minHeight: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: 13, letterSpacing: 1, color: T.navy, textAlign: "center" }}>{sheet.id ? "EDIT GOAL" : "GOAL"}</div>
+              <div style={{ fontWeight: 800, fontSize: 13, letterSpacing: 1, color: T.text, textAlign: "center" }}>{sheet.id ? "EDIT GOAL" : "GOAL"}</div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, margin: "8px 0 12px" }}>
                 <button onClick={() => setSheet(s => ({ ...s, min: Math.max(1, s.min - 1) }))} style={stepBtn}>−</button>
-                <span style={{ fontFamily: T.mono, fontWeight: 700, fontSize: 36, color: T.navy, minWidth: 80, textAlign: "center" }}>{sheet.min}'</span>
+                <span style={{ fontFamily: T.mono, fontWeight: 700, fontSize: 36, color: T.text, minWidth: 80, textAlign: "center" }}>{sheet.min}'</span>
                 <button onClick={() => setSheet(s => ({ ...s, min: s.min + 1 }))} style={stepBtn}>+</button>
               </div>
               {sheet.side === "us" && (() => {
-                const chip = (on) => ({ padding: "12px 6px", borderRadius: 10, border: `1.5px solid ${on ? T.navy : T.ink30}`, background: on ? T.navy : "#fff", color: on ? T.sky : T.navy, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer" });
+                const chip = (on) => ({ padding: "12px 6px", borderRadius: 10, border: `1.5px solid ${on ? T.navy : T.ink30}`, background: on ? T.navy : L("#fff"), color: on ? T.sky : T.text, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer" });
                 const playerBtn = p => { const on = !sheet.own && sheet.name === p.name; return (
                   <button key={p.id} onClick={() => setSheet(s => ({ ...s, name: p.name, pid: p.id, own: false }))} style={chip(on)}>{p.name}</button>
                 ); };
@@ -195,7 +197,7 @@ export default function LiveScreen({ T, live, players, fixtures, competitions, s
 }
 
 // The red LIVE card on the Home screen. Anyone can see it; admins can tap it to open the scoring controls.
-export function LiveCard({ T, live, selfName, onOpen }) {
+export function LiveCard({ T, live, selfName, badge, onOpen }) {
   const [, tick] = useState(0);
   useEffect(() => { const t = setInterval(() => tick(n => n + 1), 1000); return () => clearInterval(t); }, []);
   const score = scoreOf(live), away = live.home_away === "A";
@@ -204,6 +206,29 @@ export function LiveCard({ T, live, selfName, onOpen }) {
   const last = sortedGoals(goalsOf(live)).filter(g => g.side === "us" && g.name).pop();
   const running = !!live.run_since;
   const Tag = onOpen ? "button" : "div";
+  if (T.sports) {
+    const side = (x, ours) => (
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, minWidth: 0 }}>
+        <SBadge src={ours ? badge : null} name={x.n} size={54} ours={ours} />
+        <span style={{ fontSize: 13, fontWeight: 700, textAlign: "center", lineHeight: 1.15 }}>{x.n}</span>
+      </div>
+    );
+    return (
+      <Tag onClick={onOpen} style={{ display: "block", boxSizing: "border-box", width: "100%", border: "none", textAlign: "center", cursor: onOpen ? "pointer" : "default", background: `linear-gradient(160deg, ${T.navySoft}, ${T.white} 70%)`, borderRadius: 24, padding: "14px 16px 16px", color: "#fff", marginBottom: 18, fontFamily: T.body }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, fontWeight: 700 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, color: running ? "#ff453a" : T.ink60, letterSpacing: 0.8 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: running ? "#ff453a" : T.ink60, boxShadow: running ? "0 0 8px #ff453a" : "none" }} />{running ? "LIVE" : (PHASE_LABEL[live.phase] || "PAUSED").toUpperCase()}</span>
+          <span style={{ color: T.sky }}>{live.competition} · {clockText(live)}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 14 }}>
+          {side(left, !away)}
+          <div style={{ fontSize: 52, fontWeight: 800, letterSpacing: -2, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{left.s}<span style={{ color: T.sky, fontWeight: 300, margin: "0 6px" }}>–</span>{right.s}</div>
+          {side(right, away)}
+        </div>
+        {last && <div style={{ fontSize: 13, color: "#aeaeb2", marginTop: 12 }}>⚽ {last.name} {last.min}'</div>}
+        {onOpen && <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: T.sky, marginTop: 8 }}>Tap to score</div>}
+      </Tag>
+    );
+  }
   return (
     <Tag onClick={onOpen} style={{ display: "block", boxSizing: "border-box", width: "100%", border: "none", textAlign: "center", cursor: onOpen ? "pointer" : "default", background: T.navy, borderRadius: 14, padding: 14, color: "#fff", marginBottom: 24, fontFamily: "inherit" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: T.mono, fontSize: 10, letterSpacing: 1, color: T.sky }}>

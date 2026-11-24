@@ -11,6 +11,10 @@ export const FONTS = [
   { id: "bold", name: "Bold & modern", display: "'Bebas Neue', sans-serif", body: "'Inter', sans-serif", sample: "RIVERSIDE UNITED" },
   { id: "friendly", name: "Friendly", display: "'Fredoka', sans-serif", body: "'Nunito', sans-serif", sample: "Riverside United" },
 ];
+export const LOOKS = [
+  { id: "classic", name: "Classic", desc: "Light cards, club colours" },
+  { id: "sports", name: "Sports", desc: "Dark, big badges, compact rows" },
+];
 export const PRESETS = [
   { n: "Navy & Sky", p: "#12172e", a: "#5fb2d9" },
   { n: "Claret & Gold", p: "#7a1630", a: "#f0b429" },
@@ -21,7 +25,7 @@ export const PRESETS = [
 ];
 export const DEFAULT_BRANDING = {
   club_name: "My Club FC", short_name: "My Club", slogan: "",
-  primary_color: "#12172e", accent_color: "#5fb2d9", font_pairing: "classic", badge_url: null, league_logo: null, league_name: "", poster_styles: null, poster_label: null,
+  primary_color: "#12172e", accent_color: "#5fb2d9", font_pairing: "classic", badge_url: null, league_logo: null, league_name: "", poster_styles: null, poster_label: null, look: "classic",
 };
 
 // Returns the theme tokens derived from the chosen colours.
@@ -34,14 +38,35 @@ export function deriveTheme(b) {
   let skyInk = sky;
   n = 0; while (contrast(skyInk, "#ffffff") < 4.5 && n++ < 20) skyInk = mix(skyInk, "#000000", 0.1); // accent text on white cards
   const f = FONTS.find(f => f.id === x.font_pairing) || FONTS[0];
+  if (x.look === "sports") {
+    const SF = "-apple-system, 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+    let acc = isHex(x.accent_color) ? x.accent_color : DEFAULT_BRANDING.accent_color;
+    n = 0; while (contrast(acc, "#000000") < 5 && n++ < 20) acc = mix(acc, "#ffffff", 0.1);
+    let nv = mix(isHex(x.primary_color) ? x.primary_color : DEFAULT_BRANDING.primary_color, acc, 0.16); // dark panels that still show on black
+    n = 0; while (contrast(nv, "#1c1c1e") < 1.3 && n++ < 20) nv = mix(nv, "#ffffff", 0.06);
+    return {
+      sports: true, navy: nv, navySoft: mix(nv, "#ffffff", 0.1), sky: acc, skyInk: acc, chalk: "#000000", white: "#1c1c1e", text: "#ffffff",
+      ink60: "#8e8e93", ink30: "#3a3a3c", pitch: "#30d158", pitchSoft: "#10301b", amber: "#ffd60a", loss: "#ff453a",
+      display: SF, body: SF, mono: SF,
+      onSky: contrast(acc, "#ffffff") >= contrast(acc, "#000000") ? "#ffffff" : "#000000", lightAccent: false,
+    };
+  }
   return {
+    sports: false, text: navy, white: "#ffffff", ink60: "#6b7280", ink30: "#c7cbd6", pitch: "#1f6f4a", pitchSoft: "#e5f3ec", amber: "#e8a93b", loss: "#d1495b",
     navy, navySoft: mix(navy, "#ffffff", 0.1), sky, skyInk, chalk: mix(navy, "#ffffff", 0.955),
     display: f.display, body: f.body,
     onSky: contrast(sky, "#ffffff") >= contrast(sky, "#12172e") ? "#ffffff" : "#12172e",
     lightAccent: skyInk !== sky,
   };
 }
-export function applyBranding(theme, b) { Object.assign(theme, deriveTheme(b)); }
+// Light literal colours (hard-coded in screens) are swapped for dark equivalents in the Sports look.
+let SPORTS = false;
+export function L(c) {
+  if (!SPORTS) return c;
+  const l = lum(c);
+  return l > 0.8 ? "#2c2c2e" : l > 0.55 ? "#3a3a3c" : c;
+}
+export function applyBranding(theme, b) { const t = deriveTheme(b); SPORTS = !!t.sports; Object.assign(theme, t); }
 
 const CACHE_KEY = "leon_branding_v1";
 export function loadCachedBranding() { try { return { ...DEFAULT_BRANDING, ...JSON.parse(localStorage.getItem(CACHE_KEY) || "{}") }; } catch (e) { return { ...DEFAULT_BRANDING }; } }
