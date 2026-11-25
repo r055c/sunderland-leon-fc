@@ -62,7 +62,21 @@ const STAGES = ["Group stage", "Last 16", "Quarter-final", "Semi-final", "3rd pl
 
 // Tournament placement options — stored per competition, per season.
 const PLACEMENT_OPTIONS = ["Winners", "Runners-up", "3rd Place", "Semi-Final", "Group Stage"];
+// League finishing position → the label stored as that competition's placement.
+const leaguePlacementLabel = pos => pos === 1 ? "Champions" : pos === 2 ? "Runners-up" : pos === 3 ? "3rd Place" : `${pos}th Place`;
+// Best guess at how a tournament ended, from the last game logged on the day. null when it can't be told.
+function suggestTournamentPlacement(games) {
+  if (!games || !games.length) return null;
+  const last = games.slice().sort((a, b) => (a.id || 0) - (b.id || 0)).pop();
+  const rd = String(last.round || "").toLowerCase();
+  if (rd === "final") return last.result === "W" ? "Winners" : "Runners-up";
+  if (rd === "3rd place") return last.result === "W" ? "3rd Place" : null;
+  if (rd === "semi-final") return last.result === "L" ? "Semi-Final" : null;
+  if (rd === "group stage") return "Group Stage";
+  return null;
+}
 const PLACEMENT_META = {
+  "Champions": { icon: "🏆", bg: "#fdf3d8", color: "#b8860b" },
   "Winners": { icon: "🏆", bg: "#fdf3d8", color: "#b8860b" },
   "Runners-up": { icon: "🥈", bg: "#eef1f3", color: "#71797e" },
   "3rd Place": { icon: "🥉", bg: "#fbe9d8", color: "#a0522d" },
@@ -373,6 +387,73 @@ function loadHtml2Canvas() {
     document.head.appendChild(script);
   });
 }
+// Staff-only Home card: a competition looks finished but has no result set yet.
+function PlacementReminder({ T, season, competitions, compTypeOf, results, fixtures, onSet }) {
+  const [, bump] = useState(0);
+  if (!season) return null;
+  const key = c => `placementLater:${season.id}:${c}`;
+  const later = c => { try { const t = +localStorage.getItem(key(c)); return t && Date.now() - t < 3 * 864e5; } catch (e) { return false; } };
+  const cand = competitions.filter(c => {
+    const type = compTypeOf(c);
+    if (type === "friendly" || (season.placements || {})[c] || later(c)) return false;
+    const rs = results.filter(r => r.competition === c && r.season_id === season.id);
+    if (!rs.length) return false;
+    if (type === "league") {
+      const fx = fixtures.filter(f => f.competition === c && (f.season_id === season.id || f.season_id == null));
+      return fx.length > 0 && fx.every(f => f.played);
+    }
+    return rs.some(r => String(r.round || "").toLowerCase() === "final");
+  });
+  if (!cand.length) return null;
+  const c = cand[0], type = compTypeOf(c);
+  const txt = T.sports ? "#fff" : T.text;
+  return (
+    <div style={{ background: T.white, borderRadius: T.sports ? 22 : 14, padding: "14px 16px", marginBottom: 16, color: txt, borderLeft: `3px solid ${T.amber}`, boxShadow: T.sports ? "none" : "0 2px 8px rgba(18,23,46,0.06)" }}>
+      <div style={{ fontSize: 15, fontWeight: 800 }}>🏆 {c} looks finished</div>
+      <div style={{ fontSize: 13, color: T.ink60, margin: "4px 0 10px", lineHeight: 1.45 }}>{type === "league" ? "All its fixtures are played. How did the season end?" : "A final has been logged. How did it end?"}{cand.length > 1 ? ` (${cand.length - 1} more after this)` : ""}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <button onClick={() => onSet(c, type)} style={{ background: T.sports ? T.sky : T.navy, color: T.sports ? T.onSky : T.sky, border: "none", borderRadius: 99, padding: "9px 18px", fontWeight: 800, fontSize: 13, fontFamily: "inherit", cursor: "pointer" }}>Set result</button>
+        <button onClick={() => { try { localStorage.setItem(key(c), String(Date.now())); } catch (e) {} bump(n => n + 1); }} style={{ background: "none", border: "none", color: T.ink60, fontSize: 13, fontFamily: "inherit", cursor: "pointer" }}>Later</button>
+      </div>
+    </div>
+  );
+}
+
+// Shareable card for a league season: finishing position and record.
+function SeasonCard({ cardRef, comp, season, placement, row, position }) {
+  const meta = PLACEMENT_META[placement] || { icon: "🏅" };
+  return (
+    <div ref={cardRef} style={{ background: THEME.white, borderRadius: 18, overflow: "hidden", boxShadow: "0 4px 24px rgba(18,23,46,0.12)", width: "100%", maxWidth: 360, margin: "0 auto" }}>
+      <div style={{ background: THEME.navy, padding: "16px 18px", display: "flex", alignItems: "center", gap: 12 }}>
+        <ClubLogo size={40} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ color: "#fff", fontFamily: THEME.display, fontWeight: 600, fontSize: 16, lineHeight: 1.15 }}>{comp}</div>
+          <div style={{ color: THEME.sky, fontFamily: THEME.mono, fontSize: 10, letterSpacing: 1, textTransform: "uppercase", marginTop: 3 }}>{season} · {BRAND.name}</div>
+        </div>
+      </div>
+      <div style={{ textAlign: "center", padding: "22px 16px 10px" }}>
+        <div style={{ fontSize: 46 }}>{meta.icon}</div>
+        <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 26, color: THEME.text }}>{placement}</div>
+        {position > 0 && <div style={{ fontSize: 12, color: THEME.ink60, marginTop: 2 }}>Finished {position}{[, "st", "nd", "rd"][position] && position < 4 ? [, "st", "nd", "rd"][position] : "th"} in the table</div>}
+      </div>
+      {row && (
+        <div style={{ display: "flex", gap: 8, padding: "8px 16px 16px" }}>
+          {[["P", row.p, THEME.navy], ["W", row.w, "#00c853"], ["D", row.d, "#ffab00"], ["L", row.l, "#d50000"], ["PTS", row.pts, THEME.skyInk]].map(([k, v, c]) => (
+            <div key={k} style={{ flex: 1, textAlign: "center", background: THEME.chalk, borderRadius: 10, padding: "7px 2px", borderBottom: `3px solid ${c}` }}>
+              <div style={{ fontWeight: 900, fontSize: 16, color: c }}>{v}</div>
+              <div style={{ fontSize: 9, fontWeight: 700, color: "#999" }}>{k}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{ background: THEME.chalk, padding: "9px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ color: THEME.skyInk, fontSize: 10, fontWeight: 700, letterSpacing: 2 }}>{BRAND.short.toUpperCase()}</span>
+        <span style={{ color: "#aaa", fontSize: 9, letterSpacing: 1 }}>{BRAND.slogan.toUpperCase()}</span>
+      </div>
+    </div>
+  );
+}
+
 function SaveCardButton({ cardRef, filename = "result.png", onSaved, shareText = "" }) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(false);
@@ -1298,6 +1379,8 @@ export default function App() {
   const [tourPlacement, setTourPlacement] = useState(null);
   const [lastTourGame, setLastTourGame] = useState(null);
   const [tourFinishing, setTourFinishing] = useState(false);
+  const seasonCardRef = useRef();
+  const [finishSeason, setFinishSeason] = useState(null); // { position, row, comp, pick }
   const [tourEditSquad, setTourEditSquad] = useState(false);
   const [tourMore, setTourMore] = useState(false);
   const [tourBusy, setTourBusy] = useState(false);
@@ -2132,11 +2215,14 @@ export default function App() {
 
     // ── Finishing: how did you place? ──
     if (tourFinishing) {
-      const chosen = tourPlacement || viewingSeason?.placements?.[tourDay.name] || null;
+      const suggested = suggestTournamentPlacement(tourGames);
+      const saved = viewingSeason?.placements?.[tourDay.name] || null;
+      const chosen = tourPlacement || saved || suggested || null;
       return (
         <>
           {header}
           <label style={labelStyle}>How did you finish?</label>
+          {!tourPlacement && !saved && suggested && <div style={{ fontSize: 12, color: THEME.ink60, margin: "-4px 0 8px" }}>Suggested from your games. Change it if that's not right.</div>}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
             {PLACEMENT_OPTIONS.map(opt => <button key={opt} onClick={() => setTourPlacement(opt)} style={chipSt(chosen === opt)}>{(PLACEMENT_META[opt]?.icon || "") + " " + opt}</button>)}
           </div>
@@ -2363,6 +2449,7 @@ export default function App() {
         {mode === "home" && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
             <PushCard T={THEME} />
+            {isAdmin && isViewingActive && !live && <PlacementReminder T={THEME} season={viewingSeason} competitions={competitions} compTypeOf={compTypeOf} results={results} fixtures={fixtures} onSet={(c, type) => type === "league" ? setMode("league") : setMode("placements")} />}
             {live && <LiveCard T={THEME} live={live} selfName={THEME.sports ? (BRAND.short || BRAND.name) : BRAND.name} badge={BRAND.badge || DEFAULT_BADGE} oppLogo={BRAND.teams?.find(t => t.name === live.opposition)?.logo || findTeamLogo(BRAND.teams, live.opposition)} onOpen={isAdmin ? () => { setLiveStartFx(null); setMode("live"); } : null} />}
             {!live && isAdmin && isViewingActive && (() => {
               const td = new Date(); const iso = `${td.getFullYear()}-${String(td.getMonth() + 1).padStart(2, "0")}-${String(td.getDate()).padStart(2, "0")}`;
@@ -2478,12 +2565,51 @@ export default function App() {
             startFixtureId={liveStartFx} onStart={startLive} onUpdate={updateLive} onEnd={endLive} onDiscard={discardLive} showToast={showToast} onBack={() => { setLiveStartFx(null); setMode(live ? "home" : "staff"); }} />
         )}
 
+        {/* ── FINISH SEASON (league) ── */}
+        {mode === "finishSeason" && isAdmin && finishSeason && (() => {
+          const leagues = competitions.filter(c => compTypeOf(c) === "league");
+          const comp = finishSeason.comp || leagues[0] || "";
+          const saved = viewingSeason?.placements?.[comp] || null;
+          const pos = finishSeason.pick || finishSeason.position || 1;
+          const label = leaguePlacementLabel(pos);
+          const chipS = on => ({ padding: "9px 14px", borderRadius: 20, border: on ? "none" : `1.5px solid ${L("#e0e0e0")}`, background: on ? THEME.navy : L("#fff"), color: on ? THEME.sky : THEME.ink60, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" });
+          return (
+            <div style={{ maxWidth: 520, margin: "0 auto" }}>
+              <button onClick={() => setMode("league")} style={{ background: "none", border: "none", color: THEME.ink60, fontFamily: THEME.mono, fontSize: 11, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", padding: "0 0 14px" }}>‹ Back</button>
+              <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 18, color: THEME.text, marginBottom: 4 }}>Finish the season</div>
+              <div style={{ fontSize: 12, color: THEME.ink60, marginBottom: 14 }}>The unofficial table says {finishSeason.position ? `${leaguePlacementLabel(finishSeason.position)} (${finishSeason.position}${finishSeason.position === 1 ? "st" : finishSeason.position === 2 ? "nd" : finishSeason.position === 3 ? "rd" : "th"})` : "nothing yet"}. Change it if the league's own table is different.</div>
+              {leagues.length > 1 && (
+                <>
+                  <label style={labelStyle}>Which league?</label>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>{leagues.map(c => <button key={c} onClick={() => setFinishSeason({ ...finishSeason, comp: c })} style={chipS(c === comp)}>{c}</button>)}</div>
+                </>
+              )}
+              <label style={labelStyle}>Final position</label>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => <button key={n} onClick={() => setFinishSeason({ ...finishSeason, pick: n })} style={chipS(pos === n)}>{n === 1 ? "🏆 1st" : n === 2 ? "🥈 2nd" : n === 3 ? "🥉 3rd" : `${n}th`}</button>)}
+              </div>
+              {saved && <div style={{ fontSize: 12, color: THEME.ink60, margin: "6px 0 0" }}>Currently saved: {saved}</div>}
+              <div style={{ margin: "16px 0 10px" }}>
+                <SeasonCard cardRef={seasonCardRef} comp={comp} season={viewingSeason?.name || ""} placement={label} row={finishSeason.row} position={finishSeason.position} />
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <SaveCardButton cardRef={seasonCardRef} filename="season-summary.png" onSaved={() => showToast("📸 Card ready")} shareText={`${PLACEMENT_META[label]?.icon || "🏅"} ${label} — ${comp} ${viewingSeason?.name || ""}`} />
+              </div>
+              <button onClick={async () => { await handleSetPlacement(comp, label); showToast(`🏆 ${label} saved`); setFinishSeason(null); setMode("league"); }}
+                style={{ width: "100%", padding: 16, background: THEME.navy, color: THEME.sky, border: "none", borderRadius: 12, fontSize: 15, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit" }}>Save {label}</button>
+            </div>
+          );
+        })()}
+
         {/* ── UNOFFICIAL LEAGUE TABLE ── */}
         {mode === "league" && (() => {
           const sid = viewingSeason?.id;
           const own = seasonResults.filter(r => compTypeOf(r.competition || "") === "league");
           return (
-            <LeagueScreen T={THEME} isAdmin={isAdmin} seasonId={sid} seasonName={viewingSeason?.name || ""} selfName={BRAND.name} selfNames={[BRAND.name, BRAND.short].filter(Boolean)}
+            <LeagueScreen T={THEME} isAdmin={isAdmin} seasonId={sid}
+              leagueComps={competitions.filter(c => compTypeOf(c) === "league")} placements={viewingSeason?.placements || {}}
+              allPlayed={(() => { const lf = seasonFixtures.filter(f => compTypeOf(f.competition || "") === "league"); return lf.length > 0 && lf.every(f => f.played); })()}
+              onFinishSeason={info => { setFinishSeason({ ...info, comp: competitions.find(c => compTypeOf(c) === "league") || "" }); setMode("finishSeason"); }} seasonName={viewingSeason?.name || ""} selfName={BRAND.name} selfNames={[BRAND.name, BRAND.short].filter(Boolean)}
               teams={teams} matches={leagueMatches.filter(m => m.season_id === sid)} start={leagueStart.filter(x => x.season_id === sid)} ownLeague={own} branding={branding}
               posterBase={{ club: BRAND.name, label: (branding.poster_label || "").trim(), crest: BRAND.badge || DEFAULT_BADGE, motto: branding.slogan || "", leagueLogo: branding.league_logo || null, leagueName: branding.league_name || "", colors: posterColors(THEME.navy, THEME.sky) }}
               onAdd={async rows => { const created = await insertLeagueMatches(rows); setLeagueMatches(ms => [...(created || []), ...ms]); }}
@@ -2564,6 +2690,7 @@ export default function App() {
               return (
                 <div key={comp} style={{ background: THEME.white, borderRadius: 14, padding: 14, marginBottom: 12, boxShadow: "0 2px 8px rgba(18,23,46,0.05)" }}>
                   <div style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 14, color: THEME.text, marginBottom: 10 }}>{comp}</div>
+                  {(() => { const gs = results.filter(r => r.competition === comp && r.season_id === viewingSeason?.id); const lastDate = gs.map(r => r.date).sort((a, b) => new Date(a) - new Date(b)).pop(); const sug = !current && suggestTournamentPlacement(gs.filter(r => r.date === lastDate)); return sug ? <div style={{ fontSize: 12, color: THEME.ink60, margin: "-4px 0 10px" }}>Suggested from your games: <b>{sug}</b></div> : null; })()}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                     {PLACEMENT_OPTIONS.map(opt => {
                       const meta = PLACEMENT_META[opt];
@@ -3816,7 +3943,7 @@ export default function App() {
           </button>
         ))}
         <button onClick={() => isAdmin ? setMode("staff") : setShowPinGate(true)}
-          style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: THEME.sports ? 10 : 9, letterSpacing: THEME.sports ? 0 : 0.5, textTransform: THEME.sports ? "none" : "uppercase", color: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league","live","alerts"].includes(mode)) ? THEME.text : THEME.ink60, fontWeight: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league","live","alerts"].includes(mode)) ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
+          style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: THEME.sports ? 10 : 9, letterSpacing: THEME.sports ? 0 : 0.5, textTransform: THEME.sports ? "none" : "uppercase", color: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league","live","alerts","finishSeason"].includes(mode)) ? THEME.text : THEME.ink60, fontWeight: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league","live","alerts","finishSeason"].includes(mode)) ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
           {THEME.sports ? <Icon name={isAdmin ? "unlock" : "lock"} size={25} /> : <span style={{ fontSize: 18 }}>{isAdmin ? "🔓" : "🔒"}</span>}
           Admin
         </button>

@@ -8,7 +8,7 @@ import { PosterCanvas, POSTER_W, POSTER_H, findTeamLogo } from "./Poster.jsx";
 const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const niceDate = (iso) => { try { return new Date(iso + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); } catch (e) { return iso; } };
 
-export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfName, selfNames, teams, matches, start, ownLeague, branding, posterBase, onAdd, onDelete, onSaveTable, onDeleteTable, showToast, onBack, loadH2c, ensureFonts }) {
+export default function LeagueScreen({ T, isAdmin, leagueComps = [], placements = {}, allPlayed = false, onFinishSeason, seasonId, seasonName, selfName, selfNames, teams, matches, start, ownLeague, branding, posterBase, onAdd, onDelete, onSaveTable, onDeleteTable, showToast, onBack, loadH2c, ensureFonts }) {
   const [tab, setTab] = useState("table"); // table | paste | manual | entry | list
   const [entryDate, setEntryDate] = useState(todayISO());
   const [entryRows, setEntryRows] = useState([]); // typed-in table: [{team,p,w,d,l,f,a}] as strings
@@ -218,6 +218,19 @@ export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfNam
           )}
         </div>
       )}
+      {tab === "table" && isAdmin && onFinishSeason && table.length > 0 && (() => {
+        const pos = table.findIndex(r => isSelf(r.team)) + 1;
+        if (!pos) return null;
+        const row = table[pos - 1];
+        const done = leagueComps.map(c => placements[c]).find(Boolean);
+        return (
+          <div style={{ background: T.white, borderRadius: 14, padding: "12px 14px", margin: "10px 0", color: T.sports ? "#fff" : T.text, boxShadow: T.sports ? "none" : "0 2px 8px rgba(18,23,46,0.06)" }}>
+            <div style={{ fontSize: 11, color: T.ink60, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>{allPlayed ? "All games played" : "Season finish"}</div>
+            <div style={{ fontSize: 15, fontWeight: 800, margin: "4px 0 8px" }}>{done ? `Saved as ${done}` : `Currently ${pos}${pos === 1 ? "st" : pos === 2 ? "nd" : pos === 3 ? "rd" : "th"} in the table`}</div>
+            <button onClick={() => onFinishSeason({ position: pos, row: { p: row.p, w: row.w, d: row.d, l: row.l, pts: row.pts } })} style={{ background: T.sports ? T.sky : T.navy, color: T.sports ? T.onSky : T.sky, border: "none", borderRadius: 99, padding: "9px 18px", fontWeight: 800, fontSize: 13, fontFamily: "inherit", cursor: "pointer" }}>{done ? "Change finish" : "Finish season"}</button>
+          </div>
+        );
+      })()}
       {tab === "table" && table.length > 0 && <button onClick={() => setPoster(true)} style={{ ...btn(true), width: "100%" }}>🖼 SHARE AS A PICTURE</button>}
 
       {tab === "paste" && isAdmin && (
