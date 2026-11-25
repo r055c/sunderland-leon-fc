@@ -122,7 +122,7 @@
       <a href="img/cf-d1-overview.png" target="_blank" rel="noopener"><img src="img/cf-d1-overview.png" alt="Cloudflare D1 database page with the Console tab and Explore Data button marked"></a>
       <figcaption>1 = Console tab (paste the schema here). 2 = Explore Data, to look at the tables afterwards. The database ID is under the region picker. Tap the picture to enlarge it.</figcaption>
     </figure>
-    <div class="ok"><b>Check:</b> the Overview shows <b>Number of Tables: 9</b>. If it shows 0, the schema did not run.</div>
+    <div class="ok"><b>Check:</b> the Overview shows <b>Number of Tables: 9</b>. If it shows 0, the schema did not run. (It later grows to 12 by itself once goal alerts are first used. That is normal.)</div>
   </section>
 
   <section>
@@ -131,7 +131,7 @@
     <h3>clubs/&lt;club&gt;/club.json</h3>
     <p>The name shown under the home-screen icon, and the colour of the phone's top bar.</p>
     <h3>clubs/&lt;club&gt;/wrangler.jsonc</h3>
-    <p>Change these three values and leave the rest alone:</p>
+    <p>Change these three values and leave the rest alone (including the <code>triggers</code> line, which sends goal alerts on time):</p>
 <pre><code>"name": "&lt;club&gt;",
 "database_name": "&lt;club&gt;-trial",
 "database_id": "paste the ID from step 1"</code></pre>
@@ -163,6 +163,7 @@
       <li>Open <code>https://&lt;club&gt;.&lt;your-account&gt;.workers.dev</code>.</li>
       <li>You should see the club's name at the top, a season (2026/27) and "No results logged yet".</li>
       <li>Tap the padlock, enter the starting PIN and make sure the Staff Room opens.</li>
+      <li>Optional: in the Staff Room, open <b>Goal alerts</b>. It should load and show 0 phones signed up.</li>
     </ol>
     <div class="ok"><b>Done.</b> Send the club the section below.</div>
   </section>
@@ -198,11 +199,18 @@
       <li><b>Android:</b> open it in Chrome, tap the three dots, then <b>Install app</b> or <b>Add to Home screen</b>.</li>
     </ul>
     <div class="warn">Do this <b>after</b> uploading the badge. The home-screen icon is copied when the app is added. If it was added earlier and shows the wrong icon, delete it from the home screen and add it again.</div>
+
+    <h3>5. Choose the look</h3>
+    <p>In <b>Staff Room → Branding</b>, the <b>Look</b> setting switches the whole app between <b>Classic</b> (light, the original style) and <b>Sports</b> (dark, like a sports-scores app). Tap <b>Save branding</b>. Nothing is lost by switching; you can change it back any time.</p>
+
+    <h3>6. Goal alerts (optional)</h3>
+    <p>Parents can get a phone alert when the team scores. Each parent turns it on from the <b>Get goal alerts</b> card on the Home screen and chooses which alerts they want (our goals, opposition goals, kick-off, half time, full time). On iPhone, the app must be added to the Home Screen first (step 4) and the phone needs iOS 16.4 or later.</p>
+    <p>Alerts are sent 30 seconds after a goal is scored in the live match screen, so a mistake can be undone. In <b>Staff Room → Goal alerts</b> you can see how many phones have signed up and choose whether alerts name the scorer.</p>
   </section>
 
   <section>
     <h2>Updating every club</h2>
-    <p>Push a change to the shared branch. Each club's Cloudflare project rebuilds and deploys it on its own. You do not touch the clubs one by one.</p>
+    <p>Push a change to the shared branch. Each club's Cloudflare project rebuilds and deploys it on its own. You do not touch the clubs one by one. (Goal alerts need nothing extra: their database tables and push keys are created automatically in each club's database the first time they are used.)</p>
     <div class="warn"><b>If a change adds a new database column:</b> add a numbered file in <code>worker/migrations/</code> and run it in the Console of <b>every</b> club's database <b>before</b> you push. Otherwise that club's app breaks until you do.</div>
   </section>
 
@@ -214,8 +222,9 @@
       <tr><td>Build fails: "Vite … cannot be automatically configured"</td><td>Cloudflare is building a branch with no club files. Set the production branch under Settings → Builds → Branch control.</td></tr>
       <tr><td>Retry keeps failing the same way</td><td>Retry re-runs the old commit. Push a new commit to start a fresh build.</td></tr>
       <tr><td>The app says "Connection error" on first open</td><td>The database has no starting season. Run the last line of <code>worker/schema.sql</code> (the <code>INSERT INTO seasons</code> line) in the Console. Databases made from the current schema already have it.</td></tr>
-      <tr><td>Data does not load at all</td><td>The database ID in <code>wrangler.jsonc</code> is wrong or the schema was not run. Check Number of Tables is 9.</td></tr>
+      <tr><td>Data does not load at all</td><td>The database ID in <code>wrangler.jsonc</code> is wrong or the schema was not run. Check Number of Tables is at least 9.</td></tr>
       <tr><td>Home-screen icon shows another club's badge</td><td>The club installed the app before uploading their badge. Upload the badge, then delete and re-add the app on the phone.</td></tr>
+      <tr><td>Goal alerts: no "Get goal alerts" card on Home, or no alert arrives</td><td>The card only shows on phones that can receive alerts. On iPhone the app must be added to the Home Screen first (iOS 16.4+), and the person must tap <b>Turn on alerts</b> and allow notifications. If they chose "Don't allow", it has to be switched back on in the phone's Settings. Alerts arrive 30 seconds after the goal. If nothing arrives, check the <code>triggers</code> line is still in the club's <code>wrangler.jsonc</code>.</td></tr>
       <tr><td>Forgotten admin PIN</td><td>Ask Claude to reset it, or set it directly in the database. It is stored only as a hash, so it cannot be read back.</td></tr>
       <tr><td>Image upload says it failed</td><td>Images are limited to about 1.2 MB after shrinking. Use a smaller photo. BMP files are not supported; use PNG or JPEG.</td></tr>
     </table>
@@ -234,7 +243,7 @@
   <section>
     <h2>New club checklist</h2>
     <ul class="check">
-      <li>Database created and schema run (Number of Tables: 9)</li>
+      <li>Database created and schema run (Number of Tables: 9 or more)</li>
       <li>Club name and short name set in the database</li>
       <li><code>clubs/&lt;club&gt;/</code> files edited and committed</li>
       <li>Cloudflare project created with the same name, build and deploy commands</li>
@@ -242,6 +251,8 @@
       <li>Build green and the app opens with the right club name</li>
       <li>Club sent the "getting started" section</li>
       <li>Club has changed the PIN and uploaded their badge, then added the app to their home screen</li>
+      <li>Club has chosen Classic or Sports under Branding → Look</li>
+      <li>Optional: goal alerts tried once on a real phone (iPhone and Android)</li>
     </ul>
   </section>
 
