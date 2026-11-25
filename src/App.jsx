@@ -3,7 +3,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { fetchResults, insertResult, updateResult, deleteResult, fetchTeams, insertTeam, updateTeam, deleteTeam, fetchSeasons, insertSeason, updateSeason, setActiveSeason, fetchPlayers, insertPlayer, updatePlayer, deletePlayer, fetchAppearances, insertAppearances, deleteAppearancesByResult, uploadImage, uploadIcon, verifyAdminPin, setAdminPin, changeAdminPin, moveExternalImages, fetchMatchPhotos, insertMatchPhotos, deleteMatchPhoto, fetchMatchVideos, insertMatchVideo, deleteMatchVideo, parseYouTubeId, fetchFixtures, insertFixture, updateFixture, deleteFixture, fetchTournamentTables, insertTournamentTable, updateTournamentTable, deleteTournamentTable, fetchClubSettings, saveClubSettings, fetchLeagueMatches, insertLeagueMatches, deleteLeagueMatch, fetchLeagueStart, insertLeagueStart, deleteLeagueStart, fetchLiveMatch, insertLiveMatch, updateLiveMatch, deleteLiveMatch } from "./api.js";
 import LeagueScreen from "./LeagueScreen.jsx";
 import { ShareCardB } from "./ShareCard.jsx";
-import { SBadge } from "./sportsUI.jsx";
+import { SBadge, Icon, LargeTitle } from "./sportsUI.jsx";
+import { SportsResultView } from "./SportsResult.jsx";
 import LiveScreen, { LiveCard } from "./LiveScreen.jsx";
 import { buildResultFields } from "./liveMatch.js";
 import { DEFAULT_BADGE } from "./defaultBadge.js";
@@ -409,6 +410,23 @@ function SaveCardButton({ cardRef, filename = "result.png", onSaved, shareText =
 // ── Leaderboard ───────────────────────────────────────────
 function Leaderboard({ data, label, emptyMsg, filterLabel, accentColor = THEME.sky, onRowClick }) {
   const max = data[0]?.count || 1;
+  if (THEME.sports) return (
+    <div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: THEME.ink60, textTransform: "uppercase", letterSpacing: 0.6, margin: "0 4px 8px" }}>{filterLabel} · {label}</div>
+      {data.length === 0 ? <p style={{ textAlign: "center", color: THEME.ink60, fontSize: 15, marginTop: 20 }}>{emptyMsg}</p> : (
+        <div style={{ background: THEME.white, borderRadius: 22, padding: "6px 16px", color: "#fff" }}>
+          {data.map((p, i) => (
+            <div key={p.name} onClick={() => onRowClick && onRowClick(p.name)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: i === data.length - 1 ? "none" : `1px solid ${THEME.ink30}`, cursor: onRowClick ? "pointer" : "default" }}>
+              <span style={{ width: 20, textAlign: "center", fontSize: 15, fontWeight: 700, color: i === 0 ? THEME.sky : THEME.ink60 }}>{i + 1}</span>
+              <span style={{ flex: "0 0 38%", minWidth: 0, fontSize: 16, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</span>
+              <div style={{ flex: 1, height: 8, background: "#00000055", borderRadius: 4, overflow: "hidden" }}><div style={{ height: "100%", width: `${Math.max(6, Math.round((p.count / max) * 100))}%`, background: i === 0 ? THEME.sky : `${THEME.sky}88`, borderRadius: 4 }} /></div>
+              <span style={{ width: 28, textAlign: "right", fontSize: 20, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{p.count}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
   return (
     <div>
       <div style={{ textAlign: "center", marginBottom: 12 }}>
@@ -531,7 +549,7 @@ function ScoreCard({ match, compColor = THEME.sky, onClick, showMeta = true, pho
       </div>
     );
     return (
-      <button onClick={onClick} style={{ width: "100%", textAlign: "left", background: THEME.white, border: "none", borderRadius: 22, padding: "14px 18px 14px", marginBottom: 10, cursor: onClick ? "pointer" : "default", fontFamily: THEME.body, color: "#fff", display: "block" }}>
+      <button onClick={onClick} style={{ width: "100%", textAlign: "left", background: isWin ? `linear-gradient(120deg, ${THEME.navy}, ${THEME.white} 62%)` : THEME.white, border: "none", borderRadius: 22, padding: "14px 18px 14px", marginBottom: 10, cursor: onClick ? "pointer" : "default", fontFamily: THEME.body, color: "#fff", display: "block" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, fontSize: 12, fontWeight: 600, color: THEME.ink60 }}>
           <span style={{ display: "flex", alignItems: "center", gap: 7 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: chipC }} />{match.competition}{match.round ? ` · ${match.round}` : ""}</span>
           <span>{match.date}</span>
@@ -596,6 +614,7 @@ function ResultCard({ match, teamName = "Team", compColor = THEME.sky, players =
   const displayLogo = match.oppLogo || teams.find(t => t.name === match.opposition)?.logo || null;
   return (
     <div>
+      {THEME.sports ? <SportsResultView match={match} T={THEME} brand={BRAND} oppLogo={displayLogo} teamName={teamName} players={players} onOpenPlayer={onOpenPlayer} /> : (
       <div ref={cardRef} style={{ background: THEME.white, borderRadius: 18, overflow: "hidden", boxShadow: "0 4px 24px rgba(18,23,46,0.12)", width: "100%", maxWidth: 520, margin: "0 auto", fontFamily: THEME.body, border: `1px solid ${L("#eef0f4")}` }}>
         <div style={{ background: THEME.navy, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <div style={{ minWidth: 0 }}>
@@ -728,6 +747,7 @@ function ResultCard({ match, teamName = "Team", compColor = THEME.sky, players =
           <span style={{ fontFamily: THEME.mono, fontSize: 9, color: THEME.ink60 }}>{match.date}</span>
         </div>
       </div>
+      )}
       <div aria-hidden="true" style={{ position: "fixed", left: -20000, top: 0, pointerEvents: "none" }}>
         <div ref={shareRef}><ShareCardB match={match} club={BRAND.name} short={BRAND.short} label={teamName} crest={BRAND.badge || DEFAULT_BADGE} oppLogo={displayLogo} colors={posterColors(THEME.navy, THEME.sky)} compLabel={match.competition} /></div>
       </div>
@@ -2227,7 +2247,7 @@ export default function App() {
   return (
     <div className={THEME.sports ? "look-sports" : undefined} style={{ colorScheme: THEME.sports ? "dark" : undefined, minHeight: "100vh", backgroundColor: THEME.chalk, backgroundImage: THEME.sports ? "none" : "linear-gradient(rgba(18,23,46,0.035) 2px, transparent 2px), linear-gradient(90deg, rgba(18,23,46,0.035) 2px, transparent 2px)", backgroundSize: "60px 60px, 60px 60px", backgroundPosition: "30px 0, 0 30px", fontFamily: THEME.body, paddingBottom: 100 }}>
 
-      {THEME.sports && <style>{`.look-sports input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]), .look-sports select, .look-sports textarea { background-color: #2c2c2e; color: #fff; border-color: #3a3a3c; } .look-sports ::placeholder { color: #8e8e93; } .look-sports option { background: #1c1c1e; color: #fff; }`}</style>}
+      {THEME.sports && <style>{`.look-sports input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]), .look-sports select, .look-sports textarea { background-color: #2c2c2e; color: #fff; border-color: #3a3a3c; } .look-sports ::placeholder { color: #8e8e93; } .look-sports option { background: #1c1c1e; color: #fff; } @keyframes sp-sheet { from { transform: translateY(100%); } to { transform: none; } } @keyframes sp-fade { from { opacity: 0; } to { opacity: 1; } } @keyframes sp-pulse { 0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255,69,58,.6); } 50% { opacity: .55; box-shadow: 0 0 0 6px rgba(255,69,58,0); } } .sp-sheet { animation: sp-sheet .32s cubic-bezier(.2,.8,.2,1); } .sp-fade { animation: sp-fade .22s ease-out; } .sp-pulse { animation: sp-pulse 1.6s infinite; } .sp-screen { animation: sp-fade .25s ease-out; }`}</style>}
       {/* Top bar */}
       <div style={{ background: THEME.sports ? "#000" : THEME.navy, padding: THEME.sports ? "22px 20px 8px" : "16px 20px", display: "flex", alignItems: "center", gap: 12, boxShadow: THEME.sports ? "none" : "0 2px 12px rgba(0,0,0,0.3)", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: -20, right: -30, width: 140, height: 140, opacity: THEME.sports ? 0 : 0.08, backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="white" d="M20 65 Q 35 55 45 40 Q 50 30 58 32 Q 65 34 62 42 Q 58 52 68 48 Q 78 44 75 55 Q 70 68 55 70 Q 40 72 30 78 Z"/></svg>')`, backgroundSize: "contain", backgroundRepeat: "no-repeat", pointerEvents: "none" }} />
@@ -2289,7 +2309,15 @@ export default function App() {
 
 
       {/* Competition / Round filters — dropdowns, no horizontal swipe needed */}
-      {(mode === "history" || (mode === "scorers" && scorersTab !== "squad")) && (
+      {THEME.sports && (mode === "history" || (mode === "scorers" && scorersTab !== "squad")) && (
+        <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "10px 16px 2px", WebkitOverflowScrolling: "touch" }}>
+          {["All", ...competitionsInUse].map(c0 => (
+            <button key={c0} onClick={() => { setFilterComp(c0); setSelectedMatch(null); setFilterRound("All"); }}
+              style={{ flex: "0 0 auto", padding: "8px 15px", borderRadius: 99, border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14, whiteSpace: "nowrap", background: filterComp === c0 ? THEME.sky : THEME.white, color: filterComp === c0 ? THEME.onSky : THEME.text }}>{c0 === "All" ? "All" : c0}</button>
+          ))}
+        </div>
+      )}
+      {!THEME.sports && (mode === "history" || (mode === "scorers" && scorersTab !== "squad")) && (
         <div style={{ background: L("#fff"), borderBottom: `1px solid ${L("#f0f0f0")}`, padding: "10px 16px", display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ flex: "1 1 140px", display: "flex", alignItems: "center", gap: 6 }}>
             <select value={filterComp} onChange={e => { setFilterComp(e.target.value); setSelectedMatch(null); setFilterRound("All"); }}
@@ -2323,7 +2351,7 @@ export default function App() {
         </div>
       )}
 
-      <div style={{ padding: "20px 16px" }}>
+      <div key={THEME.sports ? mode : "c"} className={THEME.sports ? "sp-screen" : undefined} style={{ padding: "20px 16px" }}>
         {/* ── HOME TAB ── */}
         {mode === "home" && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
@@ -2340,6 +2368,38 @@ export default function App() {
               ) : null;
             })()}
 
+            {THEME.sports && (() => {
+              const nf = upcomingFixtures[0];
+              if (!nf) return null;
+              const d0 = isoToDate(nf.rawDate), away = nf.home_away === "A";
+              const oppLogo = nf.logo || BRAND.teams?.find(t => t.name === nf.opposition)?.logo || findTeamLogo(BRAND.teams, nf.opposition);
+              const us = <SBadge src={BRAND.badge || DEFAULT_BADGE} name={BRAND.short} size={30} ours />;
+              const them = <SBadge src={oppLogo} name={nf.opposition} size={30} />;
+              const nm = (n, strong) => <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: strong ? 800 : 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n}</span>;
+              return (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8, padding: "0 4px" }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: THEME.ink60, textTransform: "uppercase", letterSpacing: 0.6 }}>Next up</span>
+                    {isAdmin && <button onClick={() => setMode("fixtures")} style={{ background: "none", border: "none", color: THEME.sky, fontSize: 14, fontFamily: "inherit", cursor: "pointer" }}>Fixtures</button>}
+                  </div>
+                  <div style={{ background: THEME.white, borderRadius: 22, padding: "14px 18px", display: "flex", alignItems: "center", gap: 16, color: "#fff" }}>
+                    <div style={{ width: 46, textAlign: "center", lineHeight: 1 }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.5, color: THEME.sky }}>{d0 ? ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][d0.getDay()] : ""}</div>
+                      <div style={{ fontSize: 30, fontWeight: 800, margin: "3px 0" }}>{d0 ? d0.getDate() : "–"}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: THEME.ink60 }}>{d0 ? ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"][d0.getMonth()] : ""}</div>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 9 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>{away ? them : us}{nm(away ? nf.opposition : (BRAND.short || BRAND.name), !away)}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>{away ? us : them}{nm(away ? (BRAND.short || BRAND.name) : nf.opposition, away)}</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 20, fontWeight: 800 }}>{nf.kickoff_time || "TBC"}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: THEME.ink60 }}>{away ? "Away" : "Home"}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
             <div style={{ fontFamily: THEME.mono, fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", color: THEME.ink60, marginBottom: 10 }}>Season Record</div>
             <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
               {[
@@ -2356,7 +2416,7 @@ export default function App() {
             </div>
 
             <button onClick={() => setMode("league")} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, background: THEME.white, border: "none", borderLeft: THEME.sports ? "none" : `3px solid ${THEME.pitch}`, borderRadius: THEME.sports ? 22 : 14, padding: "12px 14px", marginBottom: 24, boxShadow: "0 2px 8px rgba(18,23,46,0.06)", cursor: "pointer", fontFamily: THEME.body, textAlign: "left" }}>
-              <span style={{ fontSize: 22 }}>📋</span>
+              {THEME.sports ? <Icon name="list" size={24} color={THEME.sky} /> : <span style={{ fontSize: 22 }}>📋</span>}
               <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: 14, fontWeight: 700, color: THEME.text }}>League table</span><span style={{ display: "block", fontSize: 11, color: THEME.ink60 }}>Unofficial, from the results we've been sent</span></span>
               <span style={{ color: THEME.ink30, fontSize: 18 }}>›</span>
             </button>
@@ -2406,7 +2466,7 @@ export default function App() {
 
         {/* ── LIVE MATCH ── */}
         {mode === "live" && isAdmin && (
-          <LiveScreen T={THEME} live={live} players={players.filter(p => p.is_active !== false)} fixtures={seasonFixtures.filter(f => !f.played)} competitions={competitions} selfName={BRAND.name}
+          <LiveScreen T={THEME} live={live} players={players.filter(p => p.is_active !== false)} fixtures={seasonFixtures.filter(f => !f.played)} competitions={competitions} selfName={THEME.sports ? (BRAND.short || BRAND.name) : BRAND.name} badge={BRAND.badge || DEFAULT_BADGE} oppLogo={live ? (BRAND.teams?.find(t => t.name === live.opposition)?.logo || findTeamLogo(BRAND.teams, live.opposition)) : null}
             startFixtureId={liveStartFx} onStart={startLive} onUpdate={updateLive} onEnd={endLive} onDiscard={discardLive} showToast={showToast} onBack={() => { setLiveStartFx(null); setMode(live ? "home" : "staff"); }} />
         )}
 
@@ -2579,9 +2639,20 @@ export default function App() {
         {/* ── RESULTS TAB ── */}
         {mode === "history" && (
           <div>
+            {THEME.sports && <LargeTitle text="Results" bg={THEME.chalk} />}
             <H2HPanel results={results} competitions={competitions} />
             <div>
-              <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 20, flexWrap: "wrap" }}>
+              {THEME.sports && (
+                <div style={{ display: "flex", background: THEME.white, borderRadius: 18, padding: "12px 6px", maxWidth: 520, margin: "0 auto 14px" }}>
+                  {[["Played", filteredResults.length, THEME.text], ["Won", filteredResults.filter(r => r.result === "W").length, "#30d158"], ["Drawn", filteredResults.filter(r => r.result === "D").length, "#ffd60a"], ["Lost", filteredResults.filter(r => r.result === "L").length, "#ff453a"], ["Goals", filteredResults.reduce((a, r) => a + goalsFor(r), 0), THEME.sky]].map(([l, v, c]) => (
+                    <div key={l} style={{ flex: 1, textAlign: "center" }}>
+                      <div style={{ fontSize: 22, fontWeight: 800, color: c, fontVariantNumeric: "tabular-nums" }}>{v}</div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: THEME.ink60 }}>{l}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: THEME.sports ? "none" : "flex", gap: 10, justifyContent: "center", marginBottom: 20, flexWrap: "wrap" }}>
                 {[
                   { label: "Played", val: filteredResults.length, color: THEME.text },
                   { label: "Won", val: filteredResults.filter(r => r.result === "W").length, color: "#00c853" },
@@ -2650,8 +2721,11 @@ export default function App() {
                 const isSelected = selectedMatch === m.id;
                 const showDay = filterComp !== "All" && compTypeOf(filterComp) === "tournament" && (idx === 0 || filteredResults[idx - 1].date !== m.date);
                 const dayGames = showDay ? filteredResults.filter(x => x.date === m.date) : [];
+                const mk = (x) => { const d = new Date(x.rawDate || x.date); return isNaN(d) ? "" : d.toLocaleString("en-GB", { month: "long", year: "numeric" }); };
+                const showMonth = THEME.sports && mk(m) && (idx === 0 || mk(filteredResults[idx - 1]) !== mk(m));
                 return (
                   <div key={m.id}>
+                    {showMonth && <div style={{ fontSize: 22, fontWeight: 800, color: THEME.text, margin: idx === 0 ? "4px 4px 8px" : "16px 4px 8px" }}>{mk(m)}</div>}
                     {showDay && (
                       <div style={{ display: "flex", alignItems: "center", gap: 8, margin: idx === 0 ? "0 0 8px" : "10px 0 8px", fontFamily: THEME.mono, fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: THEME.ink60 }}>
                         <span>🎪 {m.date}</span><span style={{ flex: 1, height: 1, background: THEME.ink30 }} />
@@ -2880,6 +2954,7 @@ export default function App() {
         {/* ── GALLERY TAB ── */}
         {mode === "gallery" && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
+            {THEME.sports && <LargeTitle text="Gallery" bg={THEME.chalk} />}
             {(() => {
               const showPhotos = galleryFilter !== "videos";
               const showVideos = galleryFilter !== "photos";
@@ -2918,14 +2993,14 @@ export default function App() {
                   {groups.map(g => (
                     <div key={g.key} style={{ marginBottom: 22 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-                        <span style={{ fontFamily: THEME.display, fontWeight: 600, fontSize: 14, color: THEME.text }}>{g.title.toUpperCase()}</span>
-                        <span style={{ fontFamily: THEME.mono, fontSize: 10, color: THEME.ink60 }}>{g.match.date}</span>
+                        <span style={THEME.sports ? { fontWeight: 800, fontSize: 18, color: THEME.text } : { fontFamily: THEME.display, fontWeight: 600, fontSize: 14, color: THEME.text }}>{THEME.sports ? g.title : g.title.toUpperCase()}</span>
+                        <span style={THEME.sports ? { fontSize: 13, color: THEME.ink60 } : { fontFamily: THEME.mono, fontSize: 10, color: THEME.ink60 }}>{g.match.date}</span>
                       </div>
                       {g.photos.length > 0 && (
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: THEME.sports ? 2 : 5, ...(THEME.sports ? { margin: "0 -16px", borderRadius: 0 } : {}) }}>
                           {g.photos.map((p, i) => (
                             <div key={p.id} onClick={() => setLightbox({ photos: g.photos, index: i, title: g.title })}
-                              style={{ aspectRatio: "1", borderRadius: 8, backgroundImage: `url(${p.url})`, backgroundSize: "cover", backgroundPosition: "center", cursor: "pointer" }} />
+                              style={{ aspectRatio: "1", borderRadius: THEME.sports ? 0 : 8, backgroundImage: `url(${p.url})`, backgroundSize: "cover", backgroundPosition: "center", cursor: "pointer" }} />
                           ))}
                         </div>
                       )}
@@ -2941,6 +3016,7 @@ export default function App() {
         {/* ── PLAYERS TAB ── */}
         {mode === "scorers" && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
+            {THEME.sports && <LargeTitle text="Players" bg={THEME.chalk} />}
             <div style={{ display: "flex", background: L("#fff"), borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.07)", marginBottom: 20 }}>
               {[{ key: "squad", label: "🏃 Squad" }, { key: "goals", label: "⚽ Goals" }, { key: "motm", label: "⭐ MOTM" }, { key: "oppmotm", label: "🏅 Opp MOTM" }].map(st => (
                 <button key={st.key} onClick={() => setScorersTab(st.key)}
@@ -3717,20 +3793,20 @@ export default function App() {
       {/* ── BOTTOM TAB BAR ── */}
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: THEME.sports ? "rgba(0,0,0,0.88)" : "rgba(255,255,255,0.96)", backdropFilter: "blur(10px)", borderTop: `1px solid ${L("#e6e8ee")}`, display: "flex", padding: "8px 6px calc(8px + env(safe-area-inset-bottom))", zIndex: 60 }}>
         {[
-          { key: "home", label: "Home", icon: "🏠" },
-          { key: "history", label: "Results", icon: "📋" },
-          { key: "gallery", label: "Gallery", icon: "📷" },
-          { key: "scorers", label: "Players", icon: "⭐" },
+          { key: "home", label: "Home", icon: "🏠", svg: "home" },
+          { key: "history", label: "Results", icon: "📋", svg: "list" },
+          { key: "gallery", label: "Gallery", icon: "📷", svg: "photo" },
+          { key: "scorers", label: "Players", icon: "⭐", svg: "people" },
         ].map(tab => (
           <button key={tab.key} onClick={() => { setMode(tab.key); setNewResult(null); setOppLogo(null); setH2hTeam(null); }}
-            style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: 9, letterSpacing: 0.5, textTransform: "uppercase", color: mode === tab.key ? THEME.text : THEME.ink60, fontWeight: mode === tab.key ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
-            <span style={{ fontSize: 18 }}>{tab.icon}</span>
+            style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: THEME.sports ? 10 : 9, letterSpacing: THEME.sports ? 0 : 0.5, textTransform: THEME.sports ? "none" : "uppercase", color: mode === tab.key ? THEME.text : THEME.ink60, fontWeight: mode === tab.key ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
+            {THEME.sports ? <Icon name={tab.svg} size={25} filled={mode === tab.key && (tab.svg === "home" || tab.svg === "list")} /> : <span style={{ fontSize: 18 }}>{tab.icon}</span>}
             {tab.label}
           </button>
         ))}
         <button onClick={() => isAdmin ? setMode("staff") : setShowPinGate(true)}
-          style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: 9, letterSpacing: 0.5, textTransform: "uppercase", color: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league","live"].includes(mode)) ? THEME.text : THEME.ink60, fontWeight: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league","live"].includes(mode)) ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
-          <span style={{ fontSize: 18 }}>{isAdmin ? "🔓" : "🔒"}</span>
+          style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: THEME.sports ? 10 : 9, letterSpacing: THEME.sports ? 0 : 0.5, textTransform: THEME.sports ? "none" : "uppercase", color: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league","live"].includes(mode)) ? THEME.text : THEME.ink60, fontWeight: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league","live"].includes(mode)) ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
+          {THEME.sports ? <Icon name={isAdmin ? "unlock" : "lock"} size={25} /> : <span style={{ fontSize: 18 }}>{isAdmin ? "🔓" : "🔒"}</span>}
           Admin
         </button>
       </div>

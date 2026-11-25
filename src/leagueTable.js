@@ -88,7 +88,7 @@ export function computeTable({ matches = [], own = [], start = [], selfName = ""
   const teams = new Map(); // key -> row
   const row = (name) => {
     const k = normName(name);
-    if (!teams.has(k)) teams.set(k, { team: name, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0 });
+    if (!teams.has(k)) teams.set(k, { team: name, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, _f: [] });
     return teams.get(k);
   };
   const newest = new Map();
@@ -109,13 +109,14 @@ export function computeTable({ matches = [], own = [], start = [], selfName = ""
     if (s && s.as_of && date && date <= s.as_of) return; // already inside the opening record
     t.p++; t.gf += f; t.ga += a;
     if (f > a) t.w++; else if (f < a) t.l++; else t.d++;
+    t._f.push({ date: date || "", r: f > a ? "W" : f < a ? "L" : "D" });
   };
   for (const m of all) {
     if (!m.home || !m.away || !Number.isFinite(m.hg) || !Number.isFinite(m.ag)) continue;
     credit(m.home, m.hg, m.ag, m.date);
     credit(m.away, m.ag, m.hg, m.date);
   }
-  const out = [...teams.values()].map((t) => ({ ...t, gd: t.gf - t.ga, pts: t.w * 3 + t.d, self: normName(t.team) === selfKey }));
+  const out = [...teams.values()].map(({ _f, ...t }) => ({ ...t, form: _f.sort((x, y) => x.date.localeCompare(y.date)).slice(-5).map((x) => x.r), gd: t.gf - t.ga, pts: t.w * 3 + t.d, self: normName(t.team) === selfKey }));
   out.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.team.localeCompare(b.team));
   return out;
 }

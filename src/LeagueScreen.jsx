@@ -1,6 +1,6 @@
 // Unofficial league table screen: view the table, add results by pasting messages (primary) or typing them in (backup).
 import { L } from "./branding.js";
-import { SBadge } from "./sportsUI.jsx";
+import { SBadge, LargeTitle } from "./sportsUI.jsx";
 import { useState, useMemo, useRef, useEffect } from "react";
 import { parsePaste, matchTeam, computeTable, normName, toISO, checkTableRows } from "./leagueTable.js";
 import { PosterCanvas, POSTER_W, POSTER_H, findTeamLogo } from "./Poster.jsx";
@@ -155,6 +155,7 @@ export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfNam
 
   return (
     <div style={{ maxWidth: 520, margin: "0 auto" }}>
+      {T.sports && <LargeTitle text="Table" bg={T.chalk} />}
       <button onClick={onBack} style={{ background: "none", border: "none", color: T.ink60, fontFamily: T.mono, fontSize: 11, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", padding: "0 0 12px" }}>‹ Back</button>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
         <div style={{ fontFamily: T.display, fontWeight: 700, fontSize: 20, color: T.text }}>League table</div>
@@ -187,7 +188,10 @@ export default function LeagueScreen({ T, isAdmin, seasonId, seasonName, selfNam
                       <SBadge src={r.self ? (posterBase && posterBase.crest) : logo} name={r.team} size={28} ours={r.self} />
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ display: "block", fontSize: 14, fontWeight: r.self ? 800 : 600, color: "#fff", lineHeight: 1.15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.team}</span>
-                        <span style={{ display: "block", fontSize: 11, color: T.ink60, marginTop: 1 }}>W{r.w} · D{r.d} · L{r.l} · {r.gf}–{r.ga}</span>
+                        <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: T.ink60, marginTop: 2 }}>
+                          <span>W{r.w} · D{r.d} · L{r.l} · {r.gf}–{r.ga}</span>
+                          {r.form && r.form.length > 0 && <span style={{ display: "inline-flex", gap: 3 }}>{r.form.map((f, k) => <i key={k} title={f} style={{ width: 7, height: 7, borderRadius: "50%", background: f === "W" ? "#30d158" : f === "L" ? "#ff453a" : "#8e8e93" }} />)}</span>}
+                        </span>
                       </span>
                       {[r.p, (r.gd > 0 ? "+" : "") + r.gd, r.pts].map((v, j) => (
                         <span key={j} style={{ width: j === 0 ? 22 : 34, textAlign: "center", fontSize: j === 2 ? 17 : 14, fontWeight: j === 2 ? 800 : 500, color: j === 2 ? "#fff" : "#aeaeb2", fontVariantNumeric: "tabular-nums" }}>{v}</span>
