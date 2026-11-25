@@ -5,6 +5,8 @@ import LeagueScreen from "./LeagueScreen.jsx";
 import { ShareCardB } from "./ShareCard.jsx";
 import { SBadge, Icon, LargeTitle } from "./sportsUI.jsx";
 import { SportsResultView } from "./SportsResult.jsx";
+import { PushCard, AlertsSettings } from "./PushUI.jsx";
+import { setPushPin, alertsForChange, alertKickoff, alertFullTime, cancelAllForMatch } from "./push.js";
 import LiveScreen, { LiveCard } from "./LiveScreen.jsx";
 import { buildResultFields } from "./liveMatch.js";
 import { DEFAULT_BADGE } from "./defaultBadge.js";
@@ -1621,13 +1623,16 @@ export default function App() {
   const startLive = async setup => {
     const row = await insertLiveMatch({ ...setup, season_id: viewingSeason?.id || activeSeason?.id, goals: [], phase: "h1", base_ms: 0, run_since: Date.now(), started_at: Date.now() });
     setLive(row);
+    alertKickoff(row, BRAND.short || BRAND.name);
   };
   const updateLive = async patch => {
+    const prev = live;
     const next = { ...live, ...patch };
     setLive(next);
     await updateLiveMatch(live.id, patch);
+    alertsForChange(prev, next, BRAND.short || BRAND.name);
   };
-  const discardLive = async () => { await deleteLiveMatch(live.id); setLive(null); setMode("home"); showToast("Match cancelled"); };
+  const discardLive = async () => { cancelAllForMatch(live); await deleteLiveMatch(live.id); setLive(null); setMode("home"); showToast("Match cancelled"); };
   const endLive = async () => {
     const f = buildResultFields(live);
     const result = resultFrom(f.homeScore, f.awayScore, null, null);
@@ -1635,6 +1640,7 @@ export default function App() {
     const newMatch = { date: displayDate, opposition: live.opposition, homeScore: f.homeScore, awayScore: f.awayScore, scorers: f.scorers, result, competition: live.competition, motm: "", oppMotm: "", oppLogo: null, round: "", season_id: live.season_id || activeSeason?.id, homePens: null, awayPens: null, penScorers: null, goal_times: f.goal_times };
     const saved = await insertResult(newMatch);
     const match = saved || { ...newMatch, id: Date.now() };
+    alertFullTime(live, BRAND.short || BRAND.name);
     setResults(prev => [...prev, match]);
     if (match.id && (live.squad || []).length) {
       try { const recs = await insertAppearances(live.squad.map(pid => ({ player_id: pid, result_id: match.id, season_id: match.season_id }))); setAppearances(prev => [...prev, ...recs]); } catch (e) {}
@@ -1858,6 +1864,7 @@ export default function App() {
 
   const handleUnlockAdmin = async () => {
     if (await verifyAdminPin(pinInput)) {
+      setPushPin(pinInput);
       setIsAdmin(true);
       setShowPinGate(false);
       setPinInput("");
@@ -1877,7 +1884,7 @@ export default function App() {
   };
 
   const handleLockAdmin = () => {
-    setAdminPin("");
+    setAdminPin(""); setPushPin("");
     setIsAdmin(false);
     setMode("home");
   };
@@ -2355,6 +2362,7 @@ export default function App() {
         {/* ── HOME TAB ── */}
         {mode === "home" && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
+            <PushCard T={THEME} />
             {live && <LiveCard T={THEME} live={live} selfName={THEME.sports ? (BRAND.short || BRAND.name) : BRAND.name} badge={BRAND.badge || DEFAULT_BADGE} oppLogo={BRAND.teams?.find(t => t.name === live.opposition)?.logo || findTeamLogo(BRAND.teams, live.opposition)} onOpen={isAdmin ? () => { setLiveStartFx(null); setMode("live"); } : null} />}
             {!live && isAdmin && isViewingActive && (() => {
               const td = new Date(); const iso = `${td.getFullYear()}-${String(td.getMonth() + 1).padStart(2, "0")}-${String(td.getDate()).padStart(2, "0")}`;
@@ -2612,6 +2620,7 @@ export default function App() {
               { key: "seasons", icon: "🗓", accent: THEME.loss, title: "Season History", desc: "Past seasons, archive & switch" },
               { key: "branding", icon: "🎨", accent: THEME.sky, title: "Branding", desc: "Club colours, badge, name & slogan" },
               { key: "placements", icon: "🏆", accent: THEME.amber, title: "Trophy Cabinet", desc: "Set how a tournament finished" },
+              { key: "alerts", icon: "🔔", accent: THEME.sky, title: "Goal alerts", desc: "Phones signed up, scorer names" },
             ].map(item => (
               <button key={item.key} disabled={item.disabled} onClick={() => { if (item.key === "live") setLiveStartFx(null); setMode(item.key); }}
                 style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, background: THEME.white, border: "none", borderLeft: `3px solid ${item.accent}`, borderRadius: 14, padding: "14px 16px", marginBottom: 10, boxShadow: "0 2px 8px rgba(18,23,46,0.05)", cursor: item.disabled ? "default" : "pointer", opacity: item.disabled ? 0.5 : 1, fontFamily: THEME.body, textAlign: "left" }}>
@@ -2635,6 +2644,8 @@ export default function App() {
             </button>
           </div>
         )}
+
+        {mode === "alerts" && isAdmin && <AlertsSettings T={THEME} onBack={() => setMode("staff")} showToast={showToast} />}
 
         {/* ── RESULTS TAB ── */}
         {mode === "history" && (
@@ -3805,7 +3816,7 @@ export default function App() {
           </button>
         ))}
         <button onClick={() => isAdmin ? setMode("staff") : setShowPinGate(true)}
-          style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: THEME.sports ? 10 : 9, letterSpacing: THEME.sports ? 0 : 0.5, textTransform: THEME.sports ? "none" : "uppercase", color: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league","live"].includes(mode)) ? THEME.text : THEME.ink60, fontWeight: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league","live"].includes(mode)) ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
+          style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontFamily: THEME.mono, fontSize: THEME.sports ? 10 : 9, letterSpacing: THEME.sports ? 0 : 0.5, textTransform: THEME.sports ? "none" : "uppercase", color: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league","live","alerts"].includes(mode)) ? THEME.text : THEME.ink60, fontWeight: (mode === "staff" || ["teams","squad","report","seasons","new","placements","branding","fixtures","league","live","alerts"].includes(mode)) ? 700 : 500, cursor: "pointer", padding: "4px 0" }}>
           {THEME.sports ? <Icon name={isAdmin ? "unlock" : "lock"} size={25} /> : <span style={{ fontSize: 18 }}>{isAdmin ? "🔓" : "🔒"}</span>}
           Admin
         </button>

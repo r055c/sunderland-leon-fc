@@ -1,3 +1,4 @@
+import { handlePush, flushDue } from "./push.js";
 // Cloudflare Worker: serves the built app (static assets) and a small JSON API over D1.
 // The API mirrors what the app previously got from Supabase REST, one table per route.
 
@@ -187,9 +188,10 @@ async function handleSpecial(request, env, url, parts) {
   return json({ error: "Not found" }, 404);
 }
 
-async function handleApi(request, env, url) {
+async function handleApi(request, env, url, ctx) {
   const parts = url.pathname.replace(/^\/api\/?/, "").split("/").filter(Boolean);
   const [table, idPart, action] = parts;
+  if (table === "push") return handlePush(request, env, url, parts, ctx, checkPin);
   if (["auth", "pin", "upload", "external-images", "relink-image"].includes(table)) {
     return handleSpecial(request, env, url, parts);
   }
@@ -283,11 +285,11 @@ async function handleApi(request, env, url) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname.startsWith("/api/")) {
       try {
-        return await handleApi(request, env, url);
+        return await handleApi(request, env, url, ctx);
       } catch (e) {
         return json({ error: String(e && e.message ? e.message : e) }, 500);
       }
@@ -299,5 +301,9 @@ export default {
       return serveImage(env, id);
     }
     return env.ASSETS.fetch(request);
+  },
+  // Backstop for the 30-second alert delay: sends anything due even if no phone is open to trigger it.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(flushDue(env.DB).catch(() => {}));
   },
 };

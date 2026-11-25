@@ -51,6 +51,7 @@ export default defineConfig({
         ]
       },
       workbox: {
+        importScripts: ['push-sw.js'],
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         globIgnores: ['icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'sop/**', 'guide/**'],
         navigateFallbackDenylist: [/^\/sop(\/|$)/, /^\/guide(\/|$)/, /^\/api\//, /^\/img\//],

@@ -25,3 +25,8 @@ INSERT INTO club_settings (id, admin_pin_hash) VALUES (1, 'd673e4127504bb60$63f6
 
 -- A new club needs one season to start with (the app can't create it before anyone has unlocked admin).
 INSERT INTO seasons (name, age_group, is_active, competitions, placements, competition_types) VALUES ('2026/27', '', 1, '[]', '{}', '{}');
+
+-- Goal alerts: these tables are also created automatically by worker/push.js the first time they are needed.
+CREATE TABLE IF NOT EXISTS push_subs (endpoint TEXT PRIMARY KEY, p256dh TEXT NOT NULL, auth TEXT NOT NULL, prefs TEXT, created INTEGER);
+CREATE TABLE IF NOT EXISTS push_queue (key TEXT PRIMARY KEY, kind TEXT, title TEXT, body TEXT, body_anon TEXT, send_at INTEGER, sent INTEGER DEFAULT 0, created INTEGER);
+CREATE TABLE IF NOT EXISTS push_settings (k TEXT PRIMARY KEY, v TEXT);

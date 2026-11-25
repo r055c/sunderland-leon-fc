@@ -3,9 +3,10 @@
 // Same function names and return shapes as the Supabase version in supabase.js.
 // Image uploads still go to Supabase Storage for now (see supabase.js).
 
+import { setPushPin } from "./push.js";
 // ── Admin PIN: kept in memory only; sent with every change so the Worker can check it ──
 let adminPin = "";
-export const setAdminPin = (p) => { adminPin = p || ""; };
+export const setAdminPin = (p) => { adminPin = p || ""; setPushPin(p); };
 const authHeaders = () => (adminPin ? { "x-admin-pin": adminPin } : {});
 const hdr = () => ({ "Content-Type": "application/json", ...authHeaders() });
 const api = (path) => `/api/${path}`;
