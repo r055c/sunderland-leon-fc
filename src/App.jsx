@@ -3602,8 +3602,7 @@ export default function App() {
                     </button>
                     <button onClick={() => { setEditingPlayer(p); setPlayerForm({ name: p.name, squad_number: p.squad_number || "", photo: p.photo || null }); setShowPlayerModal(true); }}
                       style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#aaa", flexShrink: 0 }}>✏️</button>
-                    <button onClick={() => { if (window.confirm(`Permanently remove ${p.name} from squad?`)) handleDeletePlayer(p.id); }}
-                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#ddd", flexShrink: 0 }}>🗑️</button>
+                    {/* Delete button hidden on purpose: use Active/Restore to keep a player's history. Real deletes are done by hand. */}
                   </div>
                 );
               };
