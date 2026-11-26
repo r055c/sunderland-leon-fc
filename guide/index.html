@@ -76,6 +76,7 @@
     <a href="#brand">Your club's look<span>Badge, colours, PIN</span></a>
     <a href="#league">Unofficial league table<span>Paste in the scores</span></a>
     <a href="#live">Live match<span>Score a game as it happens</span></a>
+    <a href="#alerts">Goal alerts<span>Phones get notified</span></a>
     <a href="#help">Problems?<span>Quick answers</span></a>
   </div>
 
@@ -83,13 +84,14 @@
     <div class="hd"><span class="num">1</span><h2>Looking around</h2></div>
     <p>Anyone with the link can look around the app. The tabs at the bottom are:</p>
     <ul>
-      <li><b>Home</b> – the season record so far and the latest result.</li>
+      <li><b>Home</b> – the season record so far, the latest result and, when a game is coming up, a <b>Next up</b> card with the opposition, date, kick-off time and home or away.</li>
       <li><b>Results</b> – every match. Use the drop-down at the top to show one competition, or search for an opponent to see your record against them.</li>
-      <li><b>Gallery</b> – match photos and YouTube videos. Use the All / Photos / Videos buttons at the top to filter. Tap a video to watch it on YouTube.</li>
-      <li><b>Players</b> – top scorers, man of the match awards and each player's record. Tap a tab at the top (marked 1) to switch between them.</li>
+      <li><b>Gallery</b> – match photos and YouTube videos. Use the All / Photos / Videos buttons at the top to filter. Tap a video to watch it on YouTube. The newest photos and videos are at the top.</li>
+      <li><b>Players</b> – top scorers, man of the match awards and each player's record. Tap a tab at the top (marked 1) to switch between them. It opens on the Squad list.</li>
       <li><b>Admin</b> – the padlock. Only people with the PIN can get past it.</li>
     </ul>
     <p>The season shown at the top (for example 2026/27) can be changed to look back at earlier seasons.</p>
+    <p>Your club can use one of two looks, <b>Classic</b> (light cards) or <b>Sports</b> (dark, with big badges and compact rows). Everything works the same in both. The pictures below show Classic. To change it, see "Your club's look, badge and PIN".</p>
     <div class="phones">
       <figure><img src="img/u-home.jpg" alt="Home screen"><figcaption>Home</figcaption></figure>
       <figure><img src="img/u-results.jpg" alt="Results screen"><figcaption>Results</figcaption></figure>
@@ -203,10 +205,10 @@
       <li><b>+ Add Player</b> – type a name and squad number. A photo is optional. Tap <b>Add to squad</b>.</li>
       <li><b>Active</b> – tap this when a player leaves or stops playing. They move to an "Inactive" list and stop appearing when you log results, but their old stats are kept. Tap <b>Restore</b> to bring them back.</li>
       <li><b>Pencil</b> – change a name, number or photo.</li>
-      <li><b>Bin</b> – removes the player for good (you'll be asked to confirm). Use Active/Restore instead unless you're sure.</li>
     </ol>
+    <div class="note">There is no delete button for players. Use <b>Active</b> when someone leaves, so their goals, appearances and awards stay in the records. If a player really has to be removed (for example added by mistake), ask the person who set up the app for you.</div>
     <div class="phones">
-      <figure><img src="img/u-squad.jpg" alt="Squad list with the buttons marked"><figcaption>1 Add, 2 Active/Inactive, 3 Edit, 4 Remove</figcaption></figure>
+      <figure><img src="img/u-squad.jpg" alt="Squad list with the buttons marked"><figcaption>1 Add, 2 Active/Inactive, 3 Edit (the bin marked 4 is no longer in the app)</figcaption></figure>
       <figure><img src="img/u-addplayer.jpg" alt="Add player form"><figcaption>The Add Player form.</figcaption></figure>
     </div>
   </section>
@@ -247,6 +249,8 @@
     <div class="hd"><span class="num">10</span><h2>Trophy cabinet</h2></div>
     <p>After a tournament, go to Staff Room → <b>Trophy Cabinet</b>, find the tournament and tap how your team finished: Winners, Runners-up, 3rd Place, Semi-Final or Group Stage. Finishes are saved against that season and counted in your trophy tally.</p>
     <p>You will only see tournaments in this list once you have logged results for them using the <b>Tournament</b> game type.</p>
+    <p><b>The app suggests the finish for you.</b> It works it out from the last game: a Final won is Winners, a Final lost is Runners-up, a 3rd-place game won is 3rd Place, a semi-final lost is Semi-Final, and a group-stage exit is Group Stage. The same suggestion appears on the "How did you finish?" step when you finish a tournament day, and in the Trophy Cabinet. Check it and change it if it's wrong.</p>
+    <p><b>Home reminder (staff only).</b> When a tournament has a Final logged, or all of a league's fixtures are marked as played, and no finish has been saved, a <b>looks finished</b> card appears on the Home screen for staff. Tap it to set the finish, or tap <b>Later</b> to hide it for 3 days. Parents don't see it. For leagues it needs the league's fixtures to be entered.</p>
   </section>
 
   <section id="brand">
@@ -254,6 +258,7 @@
     <p>Staff Room → <b>Branding</b> is where you set the club name, short name, slogan, colours and badge. Tap <b>Save branding</b> when you've finished and everyone sees the change.</p>
     <ul>
       <li><b>Upload badge</b> – choose your crest (PNG or JPEG). It also becomes the icon on people's home screens for anyone who adds the app after that. Anyone who added it earlier needs to delete the icon and add it again to see the new one.</li>
+      <li><b>Look</b> – choose <b>Classic</b> (light cards) or <b>Sports</b> (dark, big badges, compact rows). Tap <b>Save branding</b> and everyone sees the new look the next time they open the app.</li>
       <li><b>Admin PIN</b> – scroll down, type a new PIN of 4 to 8 digits and tap <b>Change</b>. Do this when someone who knew the PIN leaves.</li>
     </ul>
     <div class="phones">
@@ -281,7 +286,8 @@
     <p><b>When a score can't be pasted</b> (for example it came as a photo), use <b>Type one</b>: pick both teams, enter the score and the date.</p>
     <p><b>When you only have the table, not the scores</b>, use <b>From table</b>. Set the <b>Table as at</b> date and the grid starts with the table as it is now, so just change the numbers that are different: played, won, drawn, lost, goals for and against. Points are worked out for you. The app checks that each team's W + D + L matches their games played, and <b>Save table</b> stays greyed out until every row adds up. Tap <b>Add</b> to include a team that isn't listed yet. The saved table replaces those teams' records, and any results you paste afterwards are added on top. The newest table always wins, so you can type in a fresh one whenever you get it. The table screen shows <i>Table as at 22 Nov + 3 results since</i>.</p>
     <p>Made a mistake? The <b>Added</b> tab lists everything you have entered, with a Delete button on each, including any table you typed in. On the table itself, <b>Share as a picture</b> makes an image of the table for the group chat.</p>
-    <p>The table is sorted by points (3 for a win, 1 for a draw), then goal difference, then goals scored.</p>
+    <p>The table is sorted by points (3 for a win, 1 for a draw), then goal difference, then goals scored. Each team has a row of small coloured dots showing their last five results (green win, grey draw, red loss, newest on the right).</p>
+    <p><b>Finish season.</b> When the league is over, Staff Room → <b>League Table</b> shows a <b>Finish season</b> card. The finishing position is filled in from the unofficial table (Champions, Runners-up, 3rd Place, 4th Place and so on). Check it, change it if the real table was different, and save. You also get a season card to share. The finish is saved against that season and counts in the Trophy Cabinet.</p>
   </section>
 
   <section id="live">
@@ -296,7 +302,28 @@
       <li>Tap <b>End match</b> at the final whistle. The result is saved for you: it appears in Results, the season record, the league table and the player stats, with a list of every goal and its minute. The fixture is marked as played.</li>
     </ol>
     <p>Wrong goal? Tap <b>edit</b> beside it to change the minute or scorer, or to delete it. If you opened it by mistake, use <b>Cancel match (don't save)</b>.</p>
+    <p>Parents who turned on <b>goal alerts</b> get a notification on their phone for each goal, kick-off, half time and full time (see "Goal alerts" below).</p>
     <p><b>Log a Result</b> is still there for games you didn't score live, and for tournament days.</p>
+  </section>
+
+  <section id="alerts">
+    <div class="hd"><span class="num">14</span><h2>Goal alerts</h2></div>
+    <p>Parents can get a notification on their phone when your team scores. It works with the <b>Live match</b> screen, so goals only send alerts when you score a game live.</p>
+    <p><b>What parents do</b></p>
+    <ol>
+      <li>On the Home screen, tap <b>Get goal alerts</b>.</li>
+      <li>On an iPhone (iOS 16.4 or newer) the app first needs to be on the Home Screen: open the link in Safari, tap Share, then <b>Add to Home Screen</b>, and open it from the icon. The card explains this.</li>
+      <li>Choose which alerts to get: <b>Our goals</b>, <b>Opposition goals</b>, <b>Kick-off</b>, <b>Half time</b> and <b>Full time</b>. Our goals, opposition goals and full time are on to begin with. They can change their choices any time on the same card.</li>
+    </ol>
+    <p><b>What staff do</b></p>
+    <ul>
+      <li>Nothing special. Score the game with <b>Live match</b> as normal.</li>
+      <li><b>30-second pause.</b> A goal alert is sent 30 seconds after you save the goal. If you delete the goal in that time, no alert is sent. Kick-off, half time and full time are sent straight away.</li>
+      <li>If you delete a goal <i>after</i> its alert has gone out, a short correction is sent so parents aren't left with the wrong score.</li>
+      <li>Staff Room → <b>Goal alerts</b> shows how many phones have signed up and has a <b>Name the scorer</b> switch. Turn it off if you only want the minute shown, with no player's name.</li>
+    </ul>
+    <p>Example alerts: "GOAL! Leon 2–1 Riverside, Ben scored · 34'", "Riverside score · Leon 1–1 Riverside, 21'", "Half time", "Full time · Leon win!".</p>
+    <div class="note">Alerts go to phones, not to names. The app doesn't know who is signed up. Parents can switch them off in the same place, or in their phone's notification settings.</div>
   </section>
 
   <section id="help">
@@ -310,6 +337,8 @@
       <tr><td>A team is on the list twice</td><td>Go to Teams and remove the extra one with the bin. Your results are not affected.</td></tr>
       <tr><td>My YouTube link is refused</td><td>Copy the link from YouTube's Share button and paste it in whole. Private videos won't play for other people.</td></tr>
       <tr><td>A photo won't upload</td><td>Try a smaller picture. Use JPEG or PNG, not other file types.</td></tr>
+      <tr><td>A parent says they get no goal alerts</td><td>On an iPhone the app must be added to the Home Screen and opened from the icon (iOS 16.4 or newer). They should tap <b>Get goal alerts</b> and allow notifications when asked. Alerts only go out for games scored with <b>Live match</b>.</td></tr>
+      <tr><td>A goal alert was sent for the wrong goal</td><td>Edit or delete the goal in the Live screen. If the alert had already gone out, a correction is sent automatically.</td></tr>
       <tr><td>My change isn't showing for someone else</td><td>Ask them to close the app completely and open it again.</td></tr>
       <tr><td>The home-screen icon shows the wrong badge</td><td>Upload your badge in Branding, then delete the icon from the phone and add the app again.</td></tr>
     </table>
